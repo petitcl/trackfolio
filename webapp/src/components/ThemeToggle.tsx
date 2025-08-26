@@ -1,6 +1,6 @@
 'use client'
 
-import { useTheme } from '@/lib/theme/theme.context'
+import { useTheme } from 'next-themes'
 import { useState, useEffect } from 'react'
 
 interface ThemeToggleProps {
@@ -8,23 +8,22 @@ interface ThemeToggleProps {
 }
 
 export default function ThemeToggle({ className = '' }: ThemeToggleProps) {
-  const { theme, toggleTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   
   useEffect(() => {
     setMounted(true)
   }, [])
-  
+
   const handleClick = () => {
-    console.log('Theme toggle clicked, current theme:', theme)
-    toggleTheme()
+    setTheme(theme === 'light' ? 'dark' : 'light')
   }
 
   // Don't render until mounted to avoid hydration mismatch
   if (!mounted) {
     return (
       <div className={`inline-flex items-center justify-center p-2 rounded-md w-9 h-9 ${className}`}>
-        <div className="w-5 h-5 bg-gray-300 rounded animate-pulse" />
+        <div className="w-5 h-5 bg-gray-300 dark:bg-gray-600 rounded animate-pulse" />
       </div>
     )
   }

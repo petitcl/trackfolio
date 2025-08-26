@@ -14,7 +14,7 @@ import {
 import { Bar } from 'react-chartjs-2'
 import type { TimeRange } from '../TimeRangeSelector'
 import type { HistoricalDataPoint } from '../../lib/mockData'
-import { useTheme } from '@/lib/theme/theme.context'
+import { useTheme } from 'next-themes'
 
 ChartJS.register(
   CategoryScale,

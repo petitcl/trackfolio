@@ -10,7 +10,7 @@ import {
 } from 'chart.js'
 import { Pie } from 'react-chartjs-2'
 import type { TimeRange } from '../TimeRangeSelector'
-import { useTheme } from '@/lib/theme/theme.context'
+import { useTheme } from 'next-themes'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
