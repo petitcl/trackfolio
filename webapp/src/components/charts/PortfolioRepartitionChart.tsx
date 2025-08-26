@@ -10,6 +10,7 @@ import {
 } from 'chart.js'
 import { Pie } from 'react-chartjs-2'
 import type { TimeRange } from '../TimeRangeSelector'
+import { useTheme } from '@/lib/theme/theme.context'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -42,6 +43,9 @@ export default function PortfolioRepartitionChart({
   timeRange, 
   className = '' 
 }: PortfolioRepartitionChartProps) {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
+  
   const chartData = {
     labels: data.map(item => assetTypeLabels[item.assetType] || item.assetType),
     datasets: [
@@ -63,17 +67,17 @@ export default function PortfolioRepartitionChart({
         labels: {
           padding: 15,
           usePointStyle: true,
-          color: document?.documentElement?.classList?.contains('dark') ? '#E5E7EB' : '#374151',
+          color: isDark ? '#E5E7EB' : '#374151',
           font: {
             size: 12,
           },
         },
       },
       tooltip: {
-        titleColor: document?.documentElement?.classList?.contains('dark') ? '#F9FAFB' : '#111827',
-        bodyColor: document?.documentElement?.classList?.contains('dark') ? '#E5E7EB' : '#374151',
-        backgroundColor: document?.documentElement?.classList?.contains('dark') ? '#1F2937' : '#FFFFFF',
-        borderColor: document?.documentElement?.classList?.contains('dark') ? '#374151' : '#E5E7EB',
+        titleColor: isDark ? '#F9FAFB' : '#111827',
+        bodyColor: isDark ? '#E5E7EB' : '#374151',
+        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+        borderColor: isDark ? '#374151' : '#E5E7EB',
         borderWidth: 1,
         callbacks: {
           label: function(context) {

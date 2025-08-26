@@ -32,27 +32,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full light" data-theme="light">
+    <html lang="en">
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                try {
-                  var savedTheme = localStorage.getItem('trackfolio-theme');
-                  if (savedTheme) {
-                    document.documentElement.classList.remove('light', 'dark');
-                    document.documentElement.classList.add(savedTheme);
-                    document.documentElement.setAttribute('data-theme', savedTheme);
-                  } else {
-                    var systemPreference = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                    if (systemPreference === 'dark') {
-                      document.documentElement.classList.remove('light');
-                      document.documentElement.classList.add('dark');
-                      document.documentElement.setAttribute('data-theme', 'dark');
-                    }
+                function setTheme() {
+                  try {
+                    var savedTheme = localStorage.getItem('trackfolio-theme');
+                    var theme = savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                    document.documentElement.className = 'h-full ' + theme;
+                    document.documentElement.setAttribute('data-theme', theme);
+                  } catch (e) {
+                    // Fallback to light theme
+                    document.documentElement.className = 'h-full light';
+                    document.documentElement.setAttribute('data-theme', 'light');
                   }
-                } catch (e) {}
+                }
+                setTheme();
               })();
             `,
           }}

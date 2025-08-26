@@ -14,6 +14,7 @@ import {
 import { Bar } from 'react-chartjs-2'
 import type { TimeRange } from '../TimeRangeSelector'
 import type { HistoricalDataPoint } from '../../lib/mockData'
+import { useTheme } from '@/lib/theme/theme.context'
 
 ChartJS.register(
   CategoryScale,
@@ -51,6 +52,9 @@ export default function PortfolioReturnsChart({
   timeRange, 
   className = '' 
 }: PortfolioReturnsChartProps) {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
+  
   // Get the latest data point for current returns
   const latestData = data[data.length - 1]
   
@@ -85,16 +89,16 @@ export default function PortfolioReturnsChart({
         title: {
           display: true,
           text: 'Returns (%)',
-          color: document?.documentElement?.classList?.contains('dark') ? '#E5E7EB' : '#374151',
+          color: isDark ? '#E5E7EB' : '#374151',
         },
         ticks: {
-          color: document?.documentElement?.classList?.contains('dark') ? '#D1D5DB' : '#6B7280',
+          color: isDark ? '#D1D5DB' : '#6B7280',
           callback: function(value) {
             return value + '%'
           }
         },
         grid: {
-          color: document?.documentElement?.classList?.contains('dark') ? '#374151' : '#E5E7EB',
+          color: isDark ? '#374151' : '#E5E7EB',
         },
       },
     },
@@ -105,17 +109,17 @@ export default function PortfolioReturnsChart({
         labels: {
           usePointStyle: true,
           padding: 20,
-          color: document?.documentElement?.classList?.contains('dark') ? '#E5E7EB' : '#374151',
+          color: isDark ? '#E5E7EB' : '#374151',
           font: {
             size: 12,
           },
         },
       },
       tooltip: {
-        titleColor: document?.documentElement?.classList?.contains('dark') ? '#F9FAFB' : '#111827',
-        bodyColor: document?.documentElement?.classList?.contains('dark') ? '#E5E7EB' : '#374151',
-        backgroundColor: document?.documentElement?.classList?.contains('dark') ? '#1F2937' : '#FFFFFF',
-        borderColor: document?.documentElement?.classList?.contains('dark') ? '#374151' : '#E5E7EB',
+        titleColor: isDark ? '#F9FAFB' : '#111827',
+        bodyColor: isDark ? '#E5E7EB' : '#374151',
+        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+        borderColor: isDark ? '#374151' : '#E5E7EB',
         borderWidth: 1,
         callbacks: {
           label: function(context) {

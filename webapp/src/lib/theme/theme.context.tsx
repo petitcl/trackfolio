@@ -20,34 +20,21 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>('light')
   const [mounted, setMounted] = useState(false)
 
-  // Initialize theme from localStorage or system preference
+  // Initialize theme from DOM (which was set by the script in layout)
   useEffect(() => {
     setMounted(true)
     
     // Read the current theme from the DOM (set by the script in layout)
     const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light'
     setThemeState(currentTheme)
-    
-    // Ensure DOM is in sync (script should have already handled this)
-    const savedTheme = localStorage.getItem('trackfolio-theme') as Theme
-    const systemPreference = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    const expectedTheme = savedTheme || systemPreference
-    
-    if (currentTheme !== expectedTheme) {
-      updateDOMTheme(expectedTheme)
-      setThemeState(expectedTheme)
-    }
   }, [])
 
   // Update DOM and localStorage when theme changes
   const updateDOMTheme = (newTheme: Theme) => {
     const root = document.documentElement
     
-    // Remove existing theme classes
-    root.classList.remove('light', 'dark')
-    
-    // Add new theme class
-    root.classList.add(newTheme)
+    // Set the full className to maintain h-full and add theme
+    root.className = `h-full ${newTheme}`
     
     // Also update the data attribute for CSS targeting
     root.setAttribute('data-theme', newTheme)

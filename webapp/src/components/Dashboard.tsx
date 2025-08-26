@@ -204,6 +204,29 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
         </div>
 
+        {/* Charts Section */}
+        <div className="mb-8 space-y-8">
+          {/* Top Row - Pie Chart and Returns */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <PortfolioRepartitionChart
+              data={getPortfolioRepartitionData()}
+              timeRange={selectedTimeRange}
+            />
+            <PortfolioReturnsChart
+              data={mockHistoricalData}
+              timeRange={selectedTimeRange}
+            />
+          </div>
+          
+          {/* Bottom Row - History Chart */}
+          <div className="grid grid-cols-1">
+            <PortfolioHistoryChart
+              data={mockHistoricalData}
+              timeRange={selectedTimeRange}
+            />
+          </div>
+        </div>
+
         {/* Holdings Table */}
         <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md border dark:border-gray-700">
           <div className="px-4 py-5 sm:px-6">
@@ -306,23 +329,23 @@ export default function Dashboard({ user }: DashboardProps) {
                     // Add category total row
                     rows.push(
                       <tr key={`${assetType}-total`} className="bg-gray-100 dark:bg-gray-700 font-semibold">
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-2 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 text-lg">
+                            <div className="flex-shrink-0 text-sm">
                               {getAssetTypeIcon(assetType)}
                             </div>
-                            <div className="ml-4">
+                            <div className="ml-3">
                               <div className="text-sm font-bold text-gray-900 dark:text-white">{getAssetTypeLabel(assetType)} Total</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
+                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
+                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
+                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
+                        <td className="px-6 py-2 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
                           {formatCurrency(typeTotalValue)}
                         </td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${getPnLColor(typeTotalPnL)}`}>
+                        <td className={`px-6 py-2 whitespace-nowrap text-sm font-bold ${getPnLColor(typeTotalPnL)}`}>
                           <div>{formatCurrency(typeTotalPnL)}</div>
                           <div className="text-xs">{formatPercent(typePnLPercentage)}</div>
                         </td>
@@ -356,35 +379,12 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
         </div>
 
-        {/* Charts Section */}
-        <div className="mb-8 space-y-8">
-          {/* Top Row - Pie Chart and Returns */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <PortfolioRepartitionChart
-              data={getPortfolioRepartitionData()}
-              timeRange={selectedTimeRange}
-            />
-            <PortfolioReturnsChart
-              data={mockHistoricalData}
-              timeRange={selectedTimeRange}
-            />
-          </div>
-          
-          {/* Bottom Row - History Chart */}
-          <div className="grid grid-cols-1">
-            <PortfolioHistoryChart
-              data={mockHistoricalData}
-              timeRange={selectedTimeRange}
-            />
-          </div>
-        </div>
-
         {/* Quick Actions */}
         <div className="mt-8">
           <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg border dark:border-gray-700">
             <div className="px-4 py-5 sm:p-6">
               <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
                   📈 Add Transaction
                 </button>
@@ -393,9 +393,6 @@ export default function Dashboard({ user }: DashboardProps) {
                 </button>
                 <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
                   💰 Update Prices
-                </button>
-                <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
-                  📊 View Analytics
                 </button>
               </div>
             </div>
