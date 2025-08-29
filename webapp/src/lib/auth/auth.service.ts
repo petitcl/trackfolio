@@ -56,18 +56,29 @@ export class ClientAuthService {
 
   async signInWithEmail(email: string, password: string): Promise<AuthResponse> {
     try {
+      console.log('🔐 Attempting email login...')
+      console.log('Email:', email)
+      console.log('Supabase client initialized:', !!this.supabase)
+      
       const { data, error } = await this.supabase.auth.signInWithPassword({
         email,
         password,
       })
       
+      console.log('📊 Auth response received:')
+      console.log('Data:', data ? 'User data received' : 'No data')
+      console.log('Error:', error ? error.message : 'No error')
+      
       if (error) {
+        console.error('❌ Login error:', error)
         return { error: { message: error.message } }
       }
       
+      console.log('✅ Login successful!')
       return { user: data.user as AuthUser }
     } catch (error) {
-      return { error: { message: 'An unexpected error occurred' } }
+      console.error('❌ Unexpected error during login:', error)
+      return { error: { message: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}` } }
     }
   }
 
