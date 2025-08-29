@@ -10,7 +10,7 @@ import {
 } from 'chart.js'
 import { Pie } from 'react-chartjs-2'
 import type { TimeRange } from '../TimeRangeSelector'
-import { useTheme } from 'next-themes'
+import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -18,15 +18,6 @@ interface PortfolioRepartitionChartProps {
   data: Array<{ assetType: string; value: number; percentage: number }>
   timeRange: TimeRange
   className?: string
-}
-
-const assetTypeColors: Record<string, string> = {
-  stock: '#3B82F6', // Blue
-  etf: '#10B981',   // Green
-  crypto: '#F59E0B', // Yellow
-  real_estate: '#8B5CF6', // Purple
-  other: '#F97316', // Orange
-  cash: '#6B7280'   // Gray
 }
 
 const assetTypeLabels: Record<string, string> = {
@@ -43,16 +34,18 @@ export default function PortfolioRepartitionChart({
   timeRange, 
   className = '' 
 }: PortfolioRepartitionChartProps) {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
+  
+  const getAssetTypeColor = (assetType: string): string => {
+    return CHART_COLORS[assetType as keyof typeof CHART_COLORS] || CHART_COLORS.other
+  }
   
   const chartData = {
     labels: data.map(item => assetTypeLabels[item.assetType] || item.assetType),
     datasets: [
       {
         data: data.map(item => item.percentage),
-        backgroundColor: data.map(item => assetTypeColors[item.assetType] || '#9CA3AF'),
-        borderColor: data.map(item => assetTypeColors[item.assetType] || '#9CA3AF'),
+        backgroundColor: data.map(item => getAssetTypeColor(item.assetType)),
+        borderColor: data.map(item => getAssetTypeColor(item.assetType)),
         borderWidth: 2,
       },
     ],
@@ -67,17 +60,14 @@ export default function PortfolioRepartitionChart({
         labels: {
           padding: 15,
           usePointStyle: true,
-          color: isDark ? '#E5E7EB' : '#374151',
+          ...CHART_CONFIGS.legend,
           font: {
             size: 12,
           },
         },
       },
       tooltip: {
-        titleColor: isDark ? '#F9FAFB' : '#111827',
-        bodyColor: isDark ? '#E5E7EB' : '#374151',
-        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-        borderColor: isDark ? '#374151' : '#E5E7EB',
+        ...CHART_CONFIGS.tooltip,
         borderWidth: 1,
         callbacks: {
           label: function(context) {

@@ -14,7 +14,7 @@ import {
 import { Bar } from 'react-chartjs-2'
 import type { TimeRange } from '../TimeRangeSelector'
 import type { HistoricalDataPoint } from '../../lib/mockData'
-import { useTheme } from 'next-themes'
+import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
 
 ChartJS.register(
   CategoryScale,
@@ -31,14 +31,6 @@ interface PortfolioReturnsChartProps {
   className?: string
 }
 
-const assetTypeColors: Record<string, string> = {
-  stock: '#3B82F6', // Blue
-  etf: '#10B981',   // Green
-  crypto: '#F59E0B', // Yellow
-  real_estate: '#8B5CF6', // Purple
-  other: '#F97316', // Orange
-}
-
 const assetTypeLabels: Record<string, string> = {
   stock: 'Stocks',
   etf: 'ETFs',
@@ -52,8 +44,6 @@ export default function PortfolioReturnsChart({
   timeRange, 
   className = '' 
 }: PortfolioReturnsChartProps) {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
   
   // Get the latest data point for current returns
   const latestData = data[data.length - 1]
@@ -64,14 +54,18 @@ export default function PortfolioReturnsChart({
 
   const assetTypes = ['stock', 'etf', 'crypto', 'real_estate', 'other']
   
+  const getAssetTypeColor = (assetType: string): string => {
+    return CHART_COLORS[assetType as keyof typeof CHART_COLORS] || CHART_COLORS.other
+  }
+  
   // Create a single stacked bar showing returns by asset type
   const chartData = {
     labels: ['Portfolio Returns'],
     datasets: assetTypes.map(assetType => ({
       label: assetTypeLabels[assetType],
       data: [(latestData.assetTypeReturns[assetType] || 0) * 100], // Convert to percentage
-      backgroundColor: assetTypeColors[assetType],
-      borderColor: assetTypeColors[assetType],
+      backgroundColor: getAssetTypeColor(assetType),
+      borderColor: getAssetTypeColor(assetType),
       borderWidth: 1,
     })),
   }
@@ -89,16 +83,16 @@ export default function PortfolioReturnsChart({
         title: {
           display: true,
           text: 'Returns (%)',
-          color: isDark ? '#E5E7EB' : '#374151',
+          ...CHART_CONFIGS.scales.y.title,
         },
         ticks: {
-          color: isDark ? '#D1D5DB' : '#6B7280',
+          ...CHART_CONFIGS.scales.y.ticks,
           callback: function(value) {
             return value + '%'
           }
         },
         grid: {
-          color: isDark ? '#374151' : '#E5E7EB',
+          ...CHART_CONFIGS.scales.y.grid,
         },
       },
     },
@@ -109,17 +103,14 @@ export default function PortfolioReturnsChart({
         labels: {
           usePointStyle: true,
           padding: 20,
-          color: isDark ? '#E5E7EB' : '#374151',
+          ...CHART_CONFIGS.legend,
           font: {
             size: 12,
           },
         },
       },
       tooltip: {
-        titleColor: isDark ? '#F9FAFB' : '#111827',
-        bodyColor: isDark ? '#E5E7EB' : '#374151',
-        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-        borderColor: isDark ? '#374151' : '#E5E7EB',
+        ...CHART_CONFIGS.tooltip,
         borderWidth: 1,
         callbacks: {
           label: function(context) {
@@ -178,7 +169,7 @@ export default function PortfolioReturnsChart({
                   <td className="py-2 flex items-center">
                     <div 
                       className="w-3 h-3 rounded-full mr-2" 
-                      style={{ backgroundColor: assetTypeColors[assetType] }}
+                      style={{ backgroundColor: getAssetTypeColor(assetType) }}
                     ></div>
                     {assetTypeLabels[assetType]}
                   </td>

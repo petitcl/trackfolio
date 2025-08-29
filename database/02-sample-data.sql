@@ -16,7 +16,7 @@ ON CONFLICT (symbol) DO NOTHING;
 
 -- Add some custom user investments
 INSERT INTO symbols (symbol, name, asset_type, last_price, last_updated, is_custom, created_by_user_id) VALUES
-    ('MY_HOUSE', 'Primary Residence', 'real_estate', 450000.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1'),
+    ('MY_HOUSE', 'Primary Residence', 'real_estate', 120000.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1'),
     ('VINTAGE_WATCH', 'Rolex Submariner Collection', 'other', 12500.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1'),
     ('STARTUP_XYZ', 'Private Company XYZ Shares', 'other', 50.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1');
 
@@ -68,7 +68,7 @@ INSERT INTO transactions (user_id, date, symbol, type, quantity, price_per_unit,
     ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-22', 'CASH', 'withdrawal', 500.00, 1.00, 'USD', 0, 'Holiday expenses'),
     
     -- Custom investment transactions
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-01-15', 'MY_HOUSE', 'buy', 1.00, 420000.00, 'USD', 25000.00, 'House purchase - down payment and fees'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-01-15', 'MY_HOUSE', 'buy', 1.00, 110000.00, 'USD', 25000.00, 'House purchase - down payment and fees'),
     ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-06-10', 'VINTAGE_WATCH', 'buy', 1.00, 11800.00, 'USD', 200.00, 'Rolex Submariner - investment piece'),
     ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-09-05', 'STARTUP_XYZ', 'buy', 500.00, 45.00, 'USD', 50.00, 'Series A investment in startup'),
     ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-20', 'STARTUP_XYZ', 'buy', 200.00, 55.00, 'USD', 25.00, 'Series B follow-on investment');

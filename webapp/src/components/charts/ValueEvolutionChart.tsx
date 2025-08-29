@@ -15,7 +15,7 @@ import {
 import { Line } from 'react-chartjs-2'
 import type { TimeRange } from '../TimeRangeSelector'
 import type { HistoricalDataPoint } from '../../lib/mockData'
-import { useTheme } from 'next-themes'
+import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
 
 ChartJS.register(
   CategoryScale,
@@ -53,8 +53,6 @@ export default function ValueEvolutionChart({
   currency = 'EUR',
   showInvested = true
 }: ValueEvolutionChartProps) {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
   
   // Filter data based on time range
   const filterDataByTimeRange = (data: HistoricalDataPoint[], range: TimeRange) => {
@@ -118,8 +116,7 @@ export default function ValueEvolutionChart({
     {
       label: `${valueLabel} (${currency})`,
       data: values,
-      borderColor: '#3B82F6', // Blue
-      backgroundColor: '#3B82F640', // Blue with opacity
+      ...CHART_CONFIGS.lineChart.primaryLine,
       fill: false,
       tension: 0.1,
       pointRadius: 0,
@@ -131,8 +128,7 @@ export default function ValueEvolutionChart({
     datasets.push({
       label: `${investedLabel} (${currency})`,
       data: cumulativeInvested,
-      borderColor: '#EF4444', // Red
-      backgroundColor: '#EF444440', // Red with opacity
+      ...CHART_CONFIGS.lineChart.secondaryLine,
       fill: false,
       tension: 0.1,
       pointRadius: 0,
@@ -177,32 +173,28 @@ export default function ValueEvolutionChart({
         title: {
           display: true,
           text: 'Date',
-          color: isDark ? '#d1d5dc' : '#d1d5dc',
+          ...CHART_CONFIGS.scales.x.title,
         },
         ticks: {
           maxTicksLimit: 10,
-          color: isDark ? '#d1d5dc' : '#d1d5dc',
+          ...CHART_CONFIGS.scales.x.ticks,
         },
-        grid: {
-          color: isDark ? '#747575' : '#747575',
-        },
+        grid: CHART_CONFIGS.scales.x.grid,
       },
       y: {
         display: true,
         title: {
           display: true,
           text: `Value (${currency})`,
-          color: isDark ? '#d1d5dc' : '#d1d5dc',
+          ...CHART_CONFIGS.scales.y.title,
         },
         ticks: {
-          color: isDark ? '#d1d5dc' : '#d1d5dc',
+          ...CHART_CONFIGS.scales.y.ticks,
           callback: function(value) {
             return formatCurrency(Number(value))
           }
         },
-        grid: {
-          color: isDark ? '#747575' : '#747575',
-        },
+        grid: CHART_CONFIGS.scales.y.grid,
       },
     },
     plugins: {
@@ -211,17 +203,14 @@ export default function ValueEvolutionChart({
         labels: {
           usePointStyle: true,
           padding: 20,
-          color: isDark ? '#d1d5dc' : '#d1d5dc',
+          ...CHART_CONFIGS.legend,
           font: {
             size: 12,
           },
         },
       },
       tooltip: {
-        titleColor: isDark ? '#F9FAFB' : '#111827',
-        bodyColor: isDark ? '#E5E7EB' : '#374151',
-        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-        borderColor: isDark ? '#374151' : '#E5E7EB',
+        ...CHART_CONFIGS.tooltip,
         borderWidth: 1,
         callbacks: {
           label: function(context) {
@@ -265,16 +254,16 @@ export default function ValueEvolutionChart({
         )}
         <div className="flex flex-wrap gap-4 mt-2 text-sm">
           <div className="flex items-center">
-            <div className="w-3 h-0.5 bg-blue-500 mr-2"></div>
-            <span className="text-gray-600 dark:text-gray-300">Current {valueLabel}: {formatCurrency(currentValue)}</span>
+            <div className="w-3 h-0.5 mr-2" style={{backgroundColor: CHART_COLORS.primary}}></div>
+            <span className="text-gray-300">Current {valueLabel}: {formatCurrency(currentValue)}</span>
           </div>
           {showInvested && (
             <>
               <div className="flex items-center">
-                <div className="w-3 h-0.5 bg-red-500 border-dashed mr-2" style={{borderTop: '2px dashed #EF4444', height: '0px'}}></div>
-                <span className="text-gray-600 dark:text-gray-300">Invested: {formatCurrency(currentInvested)}</span>
+                <div className="w-3 h-0.5 mr-2" style={{backgroundColor: CHART_COLORS.secondary}}></div>
+                <span className="text-gray-300">Invested: {formatCurrency(currentInvested)}</span>
               </div>
-              <div className={`font-medium ${currentPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              <div className={`font-medium ${currentPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 P&L: {formatCurrency(currentPnL)} ({currentPnLPercentage >= 0 ? '+' : ''}{currentPnLPercentage.toFixed(2)}%)
               </div>
             </>

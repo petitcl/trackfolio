@@ -16,7 +16,7 @@ import {
 import { Line } from 'react-chartjs-2'
 import type { TimeRange } from '../TimeRangeSelector'
 import type { HistoricalDataPoint } from '../../lib/mockData'
-import { useTheme } from 'next-themes'
+import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
 
 ChartJS.register(
   CategoryScale,
@@ -35,12 +35,8 @@ interface PortfolioHistoryChartProps {
   className?: string
 }
 
-const assetTypeColors: Record<string, string> = {
-  stock: '#3B82F6', // Blue
-  etf: '#10B981',   // Green
-  crypto: '#F59E0B', // Yellow
-  real_estate: '#8B5CF6', // Purple
-  other: '#F97316', // Orange
+const getAssetTypeColor = (assetType: string): string => {
+  return CHART_COLORS[assetType as keyof typeof CHART_COLORS] || CHART_COLORS.other
 }
 
 const assetTypeLabels: Record<string, string> = {
@@ -56,8 +52,6 @@ export default function PortfolioHistoryChart({
   timeRange, 
   className = '' 
 }: PortfolioHistoryChartProps) {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
   // Filter data based on time range
   const filterDataByTimeRange = (data: HistoricalDataPoint[], range: TimeRange) => {
     const now = new Date()
@@ -99,8 +93,8 @@ export default function PortfolioHistoryChart({
   const datasets = assetTypes.map(assetType => ({
     label: assetTypeLabels[assetType],
     data: filteredData.map(point => point.assetTypeAllocations[assetType] || 0),
-    borderColor: assetTypeColors[assetType],
-    backgroundColor: `${assetTypeColors[assetType]}20`, // 20% opacity
+    borderColor: getAssetTypeColor(assetType),
+    backgroundColor: `${getAssetTypeColor(assetType)}20`, // 20% opacity
     fill: false,
     tension: 0.1,
   }))
@@ -133,14 +127,14 @@ export default function PortfolioHistoryChart({
         title: {
           display: true,
           text: 'Date',
-          color: isDark ? '#E5E7EB' : '#374151',
+          ...CHART_CONFIGS.scales.x.title,
         },
         ticks: {
           maxTicksLimit: 10,
-          color: isDark ? '#D1D5DB' : '#6B7280',
+          ...CHART_CONFIGS.scales.x.ticks,
         },
         grid: {
-          color: isDark ? '#374151' : '#E5E7EB',
+          ...CHART_CONFIGS.scales.x.grid,
         },
       },
       y: {
@@ -148,15 +142,15 @@ export default function PortfolioHistoryChart({
         title: {
           display: true,
           text: 'Allocation (%)',
-          color: isDark ? '#E5E7EB' : '#374151',
+          ...CHART_CONFIGS.scales.y.title,
         },
         min: 0,
         max: 100,
         ticks: {
-          color: isDark ? '#D1D5DB' : '#6B7280',
+          ...CHART_CONFIGS.scales.y.ticks,
         },
         grid: {
-          color: isDark ? '#374151' : '#E5E7EB',
+          ...CHART_CONFIGS.scales.y.grid,
         },
       },
     },
@@ -166,17 +160,14 @@ export default function PortfolioHistoryChart({
         labels: {
           usePointStyle: true,
           padding: 20,
-          color: isDark ? '#E5E7EB' : '#374151',
+          ...CHART_CONFIGS.legend,
           font: {
             size: 12,
           },
         },
       },
       tooltip: {
-        titleColor: isDark ? '#F9FAFB' : '#111827',
-        bodyColor: isDark ? '#E5E7EB' : '#374151',
-        backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-        borderColor: isDark ? '#374151' : '#E5E7EB',
+        ...CHART_CONFIGS.tooltip,
         borderWidth: 1,
         callbacks: {
           label: function(context) {
