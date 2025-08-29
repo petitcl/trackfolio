@@ -363,124 +363,127 @@ export const mockTransactions: Transaction[] = [
   }
 ]
 
-// Calculated portfolio data
-export const mockPortfolioData = {
-  totalValue: 548950.25,
-  cashBalance: 2895.25, // Adjusted for additional deposit/withdrawal/dividend transactions
-  positions: [
-    {
-      symbol: 'AAPL',
-      quantity: 70, // 50 + 30 - 10 (bought 50, bought 30, sold 10)
-      avgCost: 177.89, // Recalculated weighted average after sell
-      currentPrice: 185.50,
-      value: 12985.00,
-      unrealizedPnL: 533.00,
-      isCustom: false
-    },
-    {
-      symbol: 'MSFT',
-      quantity: 27, // 25 + 2 bonus shares
-      avgCost: 366.56, // Cost basis remains the same, bonus shares at $0
-      currentPrice: 420.30,
-      value: 11348.10,
-      unrealizedPnL: 1448.88,
-      isCustom: false
-    },
-    {
-      symbol: 'BTC',
-      quantity: 0.20, // 0.15 + 0.05 from additional purchase
-      avgCost: 54000.00, // Weighted average: (0.15*58000 + 0.05*42000)/0.20
-      currentPrice: 43500.00,
-      value: 8700.00,
-      unrealizedPnL: -2100.00,
-      isCustom: false
-    },
-    {
-      symbol: 'MY_HOUSE',
-      quantity: 1,
-      avgCost: 445000.00,
-      currentPrice: 465000.00,
-      value: 465000.00,
-      unrealizedPnL: 20000.00,
-      isCustom: true
-    },
-    {
-      symbol: 'VINTAGE_WATCH',
-      quantity: 1,
-      avgCost: 12000.00,
-      currentPrice: 13200.00,
-      value: 13200.00,
-      unrealizedPnL: 1200.00,
-      isCustom: true
-    }
-  ],
-  dailyChange: {
-    value: 2840.50,
-    percentage: 0.52
-  },
-  totalPnL: {
-    realized: 25.01, // Realized from AAPL sell (10 * (180.50 - 177.89) - 4.99)
-    unrealized: 21281.88, // Updated unrealized P&L
-    total: 21306.89
-  }
-}
-
 // Historical data for charts
 export interface HistoricalDataPoint {
   date: string
   totalValue: number
   assetTypeAllocations: Record<string, number> // percentage allocation by asset type
   assetTypeReturns: Record<string, number> // returns by asset type
+  costBasis?: number // cumulative invested amount (optional for backward compatibility)
 }
 
-export const generateMockHistoricalData = (): HistoricalDataPoint[] => {
-  const data: HistoricalDataPoint[] = []
-  const startDate = new Date('2024-01-01')
-  const endDate = new Date()
-  
-  // Base values for realistic progression
-  let currentValue = 500000
-  const assetTypes = ['stock', 'etf', 'crypto', 'real_estate', 'other']
-  
-  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-    // Create some realistic market volatility
-    const dailyChange = (Math.random() - 0.5) * 0.02 // ±1% daily volatility
-    currentValue *= (1 + dailyChange)
-    
-    // Generate asset type allocations (should add up to ~100%)
-    const allocations: Record<string, number> = {
-      stock: 25 + Math.random() * 10, // 25-35%
-      etf: 15 + Math.random() * 5,   // 15-20%
-      crypto: 5 + Math.random() * 10, // 5-15%
-      real_estate: 45 + Math.random() * 10, // 45-55%
-      other: 8 + Math.random() * 5    // 8-13%
-    }
-    
-    // Normalize to 100%
-    const total = Object.values(allocations).reduce((sum, val) => sum + val, 0)
-    Object.keys(allocations).forEach(key => {
-      allocations[key] = (allocations[key] / total) * 100
-    })
-    
-    // Generate returns (cumulative from start)
-    const daysSinceStart = Math.floor((d.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-    const returns: Record<string, number> = {
-      stock: (Math.sin(daysSinceStart / 50) * 0.15 + 0.08) * (daysSinceStart / 365), // ~8% annual + volatility
-      etf: (Math.sin(daysSinceStart / 40) * 0.10 + 0.06) * (daysSinceStart / 365), // ~6% annual + volatility
-      crypto: (Math.sin(daysSinceStart / 20) * 0.50 + 0.20) * (daysSinceStart / 365), // Very volatile
-      real_estate: 0.05 * (daysSinceStart / 365), // Steady 5% annual
-      other: (Math.sin(daysSinceStart / 60) * 0.12 + 0.10) * (daysSinceStart / 365) // ~10% annual + volatility
-    }
-    
-    data.push({
-      date: d.toISOString().split('T')[0],
-      totalValue: currentValue,
-      assetTypeAllocations: allocations,
-      assetTypeReturns: returns
-    })
-  }
-  
-  return data
+// Mock symbol price history data that mirrors the supabase symbol_price_history table
+export interface MockSymbolPriceHistory {
+  symbol: string
+  date: string
+  close_price: number
+  data_source: string
 }
 
-export const mockHistoricalData = generateMockHistoricalData()
+export const mockSymbolPriceHistory: MockSymbolPriceHistory[] = [
+  // AAPL price data covering the transaction period (March to December 2024)
+  { symbol: 'AAPL', date: '2024-01-01', close_price: 185.64, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-02-01', close_price: 175.20, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-03-01', close_price: 175.20, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-03-05', close_price: 175.20, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-04-01', close_price: 178.50, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-05-01', close_price: 182.40, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-05-20', close_price: 182.40, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-06-01', close_price: 185.20, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-07-01', close_price: 183.75, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-08-01', close_price: 180.50, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-08-05', close_price: 180.50, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-08-15', close_price: 180.50, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-09-01', close_price: 181.90, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-10-01', close_price: 184.30, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-11-01', close_price: 180.90, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-12-01', close_price: 185.50, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-12-15', close_price: 185.50, data_source: 'manual' },
+  { symbol: 'AAPL', date: '2024-12-20', close_price: 185.50, data_source: 'manual' },
+
+  // MSFT price data
+  { symbol: 'MSFT', date: '2024-01-01', close_price: 415.20, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-03-01', close_price: 395.80, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-03-10', close_price: 395.80, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-04-01', close_price: 405.60, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-05-01', close_price: 410.25, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-06-01', close_price: 415.80, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-07-01', close_price: 418.90, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-08-01', close_price: 420.30, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-08-30', close_price: 420.30, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-09-01', close_price: 422.50, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-10-01', close_price: 418.75, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-11-01', close_price: 420.30, data_source: 'manual' },
+  { symbol: 'MSFT', date: '2024-12-01', close_price: 420.30, data_source: 'manual' },
+
+  // VTI price data  
+  { symbol: 'VTI', date: '2024-01-01', close_price: 230.40, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-03-01', close_price: 235.40, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-03-15', close_price: 235.40, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-04-01', close_price: 238.60, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-05-01', close_price: 240.85, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-06-01', close_price: 242.30, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-07-01', close_price: 243.75, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-08-01', close_price: 241.20, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-08-20', close_price: 241.20, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-09-01', close_price: 244.80, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-09-15', close_price: 244.80, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-10-01', close_price: 246.20, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-11-01', close_price: 245.60, data_source: 'manual' },
+  { symbol: 'VTI', date: '2024-12-01', close_price: 245.60, data_source: 'manual' },
+
+  // GOOGL price data
+  { symbol: 'GOOGL', date: '2024-01-01', close_price: 140.20, data_source: 'manual' },
+  { symbol: 'GOOGL', date: '2024-04-01', close_price: 138.50, data_source: 'manual' },
+  { symbol: 'GOOGL', date: '2024-04-12', close_price: 138.50, data_source: 'manual' },
+  { symbol: 'GOOGL', date: '2024-05-01', close_price: 141.20, data_source: 'manual' },
+  { symbol: 'GOOGL', date: '2024-06-01', close_price: 142.80, data_source: 'manual' },
+  { symbol: 'GOOGL', date: '2024-07-01', close_price: 145.30, data_source: 'manual' },
+  { symbol: 'GOOGL', date: '2024-08-01', close_price: 143.75, data_source: 'manual' },
+  { symbol: 'GOOGL', date: '2024-09-01', close_price: 142.80, data_source: 'manual' },
+  { symbol: 'GOOGL', date: '2024-10-01', close_price: 144.90, data_source: 'manual' },
+  { symbol: 'GOOGL', date: '2024-11-01', close_price: 142.80, data_source: 'manual' },
+  { symbol: 'GOOGL', date: '2024-12-01', close_price: 142.80, data_source: 'manual' },
+
+  // TSLA price data
+  { symbol: 'TSLA', date: '2024-01-01', close_price: 220.50, data_source: 'manual' },
+  { symbol: 'TSLA', date: '2024-06-01', close_price: 195.30, data_source: 'manual' },
+  { symbol: 'TSLA', date: '2024-06-15', close_price: 195.30, data_source: 'manual' },
+  { symbol: 'TSLA', date: '2024-07-01', close_price: 210.80, data_source: 'manual' },
+  { symbol: 'TSLA', date: '2024-08-01', close_price: 225.80, data_source: 'manual' },
+  { symbol: 'TSLA', date: '2024-08-05', close_price: 225.80, data_source: 'manual' },
+  { symbol: 'TSLA', date: '2024-09-01', close_price: 235.60, data_source: 'manual' },
+  { symbol: 'TSLA', date: '2024-10-01', close_price: 248.90, data_source: 'manual' },
+  { symbol: 'TSLA', date: '2024-11-01', close_price: 248.90, data_source: 'manual' },
+  { symbol: 'TSLA', date: '2024-12-01', close_price: 248.90, data_source: 'manual' },
+
+  // BTC price data (crypto)
+  { symbol: 'BTC', date: '2024-01-01', close_price: 42000.00, data_source: 'manual' },
+  { symbol: 'BTC', date: '2024-07-01', close_price: 58000.00, data_source: 'manual' },
+  { symbol: 'BTC', date: '2024-07-10', close_price: 58000.00, data_source: 'manual' },
+  { symbol: 'BTC', date: '2024-08-01', close_price: 55000.00, data_source: 'manual' },
+  { symbol: 'BTC', date: '2024-09-01', close_price: 52000.00, data_source: 'manual' },
+  { symbol: 'BTC', date: '2024-10-01', close_price: 48000.00, data_source: 'manual' },
+  { symbol: 'BTC', date: '2024-11-01', close_price: 42000.00, data_source: 'manual' },
+  { symbol: 'BTC', date: '2024-11-15', close_price: 42000.00, data_source: 'manual' },
+  { symbol: 'BTC', date: '2024-12-01', close_price: 43500.00, data_source: 'manual' },
+
+  // ETH price data (crypto)
+  { symbol: 'ETH', date: '2024-01-01', close_price: 2800.00, data_source: 'manual' },
+  { symbol: 'ETH', date: '2024-07-01', close_price: 3200.00, data_source: 'manual' },
+  { symbol: 'ETH', date: '2024-07-12', close_price: 3200.00, data_source: 'manual' },
+  { symbol: 'ETH', date: '2024-08-01', close_price: 3100.00, data_source: 'manual' },
+  { symbol: 'ETH', date: '2024-09-01', close_price: 2950.00, data_source: 'manual' },
+  { symbol: 'ETH', date: '2024-10-01', close_price: 2750.00, data_source: 'manual' },
+  { symbol: 'ETH', date: '2024-11-01', close_price: 2600.00, data_source: 'manual' },
+  { symbol: 'ETH', date: '2024-12-01', close_price: 2800.00, data_source: 'manual' },
+
+  // CASH always has price 1.00
+  { symbol: 'CASH', date: '2024-01-01', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'CASH', date: '2024-03-01', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'CASH', date: '2024-06-01', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'CASH', date: '2024-09-01', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'CASH', date: '2024-12-01', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'CASH', date: '2024-12-20', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'CASH', date: '2024-12-22', close_price: 1.00, data_source: 'manual' }
+]

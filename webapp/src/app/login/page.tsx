@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { clientAuthService } from '@/lib/auth/auth.service'
+import { clientAuthService } from '@/lib/auth/client.auth.service'
 import ThemeToggle from '@/components/ThemeToggle'
 
 export default function LoginPage() {

@@ -1,12 +1,21 @@
 {
   "permissions": {
+    "defaultMode": "acceptEdits",
     "allow": [
+      "Bash(mkdir:*)",
+      "Bash(curl:*)",
+      "Bash(sed:*)",
+      "Bash(grep:*)",
+      "Bash(git:*)",
+      "Bash(bzl:*)",
+      "Bash(bazel:*)",
+
       "Bash(npx create-next-app:*)",
       "Bash(npm install:*)",
       "Bash(npm uninstall:*)",
+      "Bash(npm i:*)",
       "Bash(npm run build:*)",
-      "Bash(npm run dev:*)",
-      "Bash(grep:*)"
+      "Bash(npm run test:*)"
     ],
     "deny": [],
     "ask": []

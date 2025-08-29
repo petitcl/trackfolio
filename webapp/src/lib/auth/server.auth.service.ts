@@ -1,5 +1,5 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
-import type { AuthUser, AuthResponse } from './auth.service'
+import type { AuthUser, AuthResponse } from './client.auth.service'
 
 // Mock user for development mode
 const createMockUser = (): AuthUser => ({

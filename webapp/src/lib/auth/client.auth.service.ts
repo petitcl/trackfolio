@@ -148,6 +148,29 @@ export class ClientAuthService {
       return { error: { message: 'An unexpected error occurred' } }
     }
   }
+
+  /**
+   * Check if the current user is a mock/demo user (non-async)
+   * This method can be called synchronously to determine user type
+   */
+  isCurrentUserMock(): boolean {
+    // Check if we're in development and have demo user data
+    if (this.isDevelopment && typeof window !== 'undefined') {
+      const demoUser = localStorage.getItem('demo_user')
+      if (demoUser) {
+        try {
+          const user = JSON.parse(demoUser) as AuthUser
+          // Check for mock user identifiers
+          return user.email === 'test@trackfolio.com' || user.id === 'mock-user-id'
+        } catch (error) {
+          // If we can't parse the demo user data, assume it's not mock
+          return false
+        }
+      }
+    }
+    
+    return false
+  }
 }
 
 // Singleton instance

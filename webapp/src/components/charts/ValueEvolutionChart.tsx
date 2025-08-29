@@ -39,7 +39,7 @@ interface ValueEvolutionChartProps {
   showInvested?: boolean
 }
 
-// Mock EUR/USD exchange rate (in real app, this would come from an API)
+// EUR/USD exchange rate - in production this would come from a currency API
 const USD_TO_EUR_RATE = 0.85
 
 export default function ValueEvolutionChart({ 
@@ -93,44 +93,22 @@ export default function ValueEvolutionChart({
 
   const filteredData = filterDataByTimeRange(data, timeRange)
   
-  // Calculate cumulative invested amount (mock calculation)
+  // Calculate cumulative invested amount from real cost basis data
   const calculateCumulativeInvested = (filteredData: HistoricalDataPoint[]) => {
-    // Check if we have real cost basis data (from holding-specific data)
+    // Check if we have cost basis data in the historical data points
     const firstPoint = filteredData[0] as HistoricalDataPoint & { costBasis?: number }
-    if (firstPoint && 'costBasis' in firstPoint) {
-      // Use real cost basis data for holdings
+    if (firstPoint && typeof firstPoint.costBasis === 'number') {
+      // Use the cost basis data from the service (works for both portfolio and holdings)
       return filteredData.map(point => {
         const extendedPoint = point as HistoricalDataPoint & { costBasis?: number }
-        return extendedPoint.costBasis || 0
+        return (extendedPoint.costBasis || 0) * USD_TO_EUR_RATE
       })
     }
 
-    // Fallback to mock calculation for portfolio-level data
-    const startValue = filteredData[0]?.totalValue || 0
-    const investmentFlow = []
-    let cumulativeInvested = startValue * USD_TO_EUR_RATE
-    
-    for (let i = 0; i < filteredData.length; i++) {
-      // Simulate periodic investments/withdrawals
-      const currentValue = filteredData[i].totalValue * USD_TO_EUR_RATE
-      const previousValue = i > 0 ? filteredData[i-1].totalValue * USD_TO_EUR_RATE : startValue * USD_TO_EUR_RATE
-      
-      // If significant value increase without market gains, assume new investment
-      const marketGrowth = previousValue * 0.0002 // Assume 0.02% daily growth
-      const actualChange = currentValue - previousValue
-      
-      if (actualChange > marketGrowth * 2) {
-        // Likely new investment
-        cumulativeInvested += (actualChange - marketGrowth)
-      } else if (actualChange < -marketGrowth * 2 && actualChange < -1000) {
-        // Likely withdrawal
-        cumulativeInvested += actualChange // This will reduce the cumulative
-      }
-      
-      investmentFlow.push(cumulativeInvested)
-    }
-    
-    return investmentFlow
+    // Fallback for legacy data without cost basis
+    console.warn('No cost basis data found in historical data, using fallback calculation')
+    const initialInvested = filteredData[0]?.totalValue * USD_TO_EUR_RATE || 0
+    return filteredData.map(() => initialInvested)
   }
 
   const values = filteredData.map(point => point.totalValue * USD_TO_EUR_RATE)
@@ -159,7 +137,6 @@ export default function ValueEvolutionChart({
       tension: 0.1,
       pointRadius: 0,
       pointHoverRadius: 5,
-      borderDash: [5, 5], // Dashed line
     })
   }
 
@@ -200,14 +177,14 @@ export default function ValueEvolutionChart({
         title: {
           display: true,
           text: 'Date',
-          color: isDark ? '#E5E7EB' : '#374151',
+          color: isDark ? '#d1d5dc' : '#d1d5dc',
         },
         ticks: {
           maxTicksLimit: 10,
-          color: isDark ? '#D1D5DB' : '#6B7280',
+          color: isDark ? '#d1d5dc' : '#d1d5dc',
         },
         grid: {
-          color: isDark ? '#374151' : '#E5E7EB',
+          color: isDark ? '#747575' : '#747575',
         },
       },
       y: {
@@ -215,16 +192,16 @@ export default function ValueEvolutionChart({
         title: {
           display: true,
           text: `Value (${currency})`,
-          color: isDark ? '#E5E7EB' : '#374151',
+          color: isDark ? '#d1d5dc' : '#d1d5dc',
         },
         ticks: {
-          color: isDark ? '#D1D5DB' : '#6B7280',
+          color: isDark ? '#d1d5dc' : '#d1d5dc',
           callback: function(value) {
             return formatCurrency(Number(value))
           }
         },
         grid: {
-          color: isDark ? '#374151' : '#E5E7EB',
+          color: isDark ? '#747575' : '#747575',
         },
       },
     },
@@ -234,7 +211,7 @@ export default function ValueEvolutionChart({
         labels: {
           usePointStyle: true,
           padding: 20,
-          color: isDark ? '#E5E7EB' : '#374151',
+          color: isDark ? '#d1d5dc' : '#d1d5dc',
           font: {
             size: 12,
           },

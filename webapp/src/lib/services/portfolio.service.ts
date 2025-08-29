@@ -1,18 +1,13 @@
 import { createClient } from '@/lib/supabase/client'
-import type { AuthUser } from '@/lib/auth/auth.service'
+import type { AuthUser } from '@/lib/auth/client.auth.service'
+import { clientAuthService } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/database.types'
 import { 
-  mockPortfolioData, 
   mockSymbols, 
-  mockHistoricalData, 
   mockTransactions,
-  generateMockHistoricalData,
+  mockSymbolPriceHistory,
   type HistoricalDataPoint 
 } from '@/lib/mockData'
-
-// Demo user identifier
-const DEMO_USER_EMAIL = 'test@trackfolio.com'
-const DEMO_USER_ID = 'mock-user-id'
 
 // Currency conversion rate (mocked for now - in production would come from API)
 const USD_TO_EUR_RATE = 0.85
@@ -45,94 +40,17 @@ export interface PortfolioData {
 export class PortfolioService {
   private supabase = createClient()
 
-  private isDemoUser(user: AuthUser): boolean {
-    return user.email === DEMO_USER_EMAIL || user.id === DEMO_USER_ID
+  /**
+   * Standardized error handling for service methods
+   */
+  private handleError<T>(operation: string, error: unknown, fallback: T): T {
+    console.error(`Error ${operation}:`, error)
+    return fallback
   }
 
   async getPortfolioData(user: AuthUser): Promise<PortfolioData> {
     console.log('🔄 Fetching portfolio data for user:', user.email)
     
-    if (this.isDemoUser(user)) {
-      console.log('👤 Demo user detected - using mock data')
-      return mockPortfolioData
-    }
-
-    console.log('🔗 Real user detected - fetching from Supabase')
-    return await this.fetchRealPortfolioData(user)
-  }
-
-  async getSymbols(user: AuthUser): Promise<Symbol[]> {
-    if (this.isDemoUser(user)) {
-      return mockSymbols
-    }
-
-    try {
-      const { data, error } = await this.supabase
-        .from('symbols')
-        .select('*')
-        .or(`created_by_user_id.is.null,created_by_user_id.eq.${user.id}`)
-
-      if (error) {
-        console.error('Error fetching symbols:', error)
-        return []
-      }
-
-      return data || []
-    } catch (error) {
-      console.error('Error fetching symbols:', error)
-      return []
-    }
-  }
-
-  async getTransactions(user: AuthUser): Promise<Transaction[]> {
-    if (this.isDemoUser(user)) {
-      return mockTransactions
-    }
-
-    try {
-      const { data, error } = await this.supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching transactions:', error)
-        return []
-      }
-
-      return data || []
-    } catch (error) {
-      console.error('Error fetching transactions:', error)
-      return []
-    }
-  }
-
-  async getHistoricalData(user: AuthUser): Promise<HistoricalDataPoint[]> {
-    if (this.isDemoUser(user)) {
-      return mockHistoricalData
-    }
-
-    console.log('📊 Generating historical data for real user')
-    return await this.generateRealHistoricalData(user)
-  }
-
-  async getHoldingHistoricalData(user: AuthUser, symbol: string): Promise<HistoricalDataPoint[]> {
-    if (this.isDemoUser(user)) {
-      // Generate mock data for the specific symbol
-      return generateMockHistoricalData(symbol)
-    }
-
-    console.log('📊 Generating holding historical data for:', symbol)
-    return await this.generateRealHoldingHistoricalData(user, symbol)
-  }
-
-  async getHoldingTransactions(user: AuthUser, symbol: string): Promise<Transaction[]> {
-    const allTransactions = await this.getTransactions(user)
-    return allTransactions.filter(t => t.symbol === symbol)
-  }
-
-  private async fetchRealPortfolioData(user: AuthUser): Promise<PortfolioData> {
     try {
       // Fetch transactions to calculate positions
       const transactions = await this.getTransactions(user)
@@ -172,10 +90,70 @@ export class PortfolioService {
         }
       }
     } catch (error) {
-      console.error('Error fetching real portfolio data:', error)
-      return this.getEmptyPortfolio()
+      return this.handleError('fetching portfolio data', error, this.getEmptyPortfolio())
     }
   }
+
+  async getSymbols(user: AuthUser): Promise<Symbol[]> {
+    if (clientAuthService.isCurrentUserMock()) {
+      return mockSymbols
+    }
+
+    try {
+      const { data, error } = await this.supabase
+        .from('symbols')
+        .select('*')
+        .or(`created_by_user_id.is.null,created_by_user_id.eq.${user.id}`)
+
+      if (error) {
+        console.error('Error fetching symbols:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      return this.handleError('fetching symbols', error, [])
+    }
+  }
+
+  async getTransactions(user: AuthUser): Promise<Transaction[]> {
+    if (clientAuthService.isCurrentUserMock()) {
+      return mockTransactions
+    }
+
+    try {
+      const { data, error } = await this.supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching transactions:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      return this.handleError('fetching transactions', error, [])
+    }
+  }
+
+  async getHistoricalData(user: AuthUser): Promise<HistoricalDataPoint[]> {
+    console.log('📊 Building historical data for user')
+    return await this.buildHistoricalData(user)
+  }
+
+  async getHoldingHistoricalData(user: AuthUser, symbol: string): Promise<HistoricalDataPoint[]> {
+    console.log('📊 Building holding historical data for:', symbol)
+    return await this.buildHoldingHistoricalData(user, symbol)
+  }
+
+  async getHoldingTransactions(user: AuthUser, symbol: string): Promise<Transaction[]> {
+    const allTransactions = await this.getTransactions(user)
+    return allTransactions.filter(t => t.symbol === symbol)
+  }
+
 
   private calculatePositionsFromTransactions(transactions: Transaction[], symbols: Symbol[]): PortfolioPosition[] {
     const positionMap = new Map<string, PortfolioPosition>()
@@ -227,7 +205,132 @@ export class PortfolioService {
     return positions
   }
 
-  private async generateRealHistoricalData(user: AuthUser): Promise<HistoricalDataPoint[]> {
+  /**
+   * Fetch historical prices for a given symbol and date range
+   * Uses mock data for demo users, Supabase for real users
+   */
+  private async fetchHistoricalPrices(symbol: string): Promise<Map<string, number>> {
+    const priceMap = new Map<string, number>()
+    
+    if (clientAuthService.isCurrentUserMock()) {
+      // Use mock price history for mock users
+      mockSymbolPriceHistory
+        .filter(p => p.symbol === symbol)
+        .forEach(p => priceMap.set(p.date, Number(p.close_price)))
+    } else {
+      // Fetch all historical prices from Supabase for real users
+      const { data: historicalPrices = [] } = await this.supabase
+        .from('symbol_price_history')
+        .select('date, close_price')
+        .eq('symbol', symbol)
+      
+      historicalPrices.forEach(p => priceMap.set(p.date, Number(p.close_price)))
+    }
+    
+    return priceMap
+  }
+
+  /**
+   * Get historical price for a symbol on a specific date
+   * Finds the latest price <= the given date
+   */
+  private getHistoricalPriceForDate(symbol: string, date: string, fallbackPrice: number): number {
+    if (clientAuthService.isCurrentUserMock()) {
+      const relevantPrices = mockSymbolPriceHistory
+        .filter(p => p.symbol === symbol && p.date <= date)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      
+      return relevantPrices.length > 0 ? relevantPrices[0].close_price : fallbackPrice
+    } else {
+      // TODO: Implement historical price fetching for real users
+      return fallbackPrice
+    }
+  }
+
+  /**
+   * Calculate portfolio value for positions on a specific date
+   */
+  private calculatePortfolioValueForDate(positions: PortfolioPosition[], date: string): number {
+    let totalValue = 0
+    for (const position of positions) {
+      const historicalPrice = this.getHistoricalPriceForDate(position.symbol, date, position.currentPrice)
+      totalValue += position.quantity * historicalPrice
+    }
+    return totalValue
+  }
+
+  /**
+   * Calculate asset type allocations for positions on a specific date
+   */
+  private calculateAssetTypeAllocations(positions: PortfolioPosition[], symbols: Symbol[], date: string, cashBalance: number): Record<string, number> {
+    const assetTypeValues: Record<string, number> = {
+      stock: 0,
+      etf: 0,
+      crypto: 0,
+      real_estate: 0,
+      other: 0,
+      cash: cashBalance
+    }
+    
+    positions.forEach(position => {
+      const symbol = symbols.find(s => s.symbol === position.symbol)
+      const assetType = symbol?.asset_type || 'other'
+      const historicalPrice = this.getHistoricalPriceForDate(position.symbol, date, position.currentPrice)
+      const historicalValue = position.quantity * historicalPrice
+      assetTypeValues[assetType] += historicalValue
+    })
+    
+    const totalPortfolioValue = Object.values(assetTypeValues).reduce((sum, value) => sum + value, 0)
+    const assetTypeAllocations: Record<string, number> = {}
+    
+    if (totalPortfolioValue > 0) {
+      Object.keys(assetTypeValues).forEach(assetType => {
+        assetTypeAllocations[assetType] = (assetTypeValues[assetType] / totalPortfolioValue) * 100
+      })
+    }
+    
+    return assetTypeAllocations
+  }
+
+  /**
+   * Calculate cash balance up to a specific date
+   */
+  private calculateCashBalanceForDate(transactions: Transaction[], date: string): number {
+    const cashTransactions = transactions.filter(t => t.symbol === 'CASH' && t.date <= date)
+    return cashTransactions.reduce((sum, t) => {
+      const sign = ['deposit', 'dividend', 'bonus'].includes(t.type) ? 1 : -1
+      return sum + (t.quantity * t.price_per_unit * sign)
+    }, 0)
+  }
+
+  /**
+   * Calculate cumulative invested amount up to a specific date
+   * This includes all money put into the portfolio (purchases, deposits, fees)
+   */
+  private calculateCumulativeInvestedForDate(transactions: Transaction[], date: string): number {
+    const investmentTransactions = transactions.filter(t => t.date <= date)
+    
+    return investmentTransactions.reduce((sum, t) => {
+      if (t.type === 'buy') {
+        // Money going in: purchase + fees
+        return sum + (t.quantity * t.price_per_unit) + (t.fees || 0)
+      } else if (t.type === 'sell') {
+        // Money coming out: reduce invested amount by original cost basis
+        // Note: This is simplified - ideally we'd track the actual cost basis of sold shares
+        return sum - (t.quantity * t.price_per_unit) + (t.fees || 0)
+      } else if (t.type === 'deposit') {
+        // Cash deposits
+        return sum + (t.quantity * t.price_per_unit)
+      } else if (t.type === 'withdrawal') {
+        // Cash withdrawals
+        return sum - (t.quantity * t.price_per_unit)
+      }
+      // Dividends and bonuses don't count as "invested" money
+      return sum
+    }, 0)
+  }
+
+  private async buildHistoricalData(user: AuthUser): Promise<HistoricalDataPoint[]> {
     try {
       const transactions = await this.getTransactions(user)
       const symbols = await this.getSymbols(user)
@@ -244,7 +347,7 @@ export class PortfolioService {
       
       const historicalData: HistoricalDataPoint[] = []
       
-      // Generate data points for each day from start to end
+      // Build data points for each day from historical data
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
         const currentDate = d.toISOString().split('T')[0]
         
@@ -254,72 +357,45 @@ export class PortfolioService {
         // Calculate positions as of this date
         const positions = this.calculatePositionsFromTransactions(transactionsUpToDate, symbols)
         
-        // Calculate total portfolio value
-        const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
-        
-        // Calculate cash balance as of this date
-        const cashTransactions = transactionsUpToDate.filter(t => t.symbol === 'CASH')
-        const cashBalance = cashTransactions.reduce((sum, t) => {
-          const sign = ['deposit', 'dividend', 'bonus'].includes(t.type) ? 1 : -1
-          return sum + (t.quantity * t.price_per_unit * sign)
-        }, 0)
-        
+        // Calculate values for this date
+        const totalValue = this.calculatePortfolioValueForDate(positions, currentDate)
+        const cashBalance = this.calculateCashBalanceForDate(sortedTransactions, currentDate)
         const totalPortfolioValue = totalValue + cashBalance
+        const cumulativeInvested = this.calculateCumulativeInvestedForDate(sortedTransactions, currentDate)
         
-        // Calculate asset type allocations
-        const assetTypeValues: Record<string, number> = {
-          stock: 0,
-          etf: 0,
-          crypto: 0,
-          real_estate: 0,
-          other: 0,
-          cash: cashBalance
-        }
-        
-        positions.forEach(position => {
-          const symbol = symbols.find(s => s.symbol === position.symbol)
-          const assetType = symbol?.asset_type || 'other'
-          assetTypeValues[assetType] += position.value
-        })
-        
-        // Convert to percentages
-        const assetTypeAllocations: Record<string, number> = {}
-        if (totalPortfolioValue > 0) {
-          Object.keys(assetTypeValues).forEach(assetType => {
-            assetTypeAllocations[assetType] = (assetTypeValues[assetType] / totalPortfolioValue) * 100
-          })
-        }
+        // Calculate asset allocations
+        const assetTypeAllocations = this.calculateAssetTypeAllocations(positions, symbols, currentDate, cashBalance)
         
         // Calculate returns (simplified - using total portfolio growth)
         const initialValue = historicalData[0]?.totalValue || totalPortfolioValue
         const portfolioReturn = initialValue > 0 ? (totalPortfolioValue - initialValue) / initialValue : 0
         
         const assetTypeReturns: Record<string, number> = {
-          stock: portfolioReturn * 0.4,   // Assume stocks contribute 40% of returns
-          etf: portfolioReturn * 0.3,     // ETFs 30%
-          crypto: portfolioReturn * 0.2,  // Crypto 20%
-          real_estate: portfolioReturn * 0.08, // Real estate 8%
-          other: portfolioReturn * 0.02   // Other 2%
+          stock: portfolioReturn * 0.4,   // TODO: Calculate actual returns per asset type
+          etf: portfolioReturn * 0.3,
+          crypto: portfolioReturn * 0.2,
+          real_estate: portfolioReturn * 0.08,
+          other: portfolioReturn * 0.02
         }
         
         historicalData.push({
           date: currentDate,
           totalValue: totalPortfolioValue,
           assetTypeAllocations,
-          assetTypeReturns
+          assetTypeReturns,
+          costBasis: cumulativeInvested
         })
       }
       
-      console.log(`📊 Generated ${historicalData.length} historical data points`)
+      console.log(`📊 Built ${historicalData.length} historical data points from transactions`)
       return historicalData
       
     } catch (error) {
-      console.error('Error generating historical data:', error)
-      return []
+      return this.handleError('building historical data', error, [])
     }
   }
 
-  private async generateRealHoldingHistoricalData(user: AuthUser, symbol: string): Promise<HistoricalDataPoint[]> {
+  private async buildHoldingHistoricalData(user: AuthUser, symbol: string): Promise<HistoricalDataPoint[]> {
     try {
       const transactions = await this.getHoldingTransactions(user, symbol)
       const symbols = await this.getSymbols(user)
@@ -330,15 +406,8 @@ export class PortfolioService {
         return []
       }
   
-      // Fetch all historical prices at once
-      const { data: historicalPrices = [] } = await this.supabase
-        .from('symbol_price_history')
-        .select('date, close_price')
-        .eq('symbol', symbol)
-  
-      // Map date => price for fast lookup
-      const priceMap = new Map<string, number>()
-      historicalPrices.forEach(p => priceMap.set(p.date, Number(p.close_price)))
+      // Fetch historical prices using unified function
+      const priceMap = await this.fetchHistoricalPrices(symbol)
   
       // Date range
       const sortedTransactions = transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -372,13 +441,12 @@ export class PortfolioService {
   
         if (cumulativeQuantity <= 0) continue
   
-        // Get price from priceMap or simulate if missing
+        // Get price from historical data - skip if not available
         const historicalPrice = priceMap.get(currentDate)
-        const daysSinceStart = Math.floor((d.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        const adjustedPrice = historicalPrice || this.simulateHistoricalPrice(
-          symbolData?.last_price || sortedTransactions[sortedTransactions.length - 1]?.price_per_unit || 100,
-          daysSinceStart
-        )
+        if (!historicalPrice) {
+          continue // Skip dates without real historical price data
+        }
+        const adjustedPrice = historicalPrice
   
         const currentValue = cumulativeQuantity * adjustedPrice
   
@@ -393,12 +461,11 @@ export class PortfolioService {
         historicalData.push(dataPoint)
       }
   
-      console.log(`📊 Generated ${historicalData.length} historical data points for holding:`, symbol)
+      console.log(`📊 Built ${historicalData.length} historical data points for holding from transactions:`, symbol)
       return historicalData
   
     } catch (error) {
-      console.error('Error generating holding historical data:', error)
-      return []
+      return this.handleError('building holding historical data', error, [])
     }
   }
   
@@ -412,54 +479,6 @@ export class PortfolioService {
     }
   }
 
-  /**
-   * Get historical price for a symbol on a specific date from the database
-   */
-  private async getHistoricalPrice(symbol: string, date: string): Promise<number | null> {
-    try {
-      const { data, error } = await this.supabase
-        .from('symbol_price_history')
-        .select('close_price')
-        .eq('symbol', symbol)
-        .eq('date', date)
-        .maybeSingle()
-
-      if (error) {
-        // Check if it's a table doesn't exist error
-        if (error.message?.includes('relation "symbol_price_history" does not exist') || 
-            error.code === 'PGRST116' || 
-            error.code === '42P01') {
-          console.log(`⚠️  symbol_price_history table doesn't exist yet. Run the database migration.`)
-          return null
-        }
-        
-        // For other errors (like no data found), return null silently
-        return null
-      }
-
-      if (!data) {
-        return null
-      }
-
-      return parseFloat(data.close_price.toString())
-    } catch (error) {
-      console.log(`📈 No historical price found for ${symbol} on ${date}`, error)
-      return null
-    }
-  }
-
-  /**
-   * Simulate historical price when real data is not available
-   * This is a fallback method for when historical price data is missing
-   */
-  private simulateHistoricalPrice(
-    currentPrice: number, 
-    daysSinceStart: number
-  ): number {
-    // Add some realistic price volatility based on time
-    const volatility = Math.sin(daysSinceStart * 0.1) * 0.02 + Math.random() * 0.01 - 0.005
-    return currentPrice * (1 + volatility)
-  }
 }
 
 // Singleton instance

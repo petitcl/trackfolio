@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { AssetType, Symbol } from '@/lib/supabase/database.types'
-import { clientAuthService, type AuthUser } from '@/lib/auth/auth.service'
+import { clientAuthService, type AuthUser } from '@/lib/auth/client.auth.service'
 import { portfolioService, type PortfolioData } from '@/lib/services/portfolio.service'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import TimeRangeSelector, { type TimeRange } from '@/components/TimeRangeSelector'

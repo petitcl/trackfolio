@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { clientAuthService, type AuthUser } from '@/lib/auth/auth.service'
+import { clientAuthService, type AuthUser } from '@/lib/auth/client.auth.service'
 import HoldingDetails from '@/components/HoldingDetails'
 
 interface HoldingDetailsClientProps {
