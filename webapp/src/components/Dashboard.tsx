@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { mockPortfolioData, mockSymbols, mockHistoricalData } from '@/lib/mockData'
-import type { AssetType } from '@/lib/supabase/database.types'
+import type { AssetType, Symbol } from '@/lib/supabase/database.types'
 import { clientAuthService, type AuthUser } from '@/lib/auth/auth.service'
+import { portfolioService, type PortfolioData } from '@/lib/services/portfolio.service'
+import type { HistoricalDataPoint } from '@/lib/mockData'
 import TimeRangeSelector, { type TimeRange } from '@/components/TimeRangeSelector'
 import PortfolioRepartitionChart from '@/components/charts/PortfolioRepartitionChart'
 import PortfolioHistoryChart from '@/components/charts/PortfolioHistoryChart'
@@ -16,8 +17,50 @@ interface DashboardProps {
 
 export default function Dashboard({ user }: DashboardProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [dataLoading, setDataLoading] = useState(true)
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('all')
+  const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null)
+  const [symbols, setSymbols] = useState<Symbol[]>([])
+  const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
   const router = useRouter()
+
+  // Load portfolio data on mount and when user changes
+  useEffect(() => {
+    const loadPortfolioData = async () => {
+      try {
+        setDataLoading(true)
+        console.log('📊 Loading portfolio data for user:', user.email)
+        
+        const [portfolio, symbolsData, historical] = await Promise.all([
+          portfolioService.getPortfolioData(user),
+          portfolioService.getSymbols(user),
+          portfolioService.getHistoricalData(user)
+        ])
+        
+        setPortfolioData(portfolio)
+        setSymbols(symbolsData)
+        setHistoricalData(historical)
+        
+        console.log('✅ Portfolio data loaded successfully')
+      } catch (error) {
+        console.error('❌ Error loading portfolio data:', error)
+        // Fallback to empty data
+        setPortfolioData({
+          totalValue: 0,
+          cashBalance: 0,
+          positions: [],
+          dailyChange: { value: 0, percentage: 0 },
+          totalPnL: { realized: 0, unrealized: 0, total: 0 }
+        })
+        setSymbols([])
+        setHistoricalData([])
+      } finally {
+        setDataLoading(false)
+      }
+    }
+
+    loadPortfolioData()
+  }, [user])
 
   const handleSignOut = async () => {
     setIsLoading(true)
@@ -45,8 +88,10 @@ export default function Dashboard({ user }: DashboardProps) {
 
   // Prepare chart data
   const getPortfolioRepartitionData = () => {
-    const positionsByType = mockPortfolioData.positions.reduce((groups, position) => {
-      const symbol = mockSymbols.find(s => s.symbol === position.symbol)
+    if (!portfolioData) return []
+    
+    const positionsByType = portfolioData.positions.reduce((groups, position) => {
+      const symbol = symbols.find(s => s.symbol === position.symbol)
       const assetType = symbol?.asset_type || 'other'
       if (!groups[assetType]) {
         groups[assetType] = { value: 0, percentage: 0 }
@@ -56,15 +101,17 @@ export default function Dashboard({ user }: DashboardProps) {
     }, {} as Record<string, { value: number; percentage: number }>)
 
     // Add cash
-    if (mockPortfolioData.cashBalance > 0) {
-      positionsByType['cash'] = { value: mockPortfolioData.cashBalance, percentage: 0 }
+    if (portfolioData.cashBalance > 0) {
+      positionsByType['cash'] = { value: portfolioData.cashBalance, percentage: 0 }
     }
 
     // Calculate percentages
     const totalValue = Object.values(positionsByType).reduce((sum, group) => sum + group.value, 0)
-    Object.keys(positionsByType).forEach(assetType => {
-      positionsByType[assetType].percentage = (positionsByType[assetType].value / totalValue) * 100
-    })
+    if (totalValue > 0) {
+      Object.keys(positionsByType).forEach(assetType => {
+        positionsByType[assetType].percentage = (positionsByType[assetType].value / totalValue) * 100
+      })
+    }
 
     return Object.entries(positionsByType).map(([assetType, data]) => ({
       assetType,
@@ -101,6 +148,28 @@ export default function Dashboard({ user }: DashboardProps) {
     if (pnl > 0) return 'text-green-600 dark:text-green-400'
     if (pnl < 0) return 'text-red-600 dark:text-red-400'
     return 'text-gray-600 dark:text-gray-400'
+  }
+
+  // Show loading state
+  if (dataLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading portfolio data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!portfolioData) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 dark:text-gray-400">Failed to load portfolio data</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -155,7 +224,7 @@ export default function Dashboard({ user }: DashboardProps) {
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Portfolio</dt>
                     <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(mockPortfolioData.totalValue)}
+                      {formatCurrency(portfolioData.totalValue)}
                     </dd>
                   </dl>
                 </div>
@@ -173,8 +242,8 @@ export default function Dashboard({ user }: DashboardProps) {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Daily Change</dt>
-                    <dd className={`text-lg font-medium ${getPnLColor(mockPortfolioData.dailyChange.value)}`}>
-                      {formatCurrency(mockPortfolioData.dailyChange.value)} ({formatPercent(mockPortfolioData.dailyChange.percentage)})
+                    <dd className={`text-lg font-medium ${getPnLColor(portfolioData.dailyChange.value)}`}>
+                      {formatCurrency(portfolioData.dailyChange.value)} ({formatPercent(portfolioData.dailyChange.percentage)})
                     </dd>
                   </dl>
                 </div>
@@ -192,8 +261,8 @@ export default function Dashboard({ user }: DashboardProps) {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total P&L</dt>
-                    <dd className={`text-lg font-medium ${getPnLColor(mockPortfolioData.totalPnL.total)}`}>
-                      {formatCurrency(mockPortfolioData.totalPnL.total)}
+                    <dd className={`text-lg font-medium ${getPnLColor(portfolioData.totalPnL.total)}`}>
+                      {formatCurrency(portfolioData.totalPnL.total)}
                     </dd>
                   </dl>
                 </div>
@@ -211,7 +280,7 @@ export default function Dashboard({ user }: DashboardProps) {
               timeRange={selectedTimeRange}
             />
             <PortfolioHistoryChart
-              data={mockHistoricalData}
+              data={historicalData}
               timeRange={selectedTimeRange}
             />
           </div>
@@ -219,7 +288,7 @@ export default function Dashboard({ user }: DashboardProps) {
           {/* Bottom Row - Portfolio Value Evolution */}
           <div className="grid grid-cols-1">
             <PortfolioValueEvolutionChart
-              data={mockHistoricalData}
+              data={historicalData}
               timeRange={selectedTimeRange}
             />
           </div>
@@ -260,16 +329,16 @@ export default function Dashboard({ user }: DashboardProps) {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {(() => {
                   // Group positions by asset type
-                  const positionsByType = mockPortfolioData.positions.reduce((groups, position) => {
-                    // Find the asset type from mockSymbols
-                    const symbol = mockSymbols.find(s => s.symbol === position.symbol)
+                  const positionsByType = portfolioData.positions.reduce((groups, position) => {
+                    // Find the asset type from symbols
+                    const symbol = symbols.find(s => s.symbol === position.symbol)
                     const assetType = symbol?.asset_type || 'other'
                     if (!groups[assetType]) {
                       groups[assetType] = []
                     }
                     groups[assetType].push(position)
                     return groups
-                  }, {} as Record<string, typeof mockPortfolioData.positions>)
+                  }, {} as Record<string, typeof portfolioData.positions>)
 
                   const rows: JSX.Element[] = []
                   
@@ -299,7 +368,7 @@ export default function Dashboard({ user }: DashboardProps) {
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900 dark:text-white">{position.symbol}</div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                                  {mockSymbols.find(s => s.symbol === position.symbol)?.name || 'Unknown'}
+                                  {symbols.find(s => s.symbol === position.symbol)?.name || 'Unknown'}
                                 </div>
                               </div>
                             </div>
@@ -368,7 +437,7 @@ export default function Dashboard({ user }: DashboardProps) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">$1.00</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">$1.00</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(mockPortfolioData.cashBalance)}
+                    {formatCurrency(portfolioData.cashBalance)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-300">-</td>
                 </tr>
@@ -405,7 +474,7 @@ export default function Dashboard({ user }: DashboardProps) {
               Connect your Supabase database to see real portfolio data.
             </p>
             <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-              Portfolio includes: Stocks, Crypto, Real Estate, Collectibles • Total: {formatCurrency(mockPortfolioData.totalValue)}
+              Portfolio includes: Stocks, Crypto, Real Estate, Collectibles • Total: {formatCurrency(portfolioData.totalValue)}
             </p>
           </div>
         </div>
