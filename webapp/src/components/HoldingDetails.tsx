@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { AuthUser } from '@/lib/auth/auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/database.types'
-import { portfolioService, type PortfolioPosition } from '@/lib/services/portfolio.service'
+import { portfolioService, type PortfolioPosition, type PortfolioData } from '@/lib/services/portfolio.service'
 import ValueEvolutionChart from './charts/ValueEvolutionChart'
 import TimeRangeSelector, { type TimeRange } from './TimeRangeSelector'
 import type { HistoricalDataPoint } from '@/lib/mockData'
+import QuickActions, { type QuickAction } from './QuickActions'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -20,13 +21,14 @@ interface HoldingData {
   symbol: Symbol | null
   transactions: Transaction[]
   historicalData: HistoricalDataPoint[]
+  portfolioData: PortfolioData
 }
 
 export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
   const [loading, setLoading] = useState(true)
   const [holdingData, setHoldingData] = useState<HoldingData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [timeRange, setTimeRange] = useState<TimeRange>('6m')
+  const [timeRange, setTimeRange] = useState<TimeRange>('all')
   const router = useRouter()
 
   useEffect(() => {
@@ -56,7 +58,8 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           position,
           symbol: symbolData || null,
           transactions: symbolTransactions,
-          historicalData
+          historicalData,
+          portfolioData
         })
 
         console.log(`✅ Loaded ${symbolTransactions.length} transactions for ${symbol}`)
@@ -81,6 +84,10 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
 
   const formatPercent = (percent: number) => {
     return `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`
+  }
+
+  const formatPercentageOnly = (percent: number) => {
+    return `${percent.toFixed(2)}%`
   }
 
   const getAssetTypeIcon = (assetType: string) => {
@@ -138,7 +145,7 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
     return null
   }
 
-  const { position, symbol: symbolData, transactions } = holdingData
+  const { position, symbol: symbolData, transactions, portfolioData } = holdingData
 
   // Calculate realized P&L from sell transactions
   const realizedPnL = transactions
@@ -149,6 +156,77 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
     }, 0)
 
   const totalReturn = position ? position.unrealizedPnL + realizedPnL : realizedPnL
+
+  // Calculate portfolio weight
+  const portfolioWeight = position && portfolioData.totalValue > 0 
+    ? (position.value / portfolioData.totalValue) * 100 
+    : 0
+
+  // Calculate time-range specific performance metrics
+  const calculateTimeRangeMetrics = () => {
+    if (timeRange === 'all') {
+      return {
+        realizedPnL,
+        unrealizedPnL: position?.unrealizedPnL || 0,
+        totalReturn
+      }
+    }
+
+    // Filter transactions based on time range
+    const now = new Date()
+    let startDate: Date
+    
+    switch (timeRange) {
+      case '1d':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+        break
+      case '5d':
+        startDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
+        break
+      case '1m':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        break
+      case '6m':
+        startDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000)
+        break
+      case 'ytd':
+        startDate = new Date(now.getFullYear(), 0, 1)
+        break
+      case '1y':
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+        break
+      case '5y':
+        startDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000)
+        break
+      default:
+        startDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000) // Default to 6m
+    }
+
+    const startDateString = startDate.toISOString().split('T')[0]
+    
+    // Calculate realized P&L for the time range
+    const timeRangeRealizedPnL = transactions
+      .filter(t => t.type === 'sell' && t.date >= startDateString)
+      .reduce((total, t) => {
+        return total + ((t.price_per_unit - (position?.avgCost || 0)) * t.quantity) - t.fees
+      }, 0)
+
+    // Find position value at start of time range from historical data
+    const startPointData = holdingData.historicalData.find(point => point.date >= startDateString)
+    const currentValue = position?.value || 0
+    const startValue = startPointData?.totalValue || currentValue
+    
+    // Calculate unrealized P&L change over the time range
+    const valueChange = currentValue - startValue
+    
+    return {
+      realizedPnL: timeRangeRealizedPnL,
+      unrealizedPnL: valueChange,
+      totalReturn: timeRangeRealizedPnL + valueChange
+    }
+  }
+
+  const timeRangeMetrics = calculateTimeRangeMetrics()
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -196,6 +274,22 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Time Range Selector */}
+        <div className="mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol} Analytics</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Performance and value evolution over time</p>
+              </div>
+              <TimeRangeSelector
+                selectedRange={timeRange}
+                onRangeChange={setTimeRange}
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* Current Position */}
@@ -218,7 +312,7 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
                 <div>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Portfolio Weight</dt>
                   <dd className="text-lg font-semibold text-gray-900 dark:text-white">
-                    2.5% {/* TODO: Calculate actual percentage */}
+                    {formatPercentageOnly(portfolioWeight)}
                   </dd>
                 </div>
               </div>
@@ -249,13 +343,18 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           {/* Performance */}
           <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
             <div className="p-5">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Performance</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Performance</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                {timeRange === 'all' ? 'All-time performance' : `Performance over ${timeRange.toUpperCase()}`}
+              </p>
               <div className="space-y-3">
                 <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Unrealized P&L</dt>
-                  <dd className={`text-lg font-semibold ${position && position.unrealizedPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {formatCurrency(position?.unrealizedPnL || 0)}
-                    {position && (
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {timeRange === 'all' ? 'Unrealized P&L' : 'Value Change'}
+                  </dt>
+                  <dd className={`text-lg font-semibold ${timeRangeMetrics.unrealizedPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {formatCurrency(timeRangeMetrics.unrealizedPnL)}
+                    {position && timeRange === 'all' && (
                       <span className="text-sm ml-2">
                         ({formatPercent((position.unrealizedPnL / (position.avgCost * position.quantity)) * 100)})
                       </span>
@@ -263,15 +362,17 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Realized P&L</dt>
-                  <dd className={`text-lg font-semibold ${realizedPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {formatCurrency(realizedPnL)}
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {timeRange === 'all' ? 'Realized P&L' : 'Realized P&L (Period)'}
+                  </dt>
+                  <dd className={`text-lg font-semibold ${timeRangeMetrics.realizedPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {formatCurrency(timeRangeMetrics.realizedPnL)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Return</dt>
-                  <dd className={`text-lg font-semibold ${totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {formatCurrency(totalReturn)}
+                  <dd className={`text-lg font-semibold ${timeRangeMetrics.totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {formatCurrency(timeRangeMetrics.totalReturn)}
                   </dd>
                 </div>
               </div>
@@ -282,15 +383,6 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
         {/* Value Evolution Chart */}
         {holdingData.historicalData.length > 0 && (
           <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {symbol} Value Over Time
-              </h3>
-              <TimeRangeSelector
-                value={timeRange}
-                onChange={setTimeRange}
-              />
-            </div>
             <ValueEvolutionChart
               data={holdingData.historicalData}
               timeRange={timeRange}
@@ -386,18 +478,32 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="mt-8 flex flex-wrap gap-4">
-          <button className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
-            📈 Add Transaction
-          </button>
-          <button className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
-            📥 Import Transactions
-          </button>
-          <button className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
-            📤 Export Data
-          </button>
-        </div>
+        {/* Quick Actions */}
+        <QuickActions
+          title={`${symbol} Actions`}
+          actions={[
+            {
+              id: 'add-transaction',
+              icon: '📈',
+              label: 'Add Transaction',
+              onClick: () => console.log('Add transaction for', symbol)
+            },
+            {
+              id: 'import-transactions', 
+              icon: '📥',
+              label: 'Import Transactions',
+              onClick: () => console.log('Import transactions for', symbol)
+            },
+            {
+              id: 'export-data',
+              icon: '📤', 
+              label: 'Export Data',
+              onClick: () => console.log('Export data for', symbol)
+            }
+          ]}
+          columns={3}
+          className="mt-8"
+        />
       </main>
     </div>
   )

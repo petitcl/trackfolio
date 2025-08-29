@@ -236,18 +236,127 @@ export const mockTransactions: Transaction[] = [
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   },
-  // Dividends
+  // Selling activity
   {
     id: '8',
+    user_id: 'test-user-uuid',
+    date: '2024-08-05',
+    symbol: 'AAPL',
+    type: 'sell' as TransactionType,
+    quantity: 10.00,
+    price_per_unit: 180.50,
+    currency: 'USD',
+    fees: 4.99,
+    notes: 'Partial AAPL sale for rebalancing',
+    broker: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  // Dividends
+  {
+    id: '9',
     user_id: 'test-user-uuid',
     date: '2024-08-15',
     symbol: 'AAPL',
     type: 'dividend' as TransactionType,
-    quantity: 80.00,
+    quantity: 70.00,
     price_per_unit: 0.25,
     currency: 'USD',
     fees: 0,
+    notes: 'Q3 2024 dividend (adjusted for 70 shares)',
+    broker: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '10',
+    user_id: 'test-user-uuid',
+    date: '2024-08-30',
+    symbol: 'MSFT',
+    type: 'dividend' as TransactionType,
+    quantity: 25.00,
+    price_per_unit: 0.83,
+    currency: 'USD',
+    fees: 0,
     notes: 'Q3 2024 dividend',
+    broker: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  // Bonus shares
+  {
+    id: '11',
+    user_id: 'test-user-uuid',
+    date: '2024-09-15',
+    symbol: 'MSFT',
+    type: 'bonus' as TransactionType,
+    quantity: 2.00,
+    price_per_unit: 0.00,
+    currency: 'USD',
+    fees: 0,
+    notes: 'Bonus shares from broker promotion',
+    broker: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  // Additional cash transactions
+  {
+    id: '12',
+    user_id: 'test-user-uuid',
+    date: '2024-11-01',
+    symbol: 'CASH',
+    type: 'deposit' as TransactionType,
+    quantity: 2000.00,
+    price_per_unit: 1.00,
+    currency: 'USD',
+    fees: 0,
+    notes: 'Additional funding for portfolio',
+    broker: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '13',
+    user_id: 'test-user-uuid',
+    date: '2024-11-15',
+    symbol: 'CASH',
+    type: 'withdrawal' as TransactionType,
+    quantity: 1000.00,
+    price_per_unit: 1.00,
+    currency: 'USD',
+    fees: 0,
+    notes: 'Holiday expenses withdrawal',
+    broker: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  // More recent activities
+  {
+    id: '14',
+    user_id: 'test-user-uuid',
+    date: '2024-12-01',
+    symbol: 'BTC',
+    type: 'buy' as TransactionType,
+    quantity: 0.05000000,
+    price_per_unit: 42000.00,
+    currency: 'USD',
+    fees: 15.00,
+    notes: 'Bitcoin DCA purchase',
+    broker: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '15',
+    user_id: 'test-user-uuid',
+    date: '2024-12-15',
+    symbol: 'AAPL',
+    type: 'dividend' as TransactionType,
+    quantity: 70.00,
+    price_per_unit: 0.25,
+    currency: 'USD',
+    fees: 0,
+    notes: 'Q4 2024 dividend',
     broker: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -256,34 +365,34 @@ export const mockTransactions: Transaction[] = [
 
 // Calculated portfolio data
 export const mockPortfolioData = {
-  totalValue: 547820.25,
-  cashBalance: 1875.25,
+  totalValue: 548950.25,
+  cashBalance: 2895.25, // Adjusted for additional deposit/withdrawal/dividend transactions
   positions: [
     {
       symbol: 'AAPL',
-      quantity: 80,
-      avgCost: 178.45,
+      quantity: 70, // 50 + 30 - 10 (bought 50, bought 30, sold 10)
+      avgCost: 177.89, // Recalculated weighted average after sell
       currentPrice: 185.50,
-      value: 14840.00,
-      unrealizedPnL: 564.00,
+      value: 12985.00,
+      unrealizedPnL: 533.00,
       isCustom: false
     },
     {
       symbol: 'MSFT',
-      quantity: 25,
-      avgCost: 395.80,
+      quantity: 27, // 25 + 2 bonus shares
+      avgCost: 366.56, // Cost basis remains the same, bonus shares at $0
       currentPrice: 420.30,
-      value: 10507.50,
-      unrealizedPnL: 612.50,
+      value: 11348.10,
+      unrealizedPnL: 1448.88,
       isCustom: false
     },
     {
       symbol: 'BTC',
-      quantity: 0.15,
-      avgCost: 58000.00,
+      quantity: 0.20, // 0.15 + 0.05 from additional purchase
+      avgCost: 54000.00, // Weighted average: (0.15*58000 + 0.05*42000)/0.20
       currentPrice: 43500.00,
-      value: 6525.00,
-      unrealizedPnL: -2175.00,
+      value: 8700.00,
+      unrealizedPnL: -2100.00,
       isCustom: false
     },
     {
@@ -310,9 +419,9 @@ export const mockPortfolioData = {
     percentage: 0.52
   },
   totalPnL: {
-    realized: 0,
-    unrealized: 20201.50,
-    total: 20201.50
+    realized: 25.01, // Realized from AAPL sell (10 * (180.50 - 177.89) - 4.99)
+    unrealized: 21281.88, // Updated unrealized P&L
+    total: 21306.89
   }
 }
 

@@ -10,6 +10,7 @@ import TimeRangeSelector, { type TimeRange } from '@/components/TimeRangeSelecto
 import PortfolioRepartitionChart from '@/components/charts/PortfolioRepartitionChart'
 import PortfolioHistoryChart from '@/components/charts/PortfolioHistoryChart'
 import PortfolioValueEvolutionChart from '@/components/charts/PortfolioValueEvolutionChart'
+import QuickActions from '@/components/QuickActions'
 
 interface DashboardProps {
   user: AuthUser
@@ -447,24 +448,31 @@ export default function Dashboard({ user }: DashboardProps) {
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-8">
-          <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg border dark:border-gray-700">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
-                  📈 Add Transaction
-                </button>
-                <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
-                  🏠 Add Custom Asset
-                </button>
-                <button className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm bg-white dark:bg-gray-700 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
-                  💰 Update Prices
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <QuickActions
+          title="Quick Actions"
+          actions={[
+            {
+              id: 'add-transaction',
+              icon: '📈',
+              label: 'Add Transaction',
+              onClick: () => console.log('Add transaction')
+            },
+            {
+              id: 'add-custom-asset',
+              icon: '🏠',
+              label: 'Add Custom Asset',
+              onClick: () => console.log('Add custom asset')
+            },
+            {
+              id: 'update-prices',
+              icon: '💰',
+              label: 'Update Prices',
+              onClick: () => console.log('Update prices')
+            }
+          ]}
+          columns={3}
+          className="mt-8"
+        />
 
         {/* Footer Info */}
         <div className="mt-8 text-center">
