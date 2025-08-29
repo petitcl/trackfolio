@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation'
 import { mockPortfolioData, mockSymbols, mockHistoricalData } from '@/lib/mockData'
 import type { AssetType } from '@/lib/supabase/database.types'
 import { clientAuthService, type AuthUser } from '@/lib/auth/auth.service'
-import ThemeToggle from '@/components/ThemeToggle'
 import TimeRangeSelector, { type TimeRange } from '@/components/TimeRangeSelector'
 import PortfolioRepartitionChart from '@/components/charts/PortfolioRepartitionChart'
 import PortfolioHistoryChart from '@/components/charts/PortfolioHistoryChart'
-import PortfolioReturnsChart from '@/components/charts/PortfolioReturnsChart'
+import PortfolioValueEvolutionChart from '@/components/charts/PortfolioValueEvolutionChart'
 
 interface DashboardProps {
   user: AuthUser
@@ -115,7 +114,6 @@ export default function Dashboard({ user }: DashboardProps) {
               <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back, {user.email}</p>
             </div>
             <div className="flex items-center space-x-3">
-              <ThemeToggle />
               <button
                 onClick={handleSignOut}
                 disabled={isLoading}
@@ -206,21 +204,21 @@ export default function Dashboard({ user }: DashboardProps) {
 
         {/* Charts Section */}
         <div className="mb-8 space-y-8">
-          {/* Top Row - Pie Chart and Returns */}
+          {/* Top Row - Pie Chart and Portfolio History */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <PortfolioRepartitionChart
               data={getPortfolioRepartitionData()}
               timeRange={selectedTimeRange}
             />
-            <PortfolioReturnsChart
+            <PortfolioHistoryChart
               data={mockHistoricalData}
               timeRange={selectedTimeRange}
             />
           </div>
           
-          {/* Bottom Row - History Chart */}
+          {/* Bottom Row - Portfolio Value Evolution */}
           <div className="grid grid-cols-1">
-            <PortfolioHistoryChart
+            <PortfolioValueEvolutionChart
               data={mockHistoricalData}
               timeRange={selectedTimeRange}
             />
