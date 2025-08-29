@@ -114,6 +114,21 @@ export class PortfolioService {
     return await this.generateRealHistoricalData(user)
   }
 
+  async getHoldingHistoricalData(user: AuthUser, symbol: string): Promise<HistoricalDataPoint[]> {
+    if (this.isDemoUser(user)) {
+      // Generate mock data for the specific symbol
+      return generateMockHistoricalData(symbol)
+    }
+
+    console.log('📊 Generating holding historical data for:', symbol)
+    return await this.generateRealHoldingHistoricalData(user, symbol)
+  }
+
+  async getHoldingTransactions(user: AuthUser, symbol: string): Promise<Transaction[]> {
+    const allTransactions = await this.getTransactions(user)
+    return allTransactions.filter(t => t.symbol === symbol)
+  }
+
   private async fetchRealPortfolioData(user: AuthUser): Promise<PortfolioData> {
     try {
       // Fetch transactions to calculate positions
@@ -297,6 +312,84 @@ export class PortfolioService {
       
     } catch (error) {
       console.error('Error generating historical data:', error)
+      return []
+    }
+  }
+
+  private async generateRealHoldingHistoricalData(user: AuthUser, symbol: string): Promise<HistoricalDataPoint[]> {
+    try {
+      const transactions = await this.getHoldingTransactions(user, symbol)
+      const symbols = await this.getSymbols(user)
+      const symbolData = symbols.find(s => s.symbol === symbol)
+      
+      if (transactions.length === 0) {
+        console.log('📈 No transactions found for holding:', symbol)
+        return []
+      }
+
+      // Get date range from first transaction to now
+      const sortedTransactions = transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      const startDate = new Date(sortedTransactions[0].date)
+      const endDate = new Date()
+      
+      const historicalData: HistoricalDataPoint[] = []
+      let cumulativeQuantity = 0
+      let totalCost = 0
+      
+      // Generate data points for each day from start to end
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const currentDate = d.toISOString().split('T')[0]
+        
+        // Get transactions up to this date
+        const transactionsUpToDate = sortedTransactions.filter(t => t.date <= currentDate)
+        
+        // Calculate position as of this date
+        cumulativeQuantity = 0
+        totalCost = 0
+        
+        transactionsUpToDate.forEach(transaction => {
+          if (transaction.type === 'buy') {
+            cumulativeQuantity += transaction.quantity
+            totalCost += transaction.quantity * transaction.price_per_unit
+          } else if (transaction.type === 'sell') {
+            const avgCost = cumulativeQuantity > 0 ? totalCost / cumulativeQuantity : 0
+            cumulativeQuantity -= transaction.quantity
+            totalCost = cumulativeQuantity * avgCost
+          }
+        })
+        
+        // Calculate current value (mock price evolution for now)
+        const currentPrice = symbolData?.last_price || sortedTransactions[sortedTransactions.length - 1]?.price_per_unit || 100
+        
+        // Add some realistic price volatility
+        const daysSinceStart = Math.floor((d.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+        const volatility = Math.sin(daysSinceStart * 0.1) * 0.02 + Math.random() * 0.01 - 0.005
+        const adjustedPrice = currentPrice * (1 + volatility)
+        
+        const currentValue = cumulativeQuantity * adjustedPrice
+        
+        // For individual holdings, we need to store cost basis data in a way the chart can use it
+        // We'll use the HistoricalDataPoint structure but adapt it for holding-specific data
+        historicalData.push({
+          date: currentDate,
+          totalValue: currentValue,
+          // Store cost basis in a way that the ValueEvolutionChart can access it
+          // We'll use a custom property that the chart's calculateCumulativeInvested can recognize
+          costBasis: totalCost * USD_TO_EUR_RATE,
+          assetTypeAllocations: {
+            [symbolData?.asset_type || 'other']: 100
+          },
+          assetTypeReturns: {
+            [symbolData?.asset_type || 'other']: totalCost > 0 ? (currentValue - totalCost * USD_TO_EUR_RATE) / (totalCost * USD_TO_EUR_RATE) : 0
+          }
+        } as HistoricalDataPoint & { costBasis: number })
+      }
+      
+      console.log(`📊 Generated ${historicalData.length} historical data points for holding:`, symbol)
+      return historicalData
+      
+    } catch (error) {
+      console.error('Error generating holding historical data:', error)
       return []
     }
   }

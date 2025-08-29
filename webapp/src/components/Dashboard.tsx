@@ -340,7 +340,7 @@ export default function Dashboard({ user }: DashboardProps) {
                     return groups
                   }, {} as Record<string, typeof portfolioData.positions>)
 
-                  const rows: JSX.Element[] = []
+                  const rows: React.ReactElement[] = []
                   
                   // Define order for asset types
                   const typeOrder: AssetType[] = ['stock', 'etf', 'crypto', 'real_estate', 'other']
@@ -359,14 +359,14 @@ export default function Dashboard({ user }: DashboardProps) {
                     positions.forEach(position => {
                       const pnlPercentage = calculatePnLPercentage(position.unrealizedPnL, position.avgCost, position.quantity)
                       rows.push(
-                        <tr key={position.symbol} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <tr key={position.symbol} className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onClick={() => router.push(`/holdings/${encodeURIComponent(position.symbol)}`)}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="flex-shrink-0 text-lg">
                                 {getAssetTypeIcon(assetType)}
                               </div>
                               <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900 dark:text-white">{position.symbol}</div>
+                                <div className="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">{position.symbol}</div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
                                   {symbols.find(s => s.symbol === position.symbol)?.name || 'Unknown'}
                                 </div>
@@ -422,7 +422,7 @@ export default function Dashboard({ user }: DashboardProps) {
                   
                   return rows
                 })()}
-                {/* Cash row */}
+                {/* Cash row - not clickable */}
                 <tr className="hover:bg-gray-50 dark:hover:bg-gray-700 bg-gray-25 dark:bg-gray-800">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">

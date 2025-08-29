@@ -87,16 +87,33 @@ export class ClientAuthService {
       return { error: { message: 'Demo login only available in development' } }
     }
 
-    // In development, return mock user immediately
+    // In development, store mock user in localStorage and cookie
+    const mockUser = createMockUser()
+    
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('demo_user', JSON.stringify(mockUser))
+      // Set cookie for middleware
+      document.cookie = `demo_user=${JSON.stringify(mockUser)}; path=/; max-age=3600`
+      console.log('👨‍💼 Demo user stored in localStorage and cookie')
+    }
+    
     return new Promise((resolve) => {
       setTimeout(() => {
-        resolve({ user: createMockUser() })
+        resolve({ user: mockUser })
       }, 500)
     })
   }
 
   async signOut(): Promise<{ error?: AuthError }> {
     try {
+      // Clear demo user from localStorage and cookie
+      if (this.isDevelopment && typeof window !== 'undefined') {
+        localStorage.removeItem('demo_user')
+        // Clear cookie
+        document.cookie = 'demo_user=; path=/; max-age=0'
+        console.log('👨‍💼 Demo user cleared from localStorage and cookie')
+      }
+      
       const { error } = await this.supabase.auth.signOut()
       
       if (error) {
@@ -111,6 +128,15 @@ export class ClientAuthService {
 
   async getCurrentUser(): Promise<AuthResponse> {
     try {
+      // In development mode, check if we have a demo user in localStorage
+      if (this.isDevelopment && typeof window !== 'undefined') {
+        const demoUser = localStorage.getItem('demo_user')
+        if (demoUser) {
+          console.log('👨‍💼 Demo user found in localStorage')
+          return { user: JSON.parse(demoUser) as AuthUser }
+        }
+      }
+      
       const { data: { user }, error } = await this.supabase.auth.getUser()
       
       if (error) {

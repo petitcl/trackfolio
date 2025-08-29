@@ -35,10 +35,23 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Check for demo user in development mode
+  const isDevelopment = process.env.NODE_ENV === 'development'
+  const demoUserCookie = request.cookies.get('demo_user')
+  const hasDemoUser = isDevelopment && demoUserCookie
+
+  console.log('Middleware auth check:', {
+    pathname: request.nextUrl.pathname,
+    hasSupabaseUser: !!user,
+    hasDemoUser,
+    isDevelopment
+  })
+
   // Redirect unauthenticated users to login page
-  if (!user && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/auth')) {
-    // Only redirect from protected routes
-    if (request.nextUrl.pathname !== '/') {
+  if (!user && !hasDemoUser && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/auth')) {
+    // Redirect from protected routes (dashboard and holdings)
+    if (request.nextUrl.pathname === '/' || request.nextUrl.pathname.startsWith('/holdings')) {
+      console.log('Middleware: Redirecting unauthenticated user from', request.nextUrl.pathname)
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
