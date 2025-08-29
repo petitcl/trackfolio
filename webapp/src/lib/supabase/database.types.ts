@@ -195,7 +195,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
+      },
+      symbol_price_history: {
+        Row: {
+          id: string
+          symbol: string
+          date: string
+          open_price: number | null
+          high_price: number | null
+          low_price: number | null
+          close_price: number
+          volume: number | null
+          adjusted_close: number | null
+          data_source: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          symbol: string
+          date: string
+          open_price?: number | null
+          high_price?: number | null
+          low_price?: number | null
+          close_price: number
+          volume?: number | null
+          adjusted_close?: number | null
+          data_source?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          symbol?: string
+          date?: string
+          open_price?: number | null
+          high_price?: number | null
+          low_price?: number | null
+          close_price?: number
+          volume?: number | null
+          adjusted_close?: number | null
+          data_source?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "symbol_price_history_symbol_fkey"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "symbols"
+            referencedColumns: ["symbol"]
+          }
+        ]
+      }      
     }
     Views: {
       [_ in never]: never

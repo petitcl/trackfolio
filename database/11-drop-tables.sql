@@ -22,6 +22,7 @@ DROP TABLE IF EXISTS portfolio_snapshots CASCADE;
 DROP TABLE IF EXISTS user_symbol_prices CASCADE;
 DROP TABLE IF EXISTS symbols CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS symbol_price_history CASCADE;
 
 -- Drop custom types
 DROP TYPE IF EXISTS transaction_type;

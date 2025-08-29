@@ -14,6 +14,9 @@ import {
 const DEMO_USER_EMAIL = 'test@trackfolio.com'
 const DEMO_USER_ID = 'mock-user-id'
 
+// Currency conversion rate (mocked for now - in production would come from API)
+const USD_TO_EUR_RATE = 0.85
+
 export interface PortfolioPosition {
   symbol: string
   quantity: number
@@ -321,32 +324,39 @@ export class PortfolioService {
       const transactions = await this.getHoldingTransactions(user, symbol)
       const symbols = await this.getSymbols(user)
       const symbolData = symbols.find(s => s.symbol === symbol)
-      
+  
       if (transactions.length === 0) {
         console.log('📈 No transactions found for holding:', symbol)
         return []
       }
-
-      // Get date range from first transaction to now
+  
+      // Fetch all historical prices at once
+      const { data: historicalPrices = [] } = await this.supabase
+        .from('symbol_price_history')
+        .select('date, close_price')
+        .eq('symbol', symbol)
+  
+      // Map date => price for fast lookup
+      const priceMap = new Map<string, number>()
+      historicalPrices.forEach(p => priceMap.set(p.date, Number(p.close_price)))
+  
+      // Date range
       const sortedTransactions = transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       const startDate = new Date(sortedTransactions[0].date)
       const endDate = new Date()
-      
+  
       const historicalData: HistoricalDataPoint[] = []
       let cumulativeQuantity = 0
       let totalCost = 0
-      
-      // Generate data points for each day from start to end
+  
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
         const currentDate = d.toISOString().split('T')[0]
-        
-        // Get transactions up to this date
+  
+        // Apply transactions up to this date
         const transactionsUpToDate = sortedTransactions.filter(t => t.date <= currentDate)
-        
-        // Calculate position as of this date
         cumulativeQuantity = 0
         totalCost = 0
-        
+  
         transactionsUpToDate.forEach(transaction => {
           if (transaction.type === 'buy') {
             cumulativeQuantity += transaction.quantity
@@ -354,46 +364,44 @@ export class PortfolioService {
           } else if (transaction.type === 'sell') {
             const avgCost = cumulativeQuantity > 0 ? totalCost / cumulativeQuantity : 0
             cumulativeQuantity -= transaction.quantity
-            totalCost = cumulativeQuantity * avgCost
+            totalCost = Math.max(0, cumulativeQuantity * avgCost)
+          } else if (transaction.type === 'bonus') {
+            cumulativeQuantity += transaction.quantity
           }
         })
-        
-        // Calculate current value (mock price evolution for now)
-        const currentPrice = symbolData?.last_price || sortedTransactions[sortedTransactions.length - 1]?.price_per_unit || 100
-        
-        // Add some realistic price volatility
+  
+        if (cumulativeQuantity <= 0) continue
+  
+        // Get price from priceMap or simulate if missing
+        const historicalPrice = priceMap.get(currentDate)
         const daysSinceStart = Math.floor((d.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        const volatility = Math.sin(daysSinceStart * 0.1) * 0.02 + Math.random() * 0.01 - 0.005
-        const adjustedPrice = currentPrice * (1 + volatility)
-        
+        const adjustedPrice = historicalPrice || this.simulateHistoricalPrice(
+          symbolData?.last_price || sortedTransactions[sortedTransactions.length - 1]?.price_per_unit || 100,
+          daysSinceStart
+        )
+  
         const currentValue = cumulativeQuantity * adjustedPrice
-        
-        // For individual holdings, we need to store cost basis data in a way the chart can use it
-        // We'll use the HistoricalDataPoint structure but adapt it for holding-specific data
-        historicalData.push({
+  
+        const dataPoint: HistoricalDataPoint & { costBasis: number } = {
           date: currentDate,
-          totalValue: currentValue,
-          // Store cost basis in a way that the ValueEvolutionChart can access it
-          // We'll use a custom property that the chart's calculateCumulativeInvested can recognize
-          costBasis: totalCost * USD_TO_EUR_RATE,
-          assetTypeAllocations: {
-            [symbolData?.asset_type || 'other']: 100
-          },
-          assetTypeReturns: {
-            [symbolData?.asset_type || 'other']: totalCost > 0 ? (currentValue - totalCost * USD_TO_EUR_RATE) / (totalCost * USD_TO_EUR_RATE) : 0
-          }
-        } as HistoricalDataPoint & { costBasis: number })
+          totalValue: currentValue * USD_TO_EUR_RATE,
+          assetTypeAllocations: { [symbolData?.asset_type || 'other']: 100 },
+          assetTypeReturns: { [symbolData?.asset_type || 'other']: totalCost > 0 ? (currentValue - totalCost) / totalCost : 0 },
+          costBasis: totalCost * USD_TO_EUR_RATE
+        }
+  
+        historicalData.push(dataPoint)
       }
-      
+  
       console.log(`📊 Generated ${historicalData.length} historical data points for holding:`, symbol)
       return historicalData
-      
+  
     } catch (error) {
       console.error('Error generating holding historical data:', error)
       return []
     }
   }
-
+  
   private getEmptyPortfolio(): PortfolioData {
     return {
       totalValue: 0,
@@ -402,6 +410,55 @@ export class PortfolioService {
       dailyChange: { value: 0, percentage: 0 },
       totalPnL: { realized: 0, unrealized: 0, total: 0 }
     }
+  }
+
+  /**
+   * Get historical price for a symbol on a specific date from the database
+   */
+  private async getHistoricalPrice(symbol: string, date: string): Promise<number | null> {
+    try {
+      const { data, error } = await this.supabase
+        .from('symbol_price_history')
+        .select('close_price')
+        .eq('symbol', symbol)
+        .eq('date', date)
+        .maybeSingle()
+
+      if (error) {
+        // Check if it's a table doesn't exist error
+        if (error.message?.includes('relation "symbol_price_history" does not exist') || 
+            error.code === 'PGRST116' || 
+            error.code === '42P01') {
+          console.log(`⚠️  symbol_price_history table doesn't exist yet. Run the database migration.`)
+          return null
+        }
+        
+        // For other errors (like no data found), return null silently
+        return null
+      }
+
+      if (!data) {
+        return null
+      }
+
+      return parseFloat(data.close_price.toString())
+    } catch (error) {
+      console.log(`📈 No historical price found for ${symbol} on ${date}`, error)
+      return null
+    }
+  }
+
+  /**
+   * Simulate historical price when real data is not available
+   * This is a fallback method for when historical price data is missing
+   */
+  private simulateHistoricalPrice(
+    currentPrice: number, 
+    daysSinceStart: number
+  ): number {
+    // Add some realistic price volatility based on time
+    const volatility = Math.sin(daysSinceStart * 0.1) * 0.02 + Math.random() * 0.01 - 0.005
+    return currentPrice * (1 + volatility)
   }
 }
 

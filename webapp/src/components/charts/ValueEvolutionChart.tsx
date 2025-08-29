@@ -160,7 +160,7 @@ export default function ValueEvolutionChart({
       pointRadius: 0,
       pointHoverRadius: 5,
       borderDash: [5, 5], // Dashed line
-    } as any)
+    })
   }
 
   const chartData = {

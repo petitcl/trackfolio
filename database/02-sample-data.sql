@@ -11,7 +11,8 @@ INSERT INTO symbols (symbol, name, asset_type, last_price, last_updated, is_cust
     ('VTI', 'Vanguard Total Stock Market ETF', 'etf', 245.60, NOW(), FALSE, NULL),
     ('BTC', 'Bitcoin', 'crypto', 43500.00, NOW(), FALSE, NULL),
     ('ETH', 'Ethereum', 'crypto', 2650.00, NOW(), FALSE, NULL),
-    ('CASH', 'Cash USD', 'cash', 1.00, NOW(), FALSE, NULL);
+    ('CASH', 'Cash', 'cash', 1.00, NOW(), FALSE, NULL)
+ON CONFLICT (symbol) DO NOTHING;
 
 -- Add some custom user investments
 INSERT INTO symbols (symbol, name, asset_type, last_price, last_updated, is_custom, created_by_user_id) VALUES
@@ -100,9 +101,33 @@ INSERT INTO portfolio_snapshots (user_id, snapshot_date, total_value, cash_balan
      ]'::jsonb
     );
 
--- You'll need to replace '49c7a133-05b8-4175-927c-a406fcd78ff1' with actual user UUID
--- To get the user UUID:
--- 1. Go to Supabase Dashboard > Authentication > Users
--- 2. Create a test user or use existing user
--- 3. Copy the UUID from the user table
--- 4. Replace all instances of '49c7a133-05b8-4175-927c-a406fcd78ff1' with the actual UUID
+-- Sample historical data for testing
+-- Replace with real data from your preferred API
+INSERT INTO symbol_price_history (symbol, date, close_price, data_source) VALUES
+    -- AAPL sample data (last 90 days worth)
+    ('AAPL', '2024-01-01', 185.64, 'manual'),
+    ('AAPL', '2024-01-02', 186.89, 'manual'),
+    ('AAPL', '2024-01-03', 184.25, 'manual'),
+    ('AAPL', '2024-01-05', 186.17, 'manual'),
+    ('AAPL', '2024-01-08', 185.56, 'manual'),
+    ('AAPL', '2024-01-09', 187.23, 'manual'),
+    ('AAPL', '2024-01-10', 186.45, 'manual'),
+    -- Add more dates as needed...
+    ('AAPL', '2024-12-20', 185.50, 'manual'),
+    
+    -- MSFT sample data
+    ('MSFT', '2024-01-01', 415.20, 'manual'),
+    ('MSFT', '2024-01-02', 418.30, 'manual'),
+    ('MSFT', '2024-01-03', 416.85, 'manual'),
+    ('MSFT', '2024-01-05', 419.42, 'manual'),
+    ('MSFT', '2024-01-08', 420.15, 'manual'),
+    -- Add more dates as needed...
+    ('MSFT', '2024-12-20', 420.30, 'manual'),
+    
+    -- BTC sample data (crypto)
+    ('BTC', '2024-01-01', 42500.00, 'manual'),
+    ('BTC', '2024-01-02', 43100.00, 'manual'),
+    ('BTC', '2024-01-03', 42800.00, 'manual'),
+    -- Add more dates as needed...
+    ('BTC', '2024-12-20', 43500.00, 'manual');
+
