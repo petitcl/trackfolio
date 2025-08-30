@@ -11,6 +11,7 @@ import TimeRangeSelector, { type TimeRange } from './TimeRangeSelector'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import QuickActions, { type QuickAction } from './QuickActions'
 import DemoModeBanner from './DemoModeBanner'
+import ConfirmDialog from './ConfirmDialog'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -30,6 +31,8 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
   const [holdingData, setHoldingData] = useState<HoldingData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<TimeRange>('all')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -113,6 +116,28 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
       withdrawal: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20'
     }
     return colors[type] || 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/20'
+  }
+
+  const handleDeleteHolding = async () => {
+    if (!holdingData) return
+    
+    setIsDeleting(true)
+    try {
+      const result = await portfolioService.deleteHolding(user, symbol)
+      
+      if (result.success) {
+        console.log(`✅ Successfully deleted holding: ${symbol}`)
+        router.push('/')
+      } else {
+        console.error('Failed to delete holding:', result.error)
+        setError(result.error || 'Failed to delete holding')
+        setIsDeleting(false)
+      }
+    } catch (err) {
+      console.error('Error deleting holding:', err)
+      setError('An unexpected error occurred while deleting the holding')
+      setIsDeleting(false)
+    }
   }
 
   if (loading) {
@@ -487,12 +512,6 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           title={`${symbol} Actions`}
           actions={[
             {
-              id: 'add-holding',
-              icon: '📈',
-              label: 'Add Holding',
-              onClick: () => router.push('/add-holding')
-            },
-            {
               id: 'import-transactions', 
               icon: '📥',
               label: 'Import Transactions',
@@ -503,10 +522,28 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
               icon: '📤', 
               label: 'Export Data',
               onClick: () => console.log('Export data for', symbol)
+            },
+            {
+              id: 'delete-holding',
+              icon: '🗑️',
+              label: 'Delete Holding',
+              onClick: () => setShowDeleteConfirm(true),
+              className: 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
             }
           ]}
           columns={3}
           className="mt-8"
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={handleDeleteHolding}
+          title="Delete Holding"
+          message={`Are you sure you want to delete ${symbol}? This will permanently delete all transactions${holdingData?.symbol?.is_custom ? ', custom prices, and the custom symbol' : ' and custom prices'} associated with this holding. This action cannot be undone.`}
+          confirmText={isDeleting ? "Deleting..." : "Delete Holding"}
+          confirmButtonClass="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
         />
       </main>
     </div>

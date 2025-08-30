@@ -653,6 +653,88 @@ export class PortfolioService {
     }
   }
 
+  /**
+   * Delete a holding and all associated data
+   * 
+   * For custom holdings:
+   * - Deletes all transactions for that symbol/user
+   * - Deletes all custom prices for that symbol/user
+   * - Deletes the custom symbol itself
+   * 
+   * For regular holdings (stocks/ETFs/crypto):
+   * - Deletes all transactions for that symbol/user
+   * - Deletes any custom prices for that symbol/user
+   * - Does NOT delete the symbol (it's a public market symbol)
+   */
+  async deleteHolding(user: AuthUser, symbol: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`🗑️ Starting deletion of holding: ${symbol} for user: ${user.email}`)
+      
+      // First, check if this is a custom symbol
+      const { data: symbolData, error: symbolError } = await this.supabase
+        .from('symbols')
+        .select('*')
+        .eq('symbol', symbol.toUpperCase())
+        .single()
+      
+      if (symbolError && symbolError.code !== 'PGRST116') {
+        console.error('Error fetching symbol:', symbolError)
+        return { success: false, error: 'Failed to fetch symbol information' }
+      }
+      
+      const isCustomSymbol = symbolData?.is_custom && symbolData?.created_by_user_id === user.id
+      
+      // Delete all transactions for this symbol/user
+      const { error: transactionsError } = await this.supabase
+        .from('transactions')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('symbol', symbol.toUpperCase())
+      
+      if (transactionsError) {
+        console.error('Error deleting transactions:', transactionsError)
+        return { success: false, error: 'Failed to delete transactions' }
+      }
+      console.log(`✅ Deleted transactions for ${symbol}`)
+      
+      // Delete all custom prices for this symbol/user
+      const { error: pricesError } = await this.supabase
+        .from('user_symbol_prices')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('symbol', symbol.toUpperCase())
+      
+      if (pricesError) {
+        console.error('Error deleting custom prices:', pricesError)
+        return { success: false, error: 'Failed to delete custom prices' }
+      }
+      console.log(`✅ Deleted custom prices for ${symbol}`)
+      
+      // If it's a custom symbol created by this user, delete the symbol itself
+      if (isCustomSymbol) {
+        const { error: symbolDeleteError } = await this.supabase
+          .from('symbols')
+          .delete()
+          .eq('symbol', symbol.toUpperCase())
+          .eq('created_by_user_id', user.id)
+          .eq('is_custom', true)
+        
+        if (symbolDeleteError) {
+          console.error('Error deleting custom symbol:', symbolDeleteError)
+          return { success: false, error: 'Failed to delete custom symbol' }
+        }
+        console.log(`✅ Deleted custom symbol: ${symbol}`)
+      }
+      
+      console.log(`🎉 Successfully deleted holding: ${symbol}`)
+      return { success: true }
+      
+    } catch (error) {
+      console.error('Error deleting holding:', error)
+      return { success: false, error: 'An unexpected error occurred while deleting the holding' }
+    }
+  }
+
 }
 
 // Singleton instance

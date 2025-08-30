@@ -462,12 +462,6 @@ export default function Dashboard({ user }: DashboardProps) {
               onClick: () => router.push('/add-holding')
             },
             {
-              id: 'add-custom-asset',
-              icon: '🏠',
-              label: 'Add Custom Asset',
-              onClick: () => router.push('/add-holding')
-            },
-            {
               id: 'update-prices',
               icon: '💰',
               label: 'Update Prices',
