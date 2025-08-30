@@ -558,9 +558,68 @@ export class PortfolioService {
   }
 
   /**
-   * Add a new transaction (buy/sell/etc)
+   * Add a new transaction (buy/sell/etc) - supports both real and demo users
    */
-  async addTransaction(transactionData: {
+  async addTransactionForUser(user: AuthUser, transactionData: {
+    symbol: string
+    type: Database["public"]["Enums"]["transaction_type"]
+    quantity: number
+    pricePerUnit: number
+    date: string
+    notes?: string | null
+    fees?: number
+    currency?: string
+    broker?: string | null
+  }): Promise<{ success: boolean; transaction?: Transaction; error?: string }> {
+    try {
+      if (user.isDemo) {
+        // For demo users, add to mock data store
+        const transaction = getClientMockDataStore().addTransaction({
+          symbol: transactionData.symbol,
+          type: transactionData.type,
+          quantity: transactionData.quantity,
+          pricePerUnit: transactionData.pricePerUnit,
+          date: transactionData.date,
+          fees: transactionData.fees,
+          currency: transactionData.currency,
+          broker: transactionData.broker,
+          notes: transactionData.notes
+        })
+        
+        console.log('✅ Added transaction to mock data store:', transaction.id)
+        return { success: true, transaction }
+      } else {
+        // For real users, use Supabase
+        const transaction = await this.addTransaction({
+          user_id: user.id,
+          symbol: transactionData.symbol,
+          type: transactionData.type,
+          quantity: transactionData.quantity,
+          price_per_unit: transactionData.pricePerUnit,
+          date: transactionData.date,
+          notes: transactionData.notes,
+          fees: transactionData.fees,
+          currency: transactionData.currency,
+          broker: transactionData.broker
+        })
+        
+        if (!transaction) {
+          return { success: false, error: 'Failed to add transaction to database' }
+        }
+        
+        console.log('✅ Added transaction to database:', transaction.id)
+        return { success: true, transaction }
+      }
+    } catch (error) {
+      console.error('Error adding transaction:', error)
+      return { success: false, error: 'An unexpected error occurred' }
+    }
+  }
+
+  /**
+   * Add a new transaction (buy/sell/etc) - internal method for real users only
+   */
+  private async addTransaction(transactionData: {
     user_id: string
     symbol: string
     type: Database["public"]["Enums"]["transaction_type"]
@@ -631,19 +690,18 @@ export class PortfolioService {
         return { success: false, error: 'Failed to create or get symbol' }
       }
       
-      // Add the buy transaction
-      const transaction = await this.addTransaction({
-        user_id: user.id,
+      // Add the buy transaction using the unified method
+      const transactionResult = await this.addTransactionForUser(user, {
         symbol: holdingData.symbol,
         type: 'buy',
         quantity: holdingData.quantity,
-        price_per_unit: holdingData.purchasePrice,
+        pricePerUnit: holdingData.purchasePrice,
         date: holdingData.purchaseDate,
         notes: holdingData.notes
       })
       
-      if (!transaction) {
-        return { success: false, error: 'Failed to add transaction' }
+      if (!transactionResult.success) {
+        return { success: false, error: transactionResult.error || 'Failed to add transaction' }
       }
       
       return { success: true }

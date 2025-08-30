@@ -91,6 +91,53 @@ class ClientMockDataStore {
     return [...this.symbols]
   }
 
+  addTransaction(transaction: {
+    symbol: string
+    type: 'buy' | 'sell' | 'dividend' | 'bonus' | 'deposit' | 'withdrawal'
+    quantity: number
+    pricePerUnit: number
+    date: string
+    fees?: number
+    currency?: string
+    broker?: string | null
+    notes?: string | null
+  }): Transaction {
+    if (!this.initialized && typeof window !== 'undefined') {
+      this.initialize()
+    }
+    
+    // Create a new transaction
+    this.lastTransactionId++
+    const newTransaction: Transaction = {
+      id: `mock-transaction-${this.lastTransactionId}`,
+      user_id: MOCK_USER_ID,
+      symbol: transaction.symbol.toUpperCase(),
+      type: transaction.type,
+      quantity: transaction.quantity,
+      price_per_unit: transaction.pricePerUnit,
+      date: transaction.date,
+      notes: transaction.notes || null,
+      fees: transaction.fees || 0,
+      currency: transaction.currency || 'USD',
+      broker: transaction.broker || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+    
+    this.transactions.push(newTransaction)
+    
+    // Save to localStorage
+    this.saveToLocalStorage()
+    
+    console.log('📈 Added new transaction to mock data:', {
+      symbol: transaction.symbol,
+      type: transaction.type,
+      transaction: newTransaction
+    })
+    
+    return newTransaction
+  }
+
   addHolding(holding: {
     symbol: string
     name: string
@@ -112,7 +159,7 @@ class ClientMockDataStore {
       const newSymbol: Symbol = {
         symbol: holding.symbol.toUpperCase(),
         name: holding.name,
-        asset_type: holding.assetType as any,
+        asset_type: holding.assetType as 'stock' | 'etf' | 'crypto' | 'cash' | 'real_estate' | 'other',
         is_custom: holding.isCustom,
         created_by_user_id: holding.isCustom ? MOCK_USER_ID : null,
         last_price: holding.purchasePrice,
@@ -122,32 +169,21 @@ class ClientMockDataStore {
       this.symbols.push(newSymbol)
     }
 
-    // Create a buy transaction for the holding
-    this.lastTransactionId++
-    const newTransaction: Transaction = {
-      id: `mock-transaction-${this.lastTransactionId}`,
-      user_id: MOCK_USER_ID,
-      symbol: holding.symbol.toUpperCase(),
+    // Create a buy transaction for the holding using the new addTransaction method
+    this.addTransaction({
+      symbol: holding.symbol,
       type: 'buy',
       quantity: holding.quantity,
-      price_per_unit: holding.purchasePrice,
+      pricePerUnit: holding.purchasePrice,
       date: holding.purchaseDate,
-      notes: holding.notes || null,
+      notes: holding.notes,
       fees: 0,
       currency: 'USD',
-      broker: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-    
-    this.transactions.push(newTransaction)
-    
-    // Save to localStorage
-    this.saveToLocalStorage()
+      broker: null
+    })
     
     console.log('📈 Added new holding to mock data:', {
-      symbol: holding.symbol,
-      transaction: newTransaction
+      symbol: holding.symbol
     })
   }
 
@@ -174,6 +210,7 @@ export const getClientMockDataStore = (): ClientMockDataStore => {
     return {
       getTransactions: () => [],
       getSymbols: () => [],
+      addTransaction: () => ({} as Transaction),
       addHolding: () => {},
       reset: () => {}
     } as ClientMockDataStore

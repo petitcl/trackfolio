@@ -9,9 +9,10 @@ import { portfolioService, type PortfolioPosition, type PortfolioData } from '@/
 import ValueEvolutionChart from './charts/ValueEvolutionChart'
 import TimeRangeSelector, { type TimeRange } from './TimeRangeSelector'
 import type { HistoricalDataPoint } from '@/lib/mockData'
-import QuickActions, { type QuickAction } from './QuickActions'
+import QuickActions from './QuickActions'
 import DemoModeBanner from './DemoModeBanner'
 import ConfirmDialog from './ConfirmDialog'
+import AddTransactionForm, { type TransactionFormData } from './AddTransactionForm'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -33,6 +34,8 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('all')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showAddTransaction, setShowAddTransaction] = useState(false)
+  const [isAddingTransaction, setIsAddingTransaction] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -137,6 +140,59 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
       console.error('Error deleting holding:', err)
       setError('An unexpected error occurred while deleting the holding')
       setIsDeleting(false)
+    }
+  }
+
+  const handleAddTransaction = async (transactionData: TransactionFormData) => {
+    setIsAddingTransaction(true)
+    try {
+      // Add transaction via portfolio service
+      const result = await portfolioService.addTransactionForUser(user, {
+        symbol: symbol,
+        type: transactionData.type,
+        quantity: transactionData.quantity,
+        pricePerUnit: transactionData.pricePerUnit,
+        date: transactionData.date,
+        fees: transactionData.fees,
+        currency: transactionData.currency,
+        broker: transactionData.broker,
+        notes: transactionData.notes
+      })
+      
+      if (!result.success) {
+        setError(result.error || 'Failed to add transaction')
+        return
+      }
+      
+      console.log('✅ Transaction added successfully:', result.transaction?.id)
+      setShowAddTransaction(false)
+      
+      // Refresh holding data
+      const [portfolioData, symbols, transactions, historicalData] = await Promise.all([
+        portfolioService.getPortfolioData(user),
+        portfolioService.getSymbols(user),
+        portfolioService.getTransactions(user),
+        portfolioService.getHoldingHistoricalData(user, symbol)
+      ])
+
+      const symbolData = symbols.find(s => s.symbol === symbol)
+      const symbolTransactions = transactions.filter(t => t.symbol === symbol)
+      const position = portfolioData.positions.find(p => p.symbol === symbol) || null
+
+      setHoldingData({
+        position,
+        symbol: symbolData || null,
+        transactions: symbolTransactions,
+        historicalData,
+        portfolioData
+      })
+
+      console.log('✅ Data refreshed after transaction addition')
+    } catch (err) {
+      console.error('Error adding transaction:', err)
+      setError('An unexpected error occurred while adding the transaction')
+    } finally {
+      setIsAddingTransaction(false)
     }
   }
 
@@ -512,10 +568,10 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           title={`${symbol} Actions`}
           actions={[
             {
-              id: 'import-transactions', 
-              icon: '📥',
-              label: 'Import Transactions',
-              onClick: () => console.log('Import transactions for', symbol)
+              id: 'add-transaction', 
+              icon: '➕',
+              label: 'Add Transaction',
+              onClick: () => setShowAddTransaction(true)
             },
             {
               id: 'export-data',
@@ -544,6 +600,16 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           message={`Are you sure you want to delete ${symbol}? This will permanently delete all transactions${holdingData?.symbol?.is_custom ? ', custom prices, and the custom symbol' : ' and custom prices'} associated with this holding. This action cannot be undone.`}
           confirmText={isDeleting ? "Deleting..." : "Delete Holding"}
           confirmButtonClass="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+        />
+
+        {/* Add Transaction Form */}
+        <AddTransactionForm
+          isOpen={showAddTransaction}
+          onClose={() => setShowAddTransaction(false)}
+          onSubmit={handleAddTransaction}
+          symbol={symbol}
+          symbolName={symbolData?.name || 'Unknown Asset'}
+          isLoading={isAddingTransaction}
         />
       </main>
     </div>

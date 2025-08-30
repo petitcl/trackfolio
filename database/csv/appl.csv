@@ -1,0 +1,5 @@
+date,symbol,type,quantity,price_per_unit,fees,currency,broker,notes
+2024-01-15,AAPL,buy,100,150.50,9.99,USD,Interactive Brokers,Initial position
+2024-01-15,AAPL,sell,100,150.50,9.99,USD,Interactive Brokers,sold because tired
+2024-01-15,AAPL,bonus,100,150.50,9.99,USD,Interactive Brokers,Initial some bonus
+2024-01-15,AAPL,dividend,100,150.50,9.99,USD,Interactive Brokers,some dividends
