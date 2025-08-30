@@ -56,7 +56,7 @@ export default function LoginPage() {
     setIsLoading(false)
   }
 
-  const isDevelopment = process.env.NODE_ENV === 'development'
+  const isDemoEnabled = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true'
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -148,7 +148,7 @@ export default function LoginPage() {
           </form>
 
           {/* Demo Login Button - Development Only */}
-          {isDevelopment && (
+          {isDemoEnabled && (
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">

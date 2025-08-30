@@ -36,10 +36,10 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Check for demo user in development mode
-  const isDevelopment = process.env.NODE_ENV === 'development'
+  // Check for demo user in demo-enabled mode
+  const isDemoEnabled = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true'
   const demoUserCookie = request.cookies.get(DEMO_USER_COOKIE_NAME)
-  const hasDemoUser = isDevelopment && demoUserCookie
+  const hasDemoUser = isDemoEnabled && demoUserCookie
 
   console.log('Middleware auth check:', {
     pathname: request.nextUrl.pathname,

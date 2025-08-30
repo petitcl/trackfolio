@@ -34,6 +34,7 @@
 - ✅ Fix the light mode (it still doesn't work)
 - [ ] Make charts take into account custom prices
 - [ ] Revisit all charts styles + logic
+- [ ] Delete all traces of light theme (incl login page)
 
 ## 🎯 Priority Features
 

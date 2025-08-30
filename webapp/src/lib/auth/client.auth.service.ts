@@ -36,7 +36,7 @@ const createMockUser = (): AuthUser => ({
 // Client-side auth service
 export class ClientAuthService {
   private supabase = createBrowserClient()
-  private isDevelopment = process.env.NODE_ENV === 'development'
+  private isDemoEnabled = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true'
 
   async signInWithGoogle(): Promise<AuthResponse> {
     try {
@@ -86,8 +86,8 @@ export class ClientAuthService {
   }
 
   async signInDemo(): Promise<AuthResponse> {
-    if (!this.isDevelopment) {
-      return { error: { message: 'Demo login only available in development' } }
+    if (!this.isDemoEnabled) {
+      return { error: { message: 'Demo login not available' } }
     }
 
     // In development, store mock user in localStorage and cookie
@@ -131,8 +131,8 @@ export class ClientAuthService {
 
   async getCurrentUser(): Promise<AuthResponse> {
     try {
-      // In development mode, check if we have a demo user in localStorage
-      if (this.isDevelopment && typeof window !== 'undefined') {
+      // In demo-enabled mode, check if we have a demo user in localStorage
+      if (this.isDemoEnabled && typeof window !== 'undefined') {
         const demoUser = localStorage.getItem(DEMO_USER_STORAGE_KEY)
         if (demoUser) {
           console.log('👨‍💼 Demo user found in localStorage')
@@ -162,8 +162,8 @@ export class ClientAuthService {
    * This method can be called synchronously to determine user type
    */
   isCurrentUserMock(): boolean {
-    // Check if we're in development and have demo user data
-    if (this.isDevelopment && typeof window !== 'undefined') {
+    // Check if we're in demo-enabled mode and have demo user data
+    if (this.isDemoEnabled && typeof window !== 'undefined') {
       const demoUser = localStorage.getItem(DEMO_USER_STORAGE_KEY)
       if (demoUser) {
         try {
