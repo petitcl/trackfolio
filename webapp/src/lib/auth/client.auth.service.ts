@@ -4,10 +4,11 @@ import type { User } from '@supabase/supabase-js'
 export interface AuthUser {
   id: string
   email: string | undefined
-  user_metadata: Record<string, any>
-  app_metadata: Record<string, any>
+  user_metadata: Record<string, unknown>
+  app_metadata: Record<string, unknown>
   aud: string
   created_at: string
+  isDemo?: boolean
 }
 
 export interface AuthError {
@@ -28,6 +29,7 @@ const createMockUser = (): AuthUser => ({
   app_metadata: {},
   aud: 'authenticated',
   created_at: new Date().toISOString(),
+  isDemo: true,
 })
 
 // Client-side auth service
@@ -147,6 +149,11 @@ export class ClientAuthService {
     } catch (error) {
       return { error: { message: 'An unexpected error occurred' } }
     }
+  }
+
+  async getUser(): Promise<AuthUser | null> {
+    const response = await this.getCurrentUser()
+    return response.user || null
   }
 
   /**

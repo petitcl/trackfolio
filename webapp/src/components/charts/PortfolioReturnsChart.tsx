@@ -55,7 +55,8 @@ export default function PortfolioReturnsChart({
   const assetTypes = ['stock', 'etf', 'crypto', 'real_estate', 'other']
   
   const getAssetTypeColor = (assetType: string): string => {
-    return CHART_COLORS[assetType as keyof typeof CHART_COLORS] || CHART_COLORS.other
+    const color = CHART_COLORS[assetType as keyof typeof CHART_COLORS]
+    return (typeof color === 'string' ? color : CHART_COLORS.other) as string
   }
   
   // Create a single stacked bar showing returns by asset type

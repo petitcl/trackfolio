@@ -3,11 +3,10 @@ import type { AuthUser } from '@/lib/auth/client.auth.service'
 import { clientAuthService } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/database.types'
 import { 
-  mockSymbols, 
-  mockTransactions,
   mockSymbolPriceHistory,
   type HistoricalDataPoint 
 } from '@/lib/mockData'
+import { mockDataStore } from '@/lib/mockDataStore'
 
 // Currency conversion rate (mocked for now - in production would come from API)
 const USD_TO_EUR_RATE = 0.85
@@ -96,7 +95,7 @@ export class PortfolioService {
 
   async getSymbols(user: AuthUser): Promise<Symbol[]> {
     if (clientAuthService.isCurrentUserMock()) {
-      return mockSymbols
+      return mockDataStore.getSymbols()
     }
 
     try {
@@ -118,7 +117,7 @@ export class PortfolioService {
 
   async getTransactions(user: AuthUser): Promise<Transaction[]> {
     if (clientAuthService.isCurrentUserMock()) {
-      return mockTransactions
+      return mockDataStore.getTransactions()
     }
 
     try {

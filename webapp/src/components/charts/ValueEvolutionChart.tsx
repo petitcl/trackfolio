@@ -112,11 +112,14 @@ export default function ValueEvolutionChart({
   const values = filteredData.map(point => point.totalValue * USD_TO_EUR_RATE)
   const cumulativeInvested = showInvested ? calculateCumulativeInvested(filteredData) : []
 
-  const datasets = [
+  const datasets: any[] = [
     {
       label: `${valueLabel} (${currency})`,
       data: values,
-      ...CHART_CONFIGS.lineChart.primaryLine,
+      borderColor: CHART_CONFIGS.lineChart.primaryLine.borderColor,
+      backgroundColor: CHART_CONFIGS.lineChart.primaryLine.backgroundColor,
+      pointBackgroundColor: CHART_CONFIGS.lineChart.primaryLine.pointBackgroundColor,
+      pointBorderColor: CHART_CONFIGS.lineChart.primaryLine.pointBorderColor,
       fill: false,
       tension: 0.1,
       pointRadius: 0,
@@ -128,7 +131,10 @@ export default function ValueEvolutionChart({
     datasets.push({
       label: `${investedLabel} (${currency})`,
       data: cumulativeInvested,
-      ...CHART_CONFIGS.lineChart.secondaryLine,
+      borderColor: CHART_CONFIGS.lineChart.secondaryLine.borderColor,
+      backgroundColor: CHART_CONFIGS.lineChart.secondaryLine.backgroundColor,
+      pointBackgroundColor: CHART_CONFIGS.lineChart.secondaryLine.pointBackgroundColor,
+      pointBorderColor: CHART_CONFIGS.lineChart.secondaryLine.pointBorderColor,
       fill: false,
       tension: 0.1,
       pointRadius: 0,

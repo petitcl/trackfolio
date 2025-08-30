@@ -483,10 +483,10 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           title={`${symbol} Actions`}
           actions={[
             {
-              id: 'add-transaction',
+              id: 'add-holding',
               icon: '📈',
-              label: 'Add Transaction',
-              onClick: () => console.log('Add transaction for', symbol)
+              label: 'Add Holding',
+              onClick: () => router.push('/add-holding')
             },
             {
               id: 'import-transactions', 

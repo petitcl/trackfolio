@@ -452,16 +452,16 @@ export default function Dashboard({ user }: DashboardProps) {
           title="Quick Actions"
           actions={[
             {
-              id: 'add-transaction',
+              id: 'add-holding',
               icon: '📈',
-              label: 'Add Transaction',
-              onClick: () => console.log('Add transaction')
+              label: 'Add Holding',
+              onClick: () => router.push('/add-holding')
             },
             {
               id: 'add-custom-asset',
               icon: '🏠',
               label: 'Add Custom Asset',
-              onClick: () => console.log('Add custom asset')
+              onClick: () => router.push('/add-holding')
             },
             {
               id: 'update-prices',

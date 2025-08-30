@@ -36,7 +36,8 @@ interface PortfolioHistoryChartProps {
 }
 
 const getAssetTypeColor = (assetType: string): string => {
-  return CHART_COLORS[assetType as keyof typeof CHART_COLORS] || CHART_COLORS.other
+  const color = CHART_COLORS[assetType as keyof typeof CHART_COLORS]
+  return (typeof color === 'string' ? color : CHART_COLORS.other) as string
 }
 
 const assetTypeLabels: Record<string, string> = {
