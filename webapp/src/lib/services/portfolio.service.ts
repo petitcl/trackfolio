@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import { clientAuthService } from '@/lib/auth/client.auth.service'
-import type { Transaction, Symbol } from '@/lib/supabase/database.types'
+import type { Transaction, Symbol, Database } from '@/lib/supabase/database.types'
 import { 
   mockSymbolPriceHistory,
   type HistoricalDataPoint 
@@ -475,6 +475,181 @@ export class PortfolioService {
       positions: [],
       dailyChange: { value: 0, percentage: 0 },
       totalPnL: { realized: 0, unrealized: 0, total: 0 }
+    }
+  }
+
+  /**
+   * Create or get a symbol in the database
+   * 
+   * IMPORTANT: Symbol creation logic:
+   * - For custom assets (is_custom = true): Creates the symbol in the database
+   * - For non-custom assets (stocks, ETFs, crypto): Assumes the symbol already exists
+   *   in the backend. Does NOT attempt to create non-custom symbols as they should
+   *   be pre-populated or managed by backend services with proper market data.
+   */
+  async createOrGetSymbol(symbolData: {
+    symbol: string
+    name: string
+    asset_type: Database["public"]["Enums"]["asset_type"]
+    is_custom: boolean
+    created_by_user_id?: string | null
+    last_price?: number | null
+  }): Promise<Symbol | null> {
+    try {
+      // For non-custom symbols, we assume they exist in the backend
+      // We don't attempt to create them as they should be pre-populated
+      if (!symbolData.is_custom) {
+        console.log('📊 Non-custom symbol - assuming it exists in backend:', symbolData.symbol)
+        // Return a minimal symbol object for non-custom assets
+        // The actual data will be fetched from the backend when needed
+        return {
+          id: '', // Will be populated by backend
+          symbol: symbolData.symbol.toUpperCase(),
+          name: symbolData.name,
+          asset_type: symbolData.asset_type,
+          is_custom: false,
+          created_by_user_id: null,
+          last_price: symbolData.last_price || null,
+          last_updated: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        } as Symbol
+      }
+
+      // For custom symbols, check if it exists first
+      const { data: existingSymbol, error: fetchError } = await this.supabase
+        .from('symbols')
+        .select('*')
+        .eq('symbol', symbolData.symbol.toUpperCase())
+        .eq('created_by_user_id', symbolData.created_by_user_id)
+        .single()
+      
+      if (existingSymbol && !fetchError) {
+        console.log('📊 Custom symbol already exists:', existingSymbol.symbol)
+        return existingSymbol
+      }
+      
+      // Create new custom symbol
+      const { data: newSymbol, error: createError } = await this.supabase
+        .from('symbols')
+        .insert({
+          symbol: symbolData.symbol.toUpperCase(),
+          name: symbolData.name,
+          asset_type: symbolData.asset_type,
+          is_custom: true,
+          created_by_user_id: symbolData.created_by_user_id,
+          last_price: symbolData.last_price || null,
+          last_updated: new Date().toISOString()
+        })
+        .select()
+        .single()
+      
+      if (createError) {
+        console.error('Error creating custom symbol:', createError)
+        return null
+      }
+      
+      console.log('✅ Created new custom symbol:', newSymbol?.symbol)
+      return newSymbol
+    } catch (error) {
+      console.error('Error in createOrGetSymbol:', error)
+      return null
+    }
+  }
+
+  /**
+   * Add a new transaction (buy/sell/etc)
+   */
+  async addTransaction(transactionData: {
+    user_id: string
+    symbol: string
+    type: Database["public"]["Enums"]["transaction_type"]
+    quantity: number
+    price_per_unit: number
+    date: string
+    notes?: string | null
+    fees?: number
+    currency?: string
+    broker?: string | null
+  }): Promise<Transaction | null> {
+    try {
+      const { data: transaction, error } = await this.supabase
+        .from('transactions')
+        .insert({
+          user_id: transactionData.user_id,
+          symbol: transactionData.symbol.toUpperCase(),
+          type: transactionData.type,
+          quantity: transactionData.quantity,
+          price_per_unit: transactionData.price_per_unit,
+          date: transactionData.date,
+          notes: transactionData.notes || null,
+          fees: transactionData.fees || 0,
+          currency: transactionData.currency || 'USD',
+          broker: transactionData.broker || null
+        })
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('Error adding transaction:', error)
+        return null
+      }
+      
+      console.log('✅ Added transaction:', transaction?.id)
+      return transaction
+    } catch (error) {
+      console.error('Error in addTransaction:', error)
+      return null
+    }
+  }
+
+  /**
+   * Add a new holding (creates symbol if needed and adds buy transaction)
+   */
+  async addHolding(user: AuthUser, holdingData: {
+    symbol: string
+    name: string
+    assetType: Database["public"]["Enums"]["asset_type"]
+    quantity: number
+    purchasePrice: number
+    purchaseDate: string
+    notes?: string
+    isCustom: boolean
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Create or get the symbol
+      const symbol = await this.createOrGetSymbol({
+        symbol: holdingData.symbol,
+        name: holdingData.name,
+        asset_type: holdingData.assetType,
+        is_custom: holdingData.isCustom,
+        created_by_user_id: holdingData.isCustom ? user.id : null,
+        last_price: holdingData.purchasePrice
+      })
+      
+      if (!symbol) {
+        return { success: false, error: 'Failed to create or get symbol' }
+      }
+      
+      // Add the buy transaction
+      const transaction = await this.addTransaction({
+        user_id: user.id,
+        symbol: holdingData.symbol,
+        type: 'buy',
+        quantity: holdingData.quantity,
+        price_per_unit: holdingData.purchasePrice,
+        date: holdingData.purchaseDate,
+        notes: holdingData.notes
+      })
+      
+      if (!transaction) {
+        return { success: false, error: 'Failed to add transaction' }
+      }
+      
+      return { success: true }
+    } catch (error) {
+      console.error('Error adding holding:', error)
+      return { success: false, error: 'An unexpected error occurred' }
     }
   }
 

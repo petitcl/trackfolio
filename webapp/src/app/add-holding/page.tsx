@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { clientAuthService, type AuthUser } from '@/lib/auth/client.auth.service'
 import { portfolioService } from '@/lib/services/portfolio.service'
-import type { AssetType, Symbol } from '@/lib/supabase/database.types'
+import type { AssetType } from '@/lib/supabase/database.types'
 import { getClientMockDataStore } from '@/lib/mockDataStoreClient'
 import DemoModeBanner from '@/components/DemoModeBanner'
 import debounce from 'lodash/debounce'
@@ -73,6 +73,7 @@ export default function AddHoldingPage() {
           { symbol: 'AAPL', name: 'Apple Inc.', type: 'stock', exchange: 'NASDAQ' },
           { symbol: 'GOOGL', name: 'Alphabet Inc.', type: 'stock', exchange: 'NASDAQ' },
           { symbol: 'MSFT', name: 'Microsoft Corporation', type: 'stock', exchange: 'NASDAQ' },
+          { symbol: 'DDOG', name: 'Datadog Inc', type: 'stock', exchange: 'NASDAQ' },
           { symbol: 'BTC-USD', name: 'Bitcoin USD', type: 'crypto' },
           { symbol: 'ETH-USD', name: 'Ethereum USD', type: 'crypto' },
         ].filter(item => 
@@ -113,15 +114,6 @@ export default function AddHoldingPage() {
 
     try {
       setIsLoading(true)
-      
-      // Create or find the symbol
-      const symbolData: Partial<Symbol> = {
-        symbol: symbol.toUpperCase(),
-        name: name,
-        asset_type: assetType,
-        is_custom: isCustom,
-        created_by_user_id: isCustom ? user.id : null
-      }
 
       if (user.isDemo) {
         // For demo users, add to mock data store
@@ -139,20 +131,28 @@ export default function AddHoldingPage() {
         console.log('✅ Holding added to mock data store')
       } else {
         // For real users, use Supabase
-        // await portfolioService.addHolding(user, {
-        //   symbol: symbolData,
-        //   quantity: parseFloat(quantity),
-        //   purchasePrice: parseFloat(purchasePrice),
-        //   purchaseDate,
-        //   notes
-        // })
+        const result = await portfolioService.addHolding(user, {
+          symbol: symbol.toUpperCase(),
+          name: name,
+          assetType: assetType,
+          quantity: parseFloat(quantity),
+          purchasePrice: parseFloat(purchasePrice),
+          purchaseDate: purchaseDate,
+          notes: notes || undefined,
+          isCustom: isCustom
+        })
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to add holding')
+        }
+        
         console.log('✅ Holding added via Supabase')
       }
       
       router.push('/')
     } catch (error) {
       console.error('Error adding holding:', error)
-      alert('Error adding holding. Please try again.')
+      alert(`Error adding holding: ${error instanceof Error ? error.message : 'Please try again.'}`)
     } finally {
       setIsLoading(false)
     }
