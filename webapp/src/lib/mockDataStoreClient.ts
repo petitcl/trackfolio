@@ -187,6 +187,68 @@ class ClientMockDataStore {
     })
   }
 
+  updateTransaction(id: string, updates: {
+    type?: 'buy' | 'sell' | 'dividend' | 'bonus' | 'deposit' | 'withdrawal'
+    quantity?: number
+    pricePerUnit?: number
+    date?: string
+    fees?: number
+    currency?: string
+    broker?: string | null
+    notes?: string | null
+  }): boolean {
+    if (!this.initialized && typeof window !== 'undefined') {
+      this.initialize()
+    }
+    
+    const transactionIndex = this.transactions.findIndex(t => t.id === id)
+    if (transactionIndex === -1) {
+      console.error('Transaction not found for update:', id)
+      return false
+    }
+    
+    // Update the transaction
+    this.transactions[transactionIndex] = {
+      ...this.transactions[transactionIndex],
+      type: updates.type || this.transactions[transactionIndex].type,
+      quantity: updates.quantity !== undefined ? updates.quantity : this.transactions[transactionIndex].quantity,
+      price_per_unit: updates.pricePerUnit !== undefined ? updates.pricePerUnit : this.transactions[transactionIndex].price_per_unit,
+      date: updates.date || this.transactions[transactionIndex].date,
+      fees: updates.fees !== undefined ? updates.fees : this.transactions[transactionIndex].fees,
+      currency: updates.currency || this.transactions[transactionIndex].currency,
+      broker: updates.broker !== undefined ? updates.broker : this.transactions[transactionIndex].broker,
+      notes: updates.notes !== undefined ? updates.notes : this.transactions[transactionIndex].notes,
+      updated_at: new Date().toISOString()
+    }
+    
+    // Save to localStorage
+    this.saveToLocalStorage()
+    
+    console.log('📝 Updated transaction in mock data:', id)
+    return true
+  }
+
+  deleteTransaction(id: string): boolean {
+    if (!this.initialized && typeof window !== 'undefined') {
+      this.initialize()
+    }
+    
+    const transactionIndex = this.transactions.findIndex(t => t.id === id)
+    if (transactionIndex === -1) {
+      console.error('Transaction not found for deletion:', id)
+      return false
+    }
+    
+    // Remove the transaction
+    this.transactions.splice(transactionIndex, 1)
+    
+    // Save to localStorage
+    this.saveToLocalStorage()
+    
+    console.log('🗑️ Deleted transaction from mock data:', id)
+    return true
+  }
+
   reset(): void {
     this.transactions = [...mockTransactions]
     this.symbols = [...mockSymbols]
@@ -211,6 +273,8 @@ export const getClientMockDataStore = (): ClientMockDataStore => {
       getTransactions: () => [],
       getSymbols: () => [],
       addTransaction: () => ({} as Transaction),
+      updateTransaction: () => false,
+      deleteTransaction: () => false,
       addHolding: () => {},
       reset: () => {}
     } as ClientMockDataStore

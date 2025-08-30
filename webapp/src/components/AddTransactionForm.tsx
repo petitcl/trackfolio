@@ -31,9 +31,12 @@ interface AddTransactionFormProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (transactionData: TransactionFormData) => void
+  onDelete?: () => void
   symbol: string
   symbolName: string
   isLoading?: boolean
+  editMode?: boolean
+  initialData?: TransactionFormData
 }
 
 export interface TransactionFormData {
@@ -91,21 +94,26 @@ export default function AddTransactionForm({
   isOpen,
   onClose,
   onSubmit,
+  onDelete,
   symbol,
   symbolName,
   isLoading = false,
+  editMode = false,
+  initialData,
 }: AddTransactionFormProps) {
   const [activeTab, setActiveTab] = useState<'manual' | 'csv'>('manual')
-  const [formData, setFormData] = useState<TransactionFormData>({
-    type: 'buy',
-    quantity: 0,
-    pricePerUnit: 0,
-    date: new Date().toISOString().split('T')[0],
-    fees: 0,
-    broker: '',
-    currency: 'USD',
-    notes: '',
-  })
+  const [formData, setFormData] = useState<TransactionFormData>(
+    initialData || {
+      type: 'buy',
+      quantity: 0,
+      pricePerUnit: 0,
+      date: new Date().toISOString().split('T')[0],
+      fees: 0,
+      broker: '',
+      currency: 'USD',
+      notes: '',
+    }
+  )
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [csvValidationResult, setCsvValidationResult] = useState<CsvValidationResult | null>(null)
   const [isProcessingCsv, setIsProcessingCsv] = useState(false)
@@ -358,10 +366,10 @@ export default function AddTransactionForm({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                Add Transaction
+                {editMode ? 'Edit Transaction' : 'Add Transaction'}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Add a new transaction for {symbol} - {symbolName}
+                {editMode ? 'Edit transaction for' : 'Add a new transaction for'} {symbol} - {symbolName}
               </p>
             </div>
             <button
@@ -376,43 +384,45 @@ export default function AddTransactionForm({
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="px-6 pt-4">
-          <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('manual')
-                setCsvFile(null)
-                setCsvValidationResult(null)
-              }}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'manual'
-                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              Manual Entry
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('csv')
-              }}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'csv'
-                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
-            >
-              CSV Import
-            </button>
+        {/* Tab Navigation - Hidden in edit mode */}
+        {!editMode && (
+          <div className="px-6 pt-4">
+            <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('manual')
+                  setCsvFile(null)
+                  setCsvValidationResult(null)
+                }}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'manual'
+                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                Manual Entry
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('csv')
+                }}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'csv'
+                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                CSV Import
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Form Content */}
         <div className="px-6 py-4">
-          {activeTab === 'manual' ? (
+          {(activeTab === 'manual' || editMode) ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Transaction Type */}
               <div>
@@ -584,12 +594,23 @@ export default function AddTransactionForm({
                   disabled={isLoading}
                   className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isLoading ? 'Adding...' : 'Add Transaction'}
+                  {isLoading ? (editMode ? 'Updating...' : 'Adding...') : (editMode ? 'Update Transaction' : 'Add Transaction')}
                 </button>
+                {editMode && onDelete && (
+                  <button
+                    type="button"
+                    onClick={onDelete}
+                    disabled={isLoading}
+                    className="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Deleting...' : '🗑️ Delete'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                  disabled={isLoading}
+                  className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>

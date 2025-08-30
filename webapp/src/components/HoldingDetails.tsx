@@ -525,6 +525,7 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fees</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notes</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -554,6 +555,15 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                         {transaction.notes || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <button
+                          onClick={() => router.push(`/transactions/${transaction.id}/edit`)}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
+                          title="Edit transaction"
+                        >
+                          ✏️
+                        </button>
                       </td>
                     </tr>
                   )
@@ -598,8 +608,10 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           onConfirm={handleDeleteHolding}
           title="Delete Holding"
           message={`Are you sure you want to delete ${symbol}? This will permanently delete all transactions${holdingData?.symbol?.is_custom ? ', custom prices, and the custom symbol' : ' and custom prices'} associated with this holding. This action cannot be undone.`}
-          confirmText={isDeleting ? "Deleting..." : "Delete Holding"}
-          confirmButtonClass="bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+          confirmText="Delete Holding"
+          confirmButtonClass="bg-red-600 hover:bg-red-700 text-white"
+          isLoading={isDeleting}
+          loadingText="Deleting..."
         />
 
         {/* Add Transaction Form */}

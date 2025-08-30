@@ -617,6 +617,110 @@ export class PortfolioService {
   }
 
   /**
+   * Update an existing transaction - supports both real and demo users
+   */
+  async updateTransactionForUser(user: AuthUser, transactionId: string, transactionData: {
+    type: Database["public"]["Enums"]["transaction_type"]
+    quantity: number
+    pricePerUnit: number
+    date: string
+    notes?: string | null
+    fees?: number
+    currency?: string
+    broker?: string | null
+  }): Promise<{ success: boolean; transaction?: Transaction; error?: string }> {
+    try {
+      if (user.isDemo) {
+        // For demo users, update in mock data store
+        const success = getClientMockDataStore().updateTransaction(transactionId, {
+          type: transactionData.type,
+          quantity: transactionData.quantity,
+          pricePerUnit: transactionData.pricePerUnit,
+          date: transactionData.date,
+          fees: transactionData.fees,
+          currency: transactionData.currency,
+          broker: transactionData.broker,
+          notes: transactionData.notes
+        })
+        
+        if (!success) {
+          return { success: false, error: 'Transaction not found' }
+        }
+        
+        console.log('✅ Updated transaction in mock data store:', transactionId)
+        return { success: true }
+      } else {
+        // For real users, update in Supabase
+        const { data: transaction, error } = await this.supabase
+          .from('transactions')
+          .update({
+            type: transactionData.type,
+            quantity: transactionData.quantity,
+            price_per_unit: transactionData.pricePerUnit,
+            date: transactionData.date,
+            notes: transactionData.notes,
+            fees: transactionData.fees || 0,
+            currency: transactionData.currency || 'USD',
+            broker: transactionData.broker,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', transactionId)
+          .eq('user_id', user.id)
+          .select()
+          .single()
+        
+        if (error) {
+          console.error('Error updating transaction:', error)
+          return { success: false, error: 'Failed to update transaction in database' }
+        }
+        
+        console.log('✅ Updated transaction in database:', transaction.id)
+        return { success: true, transaction }
+      }
+    } catch (error) {
+      console.error('Error updating transaction:', error)
+      return { success: false, error: 'An unexpected error occurred' }
+    }
+  }
+
+  /**
+   * Delete a transaction - supports both real and demo users
+   */
+  async deleteTransactionForUser(user: AuthUser, transactionId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (user.isDemo) {
+        // For demo users, delete from mock data store
+        const success = getClientMockDataStore().deleteTransaction(transactionId)
+        
+        if (!success) {
+          return { success: false, error: 'Transaction not found' }
+        }
+        
+        console.log('✅ Deleted transaction from mock data store:', transactionId)
+        return { success: true }
+      } else {
+        // For real users, delete from Supabase
+        const { error } = await this.supabase
+          .from('transactions')
+          .delete()
+          .eq('id', transactionId)
+          .eq('user_id', user.id)
+        
+        if (error) {
+          console.error('Error deleting transaction:', error)
+          return { success: false, error: 'Failed to delete transaction from database' }
+        }
+        
+        console.log('✅ Deleted transaction from database:', transactionId)
+        return { success: true }
+      }
+    } catch (error) {
+      console.error('Error deleting transaction:', error)
+      return { success: false, error: 'An unexpected error occurred' }
+    }
+  }
+
+  /**
    * Add a new transaction (buy/sell/etc) - internal method for real users only
    */
   private async addTransaction(transactionData: {

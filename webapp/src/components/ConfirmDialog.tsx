@@ -11,6 +11,8 @@ interface ConfirmDialogProps {
   confirmText?: string
   cancelText?: string
   confirmButtonClass?: string
+  isLoading?: boolean
+  loadingText?: string
 }
 
 export default function ConfirmDialog({
@@ -21,7 +23,9 @@ export default function ConfirmDialog({
   message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  confirmButtonClass = 'bg-red-600 hover:bg-red-700 text-white'
+  confirmButtonClass = 'bg-red-600 hover:bg-red-700 text-white',
+  isLoading = false,
+  loadingText = 'Processing...'
 }: ConfirmDialogProps) {
   if (!isOpen) return null
 
@@ -46,18 +50,30 @@ export default function ConfirmDialog({
         <div className="flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+            disabled={isLoading}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cancelText}
           </button>
           <button
             onClick={() => {
               onConfirm()
-              onClose()
+              // Don't auto-close when loading - let the parent handle it
+              if (!isLoading) {
+                onClose()
+              }
             }}
-            className={`px-4 py-2 rounded-lg transition-colors ${confirmButtonClass}`}
+            disabled={isLoading}
+            className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${confirmButtonClass}`}
           >
-            {confirmText}
+            {isLoading ? (
+              <span className="flex items-center">
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                {loadingText}
+              </span>
+            ) : (
+              confirmText
+            )}
           </button>
         </div>
       </div>
