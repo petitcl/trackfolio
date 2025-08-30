@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
     pathname: request.nextUrl.pathname,
     hasSupabaseUser: !!user,
     hasDemoUser,
-    isDevelopment
+    isDemoEnabled
   })
 
   // Redirect unauthenticated users to login page

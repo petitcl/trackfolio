@@ -110,7 +110,7 @@ export class ClientAuthService {
   async signOut(): Promise<{ error?: AuthError }> {
     try {
       // Clear demo user from localStorage and cookie
-      if (this.isDevelopment && typeof window !== 'undefined') {
+      if (this.isDemoEnabled && typeof window !== 'undefined') {
         localStorage.removeItem(DEMO_USER_STORAGE_KEY)
         // Clear cookie
         document.cookie = `${DEMO_USER_COOKIE_NAME}=; path=/; max-age=0`
