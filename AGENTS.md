@@ -144,6 +144,12 @@ NODE_ENV=development  # Shows demo login button
 
 ## Development Guidelines
 
+### Git Workflow
+- **NEVER commit or push automatically** - Only make code changes
+- **User commits manually** - Let the user review and commit changes
+- **No automatic git operations** - Only use git commands when explicitly requested
+- **Exception**: Only commit/push when the user explicitly asks "commit this" or "push this"
+
 ### Code Conventions
 - **TypeScript strict mode** enabled
 - **Tailwind CSS** for all styling (no custom CSS)
