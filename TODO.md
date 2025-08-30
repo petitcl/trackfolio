@@ -32,13 +32,16 @@
 ## 🐛 Bug Fixes
 
 - ✅ Fix the light mode (it still doesn't work)
+- [ ] Make charts take into account custom prices
+- [ ] Revisit all charts styles + logic
 
 ## 🎯 Priority Features
 
 ### Transaction Management
 - ✅ **Add Transaction Page** - Form to add new transactions (buy, sell, dividend, etc.)
-- [ ] **Edit/Delete Transactions** - Modify existing transaction records
-- [ ] **Bulk Import Transactions** - CSV/Excel import functionality
+- ✅ **Add holding transaction csv** - Import transactions for holding via CSV
+- ✅ **Edit/Delete Transactions** - Modify existing transaction records
+- [ ] **Homepage Bulk Import Transactions** - Multi holding CSV import functionality from home page
 
 ### Holding Management  
 - ✅ **Add Holding Page**
@@ -47,18 +50,13 @@
 - [ ] **Custom Holding Price Management** - Manual price updates with history
 
 ### Data & Sync
-- [ ] **Update Prices Page** - Bulk price updates from external APIs
+- [ ] **Daily prices updates** - Daily prices updates
 - [ ] **Data Export** - Portfolio export to CSV
 - [ ] **Data Backup/Restore** - Portfolio backup
 
 ## 🎨 UI/UX Enhancements
 
 ## 🔧 Technical Improvements
-
-### Performance & Architecture
-- [ ] **Background Jobs** - Automated price updates via cron jobs
-- [ ] **Database Optimization** - Query optimization and indexing
-- [ ] **Component Architecture** - Extract more reusable components
 
 ### Security & Reliability  
 - [ ] **Input Validation** - Comprehensive form validation
