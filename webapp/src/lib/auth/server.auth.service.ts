@@ -14,24 +14,24 @@ const createMockUser = (): AuthUser => ({
 
 // Server-side auth service - only for server components
 export class ServerAuthService {
-  private isDevelopment = process.env.NODE_ENV === 'development'
+  private isDemoEnabled = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENABLE_DEMO === 'true'
 
   async getCurrentUser(): Promise<AuthResponse> {
     try {
       const supabase = await createServerClient()
       const { data: { user }, error } = await supabase.auth.getUser()
       
-      if (error && !this.isDevelopment) {
+      if (error && !this.isDemoEnabled) {
         return { error: { message: error.message } }
       }
       
-      // In development mode with placeholder credentials, return mock user if no real user
-      const currentUser = user || (this.isDevelopment ? createMockUser() : null)
+      // In demo-enabled mode with placeholder credentials, return mock user if no real user
+      const currentUser = user || (this.isDemoEnabled ? createMockUser() : null)
       
       return { user: currentUser as AuthUser | undefined }
     } catch (error) {
-      // In development mode, fallback to mock user
-      if (this.isDevelopment) {
+      // In demo-enabled mode, fallback to mock user
+      if (this.isDemoEnabled) {
         return { user: createMockUser() }
       }
       

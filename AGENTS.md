@@ -28,6 +28,7 @@ trackfolio/
 ### 💾 Database Schema
 - `transactions` - All portfolio transactions with full history
 - `symbols` - Asset symbols (public market + user custom assets)
+- `symbol_price_history` - Daily Price History of "real" symbols 
 - `user_symbol_prices` - Manual price overrides by users
 - `portfolio_snapshots` - Historical portfolio valuations
 
@@ -186,6 +187,31 @@ NODE_ENV=development  # Shows demo login button
 2. Regenerate TypeScript types if schema changes
 3. Update mock data to match new structure
 4. Test with sample queries
+
+### Full-Stack Feature Changes
+**Critical**: When modifying authentication, environment variables, or configuration that affects both client and server:
+
+1. **Client-side changes** (`/webapp/src/lib/auth/client.auth.service.ts`)
+   - Update authentication logic
+   - Modify environment variable usage
+   - Update localStorage/cookie handling
+
+2. **Server-side changes** (`/webapp/src/lib/auth/server.auth.service.ts`)
+   - **ALWAYS update server auth service** to match client changes
+   - Ensure same environment variable logic (e.g., `isDemoEnabled` vs `isDevelopment`)
+   - Update server-side authentication checks
+
+3. **Middleware updates** (`/webapp/src/middleware.ts`)
+   - Update route protection logic
+   - Ensure consistency with auth services
+   - Update environment variable checks
+
+4. **Build verification**
+   - Run `npm run build` after all changes
+   - Fix any TypeScript compilation errors
+   - Test both development and production modes
+
+**Common mistake**: Updating client-side auth logic but forgetting to update server-side auth service, causing production authentication issues.
 
 ## Troubleshooting
 

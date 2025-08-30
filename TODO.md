@@ -35,6 +35,7 @@
 - [ ] Make charts take into account custom prices
 - [ ] Revisit all charts styles + logic
 - [ ] Delete all traces of light theme (incl login page)
+- [ ] Fix demo mode outside of development env
 
 ## 🎯 Priority Features
 
