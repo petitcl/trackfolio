@@ -2,10 +2,11 @@
 // This mirrors the data structure from our sample-data.sql
 
 import type { Transaction, Symbol, PortfolioSnapshot, AssetType, TransactionType } from './supabase/database.types'
+import { MOCK_USER_ID, MOCK_USER_EMAIL } from './constants/mockConstants'
 
 export const mockUser = {
-  id: 'test-user-uuid',
-  email: 'test@trackfolio.com',
+  id: MOCK_USER_ID,
+  email: MOCK_USER_EMAIL,
   created_at: '2024-01-01T00:00:00Z',
   aud: 'authenticated',
   role: 'authenticated'
@@ -91,7 +92,7 @@ export const mockSymbols: Symbol[] = [
     last_price: 120000.00,
     last_updated: new Date().toISOString(),
     is_custom: true,
-    created_by_user_id: 'test-user-uuid',
+    created_by_user_id: MOCK_USER_ID,
     created_at: new Date().toISOString()
   },
   {
@@ -101,7 +102,7 @@ export const mockSymbols: Symbol[] = [
     last_price: 12500.00,
     last_updated: new Date().toISOString(),
     is_custom: true,
-    created_by_user_id: 'test-user-uuid',
+    created_by_user_id: MOCK_USER_ID,
     created_at: new Date().toISOString()
   },
   {
@@ -111,7 +112,7 @@ export const mockSymbols: Symbol[] = [
     last_price: 50.00,
     last_updated: new Date().toISOString(),
     is_custom: true,
-    created_by_user_id: 'test-user-uuid',
+    created_by_user_id: MOCK_USER_ID,
     created_at: new Date().toISOString()
   },
   {
@@ -130,7 +131,7 @@ export const mockTransactions: Transaction[] = [
   // Initial funding
   {
     id: '1',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-03-01',
     symbol: 'CASH',
     type: 'deposit' as TransactionType,
@@ -146,7 +147,7 @@ export const mockTransactions: Transaction[] = [
   // Stock purchases
   {
     id: '2',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-03-05',
     symbol: 'AAPL',
     type: 'buy' as TransactionType,
@@ -161,7 +162,7 @@ export const mockTransactions: Transaction[] = [
   },
   {
     id: '3',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-03-10',
     symbol: 'MSFT',
     type: 'buy' as TransactionType,
@@ -176,7 +177,7 @@ export const mockTransactions: Transaction[] = [
   },
   {
     id: '4',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-05-20',
     symbol: 'AAPL',
     type: 'buy' as TransactionType,
@@ -192,7 +193,7 @@ export const mockTransactions: Transaction[] = [
   // Crypto purchases
   {
     id: '5',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-07-10',
     symbol: 'BTC',
     type: 'buy' as TransactionType,
@@ -208,7 +209,7 @@ export const mockTransactions: Transaction[] = [
   // Custom investments
   {
     id: '6',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-01-15',
     symbol: 'MY_HOUSE',
     type: 'buy' as TransactionType,
@@ -223,7 +224,7 @@ export const mockTransactions: Transaction[] = [
   },
   {
     id: '7',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-06-10',
     symbol: 'VINTAGE_WATCH',
     type: 'buy' as TransactionType,
@@ -239,7 +240,7 @@ export const mockTransactions: Transaction[] = [
   // Selling activity
   {
     id: '8',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-08-05',
     symbol: 'AAPL',
     type: 'sell' as TransactionType,
@@ -255,7 +256,7 @@ export const mockTransactions: Transaction[] = [
   // Dividends
   {
     id: '9',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-08-15',
     symbol: 'AAPL',
     type: 'dividend' as TransactionType,
@@ -270,7 +271,7 @@ export const mockTransactions: Transaction[] = [
   },
   {
     id: '10',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-08-30',
     symbol: 'MSFT',
     type: 'dividend' as TransactionType,
@@ -286,7 +287,7 @@ export const mockTransactions: Transaction[] = [
   // Bonus shares
   {
     id: '11',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-09-15',
     symbol: 'MSFT',
     type: 'bonus' as TransactionType,
@@ -302,7 +303,7 @@ export const mockTransactions: Transaction[] = [
   // Additional cash transactions
   {
     id: '12',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-11-01',
     symbol: 'CASH',
     type: 'deposit' as TransactionType,
@@ -317,7 +318,7 @@ export const mockTransactions: Transaction[] = [
   },
   {
     id: '13',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-11-15',
     symbol: 'CASH',
     type: 'withdrawal' as TransactionType,
@@ -333,7 +334,7 @@ export const mockTransactions: Transaction[] = [
   // More recent activities
   {
     id: '14',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-12-01',
     symbol: 'BTC',
     type: 'buy' as TransactionType,
@@ -348,7 +349,7 @@ export const mockTransactions: Transaction[] = [
   },
   {
     id: '15',
-    user_id: 'test-user-uuid',
+    user_id: MOCK_USER_ID,
     date: '2024-12-15',
     symbol: 'AAPL',
     type: 'dividend' as TransactionType,

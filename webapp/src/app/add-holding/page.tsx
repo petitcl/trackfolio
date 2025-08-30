@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { clientAuthService, type AuthUser } from '@/lib/auth/client.auth.service'
 import { portfolioService } from '@/lib/services/portfolio.service'
 import type { AssetType, Symbol } from '@/lib/supabase/database.types'
-import { mockDataStore } from '@/lib/mockDataStore'
+import { getClientMockDataStore } from '@/lib/mockDataStoreClient'
+import DemoModeBanner from '@/components/DemoModeBanner'
 import debounce from 'lodash/debounce'
 
 interface SearchResult {
@@ -124,7 +125,7 @@ export default function AddHoldingPage() {
 
       if (user.isDemo) {
         // For demo users, add to mock data store
-        mockDataStore.addHolding({
+        getClientMockDataStore().addHolding({
           symbol: symbol.toUpperCase(),
           name: name,
           assetType: assetType,
@@ -179,8 +180,9 @@ export default function AddHoldingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <DemoModeBanner />
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <div className="mb-6">

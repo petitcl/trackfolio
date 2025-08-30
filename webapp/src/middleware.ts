@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { DEMO_USER_COOKIE_NAME } from '@/lib/constants/mockConstants'
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -37,7 +38,7 @@ export async function middleware(request: NextRequest) {
 
   // Check for demo user in development mode
   const isDevelopment = process.env.NODE_ENV === 'development'
-  const demoUserCookie = request.cookies.get('demo_user')
+  const demoUserCookie = request.cookies.get(DEMO_USER_COOKIE_NAME)
   const hasDemoUser = isDevelopment && demoUserCookie
 
   console.log('Middleware auth check:', {

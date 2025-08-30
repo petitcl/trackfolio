@@ -6,7 +6,7 @@ import {
   mockSymbolPriceHistory,
   type HistoricalDataPoint 
 } from '@/lib/mockData'
-import { mockDataStore } from '@/lib/mockDataStore'
+import { getClientMockDataStore } from '@/lib/mockDataStoreClient'
 
 // Currency conversion rate (mocked for now - in production would come from API)
 const USD_TO_EUR_RATE = 0.85
@@ -95,7 +95,7 @@ export class PortfolioService {
 
   async getSymbols(user: AuthUser): Promise<Symbol[]> {
     if (clientAuthService.isCurrentUserMock()) {
-      return mockDataStore.getSymbols()
+      return getClientMockDataStore().getSymbols()
     }
 
     try {
@@ -117,7 +117,7 @@ export class PortfolioService {
 
   async getTransactions(user: AuthUser): Promise<Transaction[]> {
     if (clientAuthService.isCurrentUserMock()) {
-      return mockDataStore.getTransactions()
+      return getClientMockDataStore().getTransactions()
     }
 
     try {

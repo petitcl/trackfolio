@@ -1,10 +1,11 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import type { AuthUser, AuthResponse } from './client.auth.service'
+import { MOCK_USER_ID, MOCK_USER_EMAIL } from '@/lib/constants/mockConstants'
 
 // Mock user for development mode
 const createMockUser = (): AuthUser => ({
-  id: 'mock-user-id',
-  email: 'test@trackfolio.com',
+  id: MOCK_USER_ID,
+  email: MOCK_USER_EMAIL,
   user_metadata: {},
   app_metadata: {},
   aud: 'authenticated',

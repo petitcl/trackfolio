@@ -1,5 +1,6 @@
 import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import { MOCK_USER_ID, MOCK_USER_EMAIL, DEMO_USER_STORAGE_KEY, DEMO_USER_COOKIE_NAME } from '@/lib/constants/mockConstants'
 
 export interface AuthUser {
   id: string
@@ -23,8 +24,8 @@ export interface AuthResponse {
 
 // Mock user for development mode
 const createMockUser = (): AuthUser => ({
-  id: 'mock-user-id',
-  email: 'test@trackfolio.com',
+  id: MOCK_USER_ID,
+  email: MOCK_USER_EMAIL,
   user_metadata: {},
   app_metadata: {},
   aud: 'authenticated',
@@ -93,9 +94,9 @@ export class ClientAuthService {
     const mockUser = createMockUser()
     
     if (typeof window !== 'undefined') {
-      localStorage.setItem('demo_user', JSON.stringify(mockUser))
+      localStorage.setItem(DEMO_USER_STORAGE_KEY, JSON.stringify(mockUser))
       // Set cookie for middleware
-      document.cookie = `demo_user=${JSON.stringify(mockUser)}; path=/; max-age=3600`
+      document.cookie = `${DEMO_USER_COOKIE_NAME}=${JSON.stringify(mockUser)}; path=/; max-age=3600`
       console.log('👨‍💼 Demo user stored in localStorage and cookie')
     }
     
@@ -110,9 +111,9 @@ export class ClientAuthService {
     try {
       // Clear demo user from localStorage and cookie
       if (this.isDevelopment && typeof window !== 'undefined') {
-        localStorage.removeItem('demo_user')
+        localStorage.removeItem(DEMO_USER_STORAGE_KEY)
         // Clear cookie
-        document.cookie = 'demo_user=; path=/; max-age=0'
+        document.cookie = `${DEMO_USER_COOKIE_NAME}=; path=/; max-age=0`
         console.log('👨‍💼 Demo user cleared from localStorage and cookie')
       }
       
@@ -132,7 +133,7 @@ export class ClientAuthService {
     try {
       // In development mode, check if we have a demo user in localStorage
       if (this.isDevelopment && typeof window !== 'undefined') {
-        const demoUser = localStorage.getItem('demo_user')
+        const demoUser = localStorage.getItem(DEMO_USER_STORAGE_KEY)
         if (demoUser) {
           console.log('👨‍💼 Demo user found in localStorage')
           return { user: JSON.parse(demoUser) as AuthUser }
@@ -163,12 +164,12 @@ export class ClientAuthService {
   isCurrentUserMock(): boolean {
     // Check if we're in development and have demo user data
     if (this.isDevelopment && typeof window !== 'undefined') {
-      const demoUser = localStorage.getItem('demo_user')
+      const demoUser = localStorage.getItem(DEMO_USER_STORAGE_KEY)
       if (demoUser) {
         try {
           const user = JSON.parse(demoUser) as AuthUser
           // Check for mock user identifiers
-          return user.email === 'test@trackfolio.com' || user.id === 'mock-user-id'
+          return user.email === MOCK_USER_EMAIL || user.id === MOCK_USER_ID
         } catch (error) {
           // If we can't parse the demo user data, assume it's not mock
           return false

@@ -10,6 +10,7 @@ import ValueEvolutionChart from './charts/ValueEvolutionChart'
 import TimeRangeSelector, { type TimeRange } from './TimeRangeSelector'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import QuickActions, { type QuickAction } from './QuickActions'
+import DemoModeBanner from './DemoModeBanner'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -272,6 +273,9 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           </div>
         </div>
       </header>
+
+      {/* Demo Mode Banner */}
+      <DemoModeBanner />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Time Range Selector */}

@@ -11,6 +11,7 @@ import PortfolioRepartitionChart from '@/components/charts/PortfolioRepartitionC
 import PortfolioHistoryChart from '@/components/charts/PortfolioHistoryChart'
 import PortfolioValueEvolutionChart from '@/components/charts/PortfolioValueEvolutionChart'
 import QuickActions from '@/components/QuickActions'
+import DemoModeBanner from '@/components/DemoModeBanner'
 
 interface DashboardProps {
   user: AuthUser
@@ -195,6 +196,9 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
         </div>
       </header>
+
+      {/* Demo Mode Banner */}
+      <DemoModeBanner />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Time Range Selector */}
@@ -474,18 +478,6 @@ export default function Dashboard({ user }: DashboardProps) {
           className="mt-8"
         />
 
-        {/* Footer Info */}
-        <div className="mt-8 text-center">
-          <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <p className="text-sm text-blue-700 dark:text-blue-300">
-              <strong>Demo Mode:</strong> This app is running with mock data for testing. 
-              Connect your Supabase database to see real portfolio data.
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-              Portfolio includes: Stocks, Crypto, Real Estate, Collectibles • Total: {formatCurrency(portfolioData.totalValue)}
-            </p>
-          </div>
-        </div>
       </main>
     </div>
   )
