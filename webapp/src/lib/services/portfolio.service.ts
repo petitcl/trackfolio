@@ -223,7 +223,7 @@ export class PortfolioService {
         .select('date, close_price')
         .eq('symbol', symbol)
       
-      historicalPrices.forEach(p => priceMap.set(p.date, Number(p.close_price)))
+      historicalPrices?.forEach(p => priceMap.set(p.date, Number(p.close_price)))
     }
     
     return priceMap
@@ -517,12 +517,18 @@ export class PortfolioService {
       }
 
       // For custom symbols, check if it exists first
-      const { data: existingSymbol, error: fetchError } = await this.supabase
+      const query = this.supabase
         .from('symbols')
         .select('*')
         .eq('symbol', symbolData.symbol.toUpperCase())
-        .eq('created_by_user_id', symbolData.created_by_user_id)
-        .single()
+      
+      if (symbolData.created_by_user_id) {
+        query.eq('created_by_user_id', symbolData.created_by_user_id)
+      } else {
+        query.is('created_by_user_id', null)
+      }
+      
+      const { data: existingSymbol, error: fetchError } = await query.single()
       
       if (existingSymbol && !fetchError) {
         console.log('📊 Custom symbol already exists:', existingSymbol.symbol)

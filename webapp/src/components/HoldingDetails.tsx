@@ -593,8 +593,7 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
               id: 'delete-holding',
               icon: '🗑️',
               label: 'Delete Holding',
-              onClick: () => setShowDeleteConfirm(true),
-              className: 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
+              onClick: () => setShowDeleteConfirm(true)
             }
           ]}
           columns={3}

@@ -1,4 +1,4 @@
-import { mockTransactions, mockSymbols, type MockTransaction, type MockSymbol } from './mockData'
+import { mockTransactions, mockSymbols } from './mockData'
 import type { Transaction, Symbol } from './supabase/database.types'
 import { MOCK_USER_ID, MOCK_DATA_STORAGE_KEY } from './constants/mockConstants'
 

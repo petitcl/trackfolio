@@ -277,7 +277,7 @@ export const getClientMockDataStore = (): ClientMockDataStore => {
       deleteTransaction: () => false,
       addHolding: () => {},
       reset: () => {}
-    } as ClientMockDataStore
+    } as unknown as ClientMockDataStore
   }
   
   if (!instance) {

@@ -319,8 +319,8 @@ export default function AddTransactionForm({
             date: transaction.date,
             fees: transaction.fees,
             currency: transaction.currency,
-            broker: transaction.broker,
-            notes: transaction.notes
+            broker: transaction.broker || undefined,
+            notes: transaction.notes || undefined
           }
           
           await onSubmit(formData)
