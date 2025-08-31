@@ -37,8 +37,7 @@
 - ✅ Fix demo mode outside of development env
 - [ ] Make charts take into account custom prices
 - [ ] Revisit all charts styles + logic
-- [ ] Fix hover on buttons
-- [ ] Creating a custom holding should redirect to holding detail page instead of homepage 
+- [ ] Add cursor: pointer; hover on all buttons
 
 ## 🎯 Priority Features
 
@@ -58,12 +57,19 @@
 - [ ] **Daily prices updates** - Daily prices updates
 - [ ] **Data Export** - Portfolio export to CSV
 - [ ] **Data Backup/Restore** - Portfolio backup
+- [ ] **Database backups** - Automatic Database Backups
 
 ### Other
-- [ ] Multi currency support
+- [ ] Multi currency support (EUR, USD, JPY, GBP, RMB)
 
 ## 🎨 UI/UX Enhancements
 - [ ] Hardcoded list of brokers to pick from
+- [ ] Infinite scrolling in Transaction History
+- [ ] Creating a custom holding should redirect to holding detail page instead of homepage 
+- [ ] Delete holding button should be red / danger
+- [ ] Edit custom holding price
+- [ ] Edit + Delete button for both custom prices and transactions
+- [ ] Use confirm modal for delete price & delete transactions
 - [ ] Enhance fonts
 
 ## 🔧 Technical Improvements

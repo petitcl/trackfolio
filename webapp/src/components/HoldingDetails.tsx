@@ -12,8 +12,8 @@ import type { HistoricalDataPoint } from '@/lib/mockData'
 import QuickActions from './QuickActions'
 import DemoModeBanner from './DemoModeBanner'
 import ConfirmDialog from './ConfirmDialog'
-import AddTransactionForm, { type TransactionFormData } from './AddTransactionForm'
 import PriceManagement from './PriceManagement'
+import TransactionManagement from './TransactionManagement'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -35,8 +35,6 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('all')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [showAddTransaction, setShowAddTransaction] = useState(false)
-  const [isAddingTransaction, setIsAddingTransaction] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -144,58 +142,6 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
     }
   }
 
-  const handleAddTransaction = async (transactionData: TransactionFormData) => {
-    setIsAddingTransaction(true)
-    try {
-      // Add transaction via portfolio service
-      const result = await portfolioService.addTransactionForUser(user, {
-        symbol: symbol,
-        type: transactionData.type,
-        quantity: transactionData.quantity,
-        pricePerUnit: transactionData.pricePerUnit,
-        date: transactionData.date,
-        fees: transactionData.fees,
-        currency: transactionData.currency,
-        broker: transactionData.broker,
-        notes: transactionData.notes
-      })
-      
-      if (!result.success) {
-        setError(result.error || 'Failed to add transaction')
-        return
-      }
-      
-      console.log('✅ Transaction added successfully:', result.transaction?.id)
-      setShowAddTransaction(false)
-      
-      // Refresh holding data
-      const [portfolioData, symbols, transactions, historicalData] = await Promise.all([
-        portfolioService.getPortfolioData(user),
-        portfolioService.getSymbols(user),
-        portfolioService.getTransactions(user),
-        portfolioService.getHoldingHistoricalData(user, symbol)
-      ])
-
-      const symbolData = symbols.find(s => s.symbol === symbol)
-      const symbolTransactions = transactions.filter(t => t.symbol === symbol)
-      const position = portfolioData.positions.find(p => p.symbol === symbol) || null
-
-      setHoldingData({
-        position,
-        symbol: symbolData || null,
-        transactions: symbolTransactions,
-        historicalData,
-        portfolioData
-      })
-
-      console.log('✅ Data refreshed after transaction addition')
-    } catch (err) {
-      console.error('Error adding transaction:', err)
-      setError('An unexpected error occurred while adding the transaction')
-    } finally {
-      setIsAddingTransaction(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -482,71 +428,18 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           </div>
         )}
 
-        {/* Transaction History */}
-        <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md border dark:border-gray-700 mb-8">
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">Transaction History</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-              All transactions for {symbol}
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Quantity</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fees</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notes</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {transactions.map((transaction) => {
-                  const total = transaction.quantity * transaction.price_per_unit + transaction.fees
-                  return (
-                    <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                        {new Date(transaction.date).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTransactionTypeColor(transaction.type)}`}>
-                          {transaction.type.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                        {transaction.quantity.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                        {formatCurrency(transaction.price_per_unit)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                        {formatCurrency(transaction.fees)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(total)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        {transaction.notes || '-'}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <button
-                          onClick={() => router.push(`/transactions/${transaction.id}/edit`)}
-                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
-                          title="Edit transaction"
-                        >
-                          ✏️
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+        {/* Transaction Management */}
+        <div className="mb-8">
+          <TransactionManagement
+            user={user}
+            symbol={symbol}
+            symbolName={symbolData?.name || 'Unknown Asset'}
+            transactions={transactions}
+            onTransactionUpdated={() => {
+              // Reload the holding data when transactions are updated
+              window.location.reload() // Temporary solution - in production this should be more elegant
+            }}
+          />
         </div>
 
         {/* Price Management (for custom assets only) */}
@@ -561,12 +454,6 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           title={`${symbol} Actions`}
           actions={[
             {
-              id: 'add-transaction', 
-              icon: '➕',
-              label: 'Add Transaction',
-              onClick: () => setShowAddTransaction(true)
-            },
-            {
               id: 'export-data',
               icon: '📤', 
               label: 'Export Data',
@@ -579,7 +466,7 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
               onClick: () => setShowDeleteConfirm(true)
             }
           ]}
-          columns={3}
+          columns={2}
           className="mt-8"
         />
 
@@ -596,15 +483,6 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           loadingText="Deleting..."
         />
 
-        {/* Add Transaction Form */}
-        <AddTransactionForm
-          isOpen={showAddTransaction}
-          onClose={() => setShowAddTransaction(false)}
-          onSubmit={handleAddTransaction}
-          symbol={symbol}
-          symbolName={symbolData?.name || 'Unknown Asset'}
-          isLoading={isAddingTransaction}
-        />
       </main>
     </div>
   )
