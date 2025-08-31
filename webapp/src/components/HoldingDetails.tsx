@@ -302,6 +302,12 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{symbol} Analytics</h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Performance and value evolution over time</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  Last Updated: {symbolData?.last_updated ? 
+                    new Date(symbolData.last_updated).toLocaleDateString() : 
+                    'Never'
+                  }
+                </p>
               </div>
               <TimeRangeSelector
                 selectedRange={timeRange}
@@ -322,15 +328,6 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Current Price</dt>
                   <dd className="text-lg font-semibold text-gray-900 dark:text-white">
                     {formatCurrency(symbolData?.last_price || 0)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
-                  <dd className="text-sm text-gray-600 dark:text-gray-300">
-                    {symbolData?.last_updated ? 
-                      new Date(symbolData.last_updated).toLocaleDateString() : 
-                      'Never'
-                    }
                   </dd>
                 </div>
                 <div>

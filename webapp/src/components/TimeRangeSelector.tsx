@@ -2,7 +2,7 @@
 
 import React from 'react'
 
-export type TimeRange = '1d' | '5d' | '1m' | '6m' | 'ytd' | '1y' | '5y' | 'all'
+export type TimeRange = '5d' | '1m' | '6m' | 'ytd' | '1y' | '5y' | 'all'
 
 interface TimeRangeSelectorProps {
   selectedRange: TimeRange
@@ -11,7 +11,6 @@ interface TimeRangeSelectorProps {
 }
 
 const timeRanges: { key: TimeRange; label: string }[] = [
-  { key: '1d', label: '1D' },
   { key: '5d', label: '5D' },
   { key: '1m', label: '1M' },
   { key: '6m', label: '6M' },
