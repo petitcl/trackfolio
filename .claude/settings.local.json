@@ -18,7 +18,8 @@
       "Bash(npx next:*)",
       "Bash(node:*)",
       "WebFetch(domain:www.alphavantage.co)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npm run backfill-symbol:local:*)"
     ],
     "deny": [],
     "ask": [],

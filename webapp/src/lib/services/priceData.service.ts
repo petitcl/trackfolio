@@ -80,6 +80,10 @@ class PriceDataService {
     if (data['Note']) {
       throw new Error(`Alpha Vantage API rate limit: ${data['Note']}`)
     }
+    
+    if (data['Information']) {
+      throw new Error(`Alpha Vantage API rate limit: ${data['Information']}`)
+    }
 
     const timeSeries = data['Time Series (Digital Currency Daily)']
     if (!timeSeries) {
@@ -161,6 +165,10 @@ class PriceDataService {
         if (data['Note']) {
           throw new Error(`Alpha Vantage API rate limit: ${data['Note']}`)
         }
+        
+        if (data['Information']) {
+          throw new Error(`Alpha Vantage API rate limit: ${data['Information']}`)
+        }
 
         const quote = data['Global Quote']
         if (!quote) {
@@ -222,6 +230,10 @@ class PriceDataService {
         
         if (data['Note']) {
           throw new Error(`Alpha Vantage API rate limit: ${data['Note']}`)
+        }
+        
+        if (data['Information']) {
+          throw new Error(`Alpha Vantage API rate limit: ${data['Information']}`)
         }
 
         const timeSeries = data['Time Series (Daily)']
@@ -465,6 +477,8 @@ class PriceDataService {
             console.warn(`Alpha Vantage API error: ${data['Error Message']}`)
           } else if (data['Note']) {
             console.warn(`Alpha Vantage API rate limit: ${data['Note']}`)
+          } else if (data['Information']) {
+            console.warn(`Alpha Vantage API rate limit: ${data['Information']}`)
           } else {
             const bestMatches = data['bestMatches']
             if (bestMatches && Array.isArray(bestMatches)) {
