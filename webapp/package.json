@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "update-daily-prices": "node scripts/update-daily-prices.js"
+    "postinstall": "npm rebuild lightningcss"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
