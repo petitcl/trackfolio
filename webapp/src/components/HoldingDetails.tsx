@@ -287,17 +287,6 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
                 </div>
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                {formatCurrency(symbolData?.last_price || 0)}
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Last updated: {symbolData?.last_updated ? 
-                  new Date(symbolData.last_updated).toLocaleDateString() : 
-                  'Never'
-                }
-              </div>
-            </div>
           </div>
         </div>
       </header>
@@ -329,6 +318,21 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
             <div className="p-5">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Current Position</h3>
               <div className="space-y-3">
+                <div>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Current Price</dt>
+                  <dd className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {formatCurrency(symbolData?.last_price || 0)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Updated</dt>
+                  <dd className="text-sm text-gray-600 dark:text-gray-300">
+                    {symbolData?.last_updated ? 
+                      new Date(symbolData.last_updated).toLocaleDateString() : 
+                      'Never'
+                    }
+                  </dd>
+                </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Quantity</dt>
                   <dd className="text-lg font-semibold text-gray-900 dark:text-white">
