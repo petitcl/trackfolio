@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
           symbol: symbol.symbol,
           date: today, // Use today's date for consistency
           close_price: quote.price,
-          data_source: 'alpha_vantage'
+          data_source: quote.provider || 'unknown'
         })
 
         // Prepare symbol last_price update
@@ -153,18 +153,21 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Batch insert price history data
+    // Batch upsert price history data (insert or update on conflict)
     if (priceHistoryInserts.length > 0) {
       const { error: historyError } = await supabase
         .from('symbol_price_history')
-        .insert(priceHistoryInserts)
+        .upsert(priceHistoryInserts, { 
+          onConflict: 'symbol,date',
+          ignoreDuplicates: false // This ensures updates happen on conflict
+        })
 
       if (historyError) {
-        console.error('Error inserting price history:', historyError)
-        throw new Error(`Failed to insert price history: ${historyError.message}`)
+        console.error('Error upserting price history:', historyError)
+        throw new Error(`Failed to upsert price history: ${historyError.message}`)
       }
 
-      console.log(`💾 Inserted ${priceHistoryInserts.length} price history records`)
+      console.log(`💾 Upserted ${priceHistoryInserts.length} price history records`)
     }
 
     // Batch update symbol last_price
