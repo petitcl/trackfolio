@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     // Check if symbol exists in our database
     const { data: symbolData, error: symbolError } = await supabase
       .from('symbols')
-      .select('symbol, name, asset_type, is_custom')
+      .select('symbol, name, asset_type, currency, is_custom')
       .eq('symbol', upperSymbol)
       .single()
 
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     // Map asset type to symbol type for the price service
     const symbolType = mapAssetTypeToSymbolType(symbolData.asset_type)
-    const baseCurrency: BaseCurrency = 'USD' // Default to USD, could be extended to support other currencies
+    const baseCurrency: BaseCurrency = (symbolData.currency || 'USD') as BaseCurrency // Use symbol's currency, default to USD
     
     // Fetch historical price data from Alpha Vantage
     console.log(`📈 Fetching historical prices for ${upperSymbol} (${symbolType}, ${baseCurrency})...`)

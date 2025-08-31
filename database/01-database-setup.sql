@@ -30,7 +30,7 @@ CREATE TABLE symbols (
     symbol TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     asset_type asset_type DEFAULT 'stock' NOT NULL,
-    currency TEXT,
+    currency TEXT NOT NULL,
     last_price DECIMAL(20,8),
     last_updated TIMESTAMPTZ,
     is_custom BOOLEAN DEFAULT FALSE NOT NULL,

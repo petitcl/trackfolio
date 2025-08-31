@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     // Get all non-custom symbols that need price updates (only market-data symbols)
     const { data: symbols, error: symbolsError } = await supabase
       .from('symbols')
-      .select('symbol, name, asset_type')
+      .select('symbol, name, asset_type, currency')
       .eq('is_custom', false)
       .in('asset_type', ['stock', 'etf', 'crypto'])
       .order('symbol')
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
         return {
           symbol: s.symbol,
           symbolType: mapAssetTypeToSymbolType(s.asset_type),
-          baseCurrency: 'USD' as BaseCurrency // Default to USD for all symbols
+          baseCurrency: (s.currency || 'USD') as BaseCurrency // Use symbol's currency, default to USD
         }
       } catch (error) {
         console.error(`Skipping ${s.symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`)

@@ -4,7 +4,7 @@
  */
 
 export type SymbolType = 'stock' | 'crypto' | 'etf'
-export type BaseCurrency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CNY' | 'CAD' | 'AUD'
+export type BaseCurrency = 'USD' | 'EUR'
 
 export interface PriceData {
   symbol: string
@@ -26,9 +26,30 @@ export interface DailyPriceResponse {
   lastUpdated: string
 }
 
+export interface SymbolSearchResult {
+  symbol: string
+  name: string
+  type: string
+  region: string
+  marketOpen: string
+  marketClose: string
+  timezone: string
+  currency: string
+  matchScore: string
+}
+
+// Crypto symbols cache interface
+interface CryptoSymbolCache {
+  symbols: Record<string, SymbolSearchResult>
+  lastUpdated: number
+  ttl: number // Time to live in milliseconds
+}
+
 class PriceDataService {
   private readonly apiKey: string
   private readonly baseUrl = 'https://www.alphavantage.co/query'
+  private readonly cryptoListUrl = 'https://www.alphavantage.co/digital_currency_list/'
+  private cryptoCache: CryptoSymbolCache | null = null
 
   constructor() {
     this.apiKey = process.env.ALPHA_VANTAGE_API_KEY || ''
@@ -291,6 +312,209 @@ class PriceDataService {
     const isDuringMarketHours = utcHour >= 14 && utcHour < 21
     
     return isWeekday && isDuringMarketHours
+  }
+
+  /**
+   * Parse CSV text into crypto symbols dictionary
+   * @param csvText Raw CSV content from Alpha Vantage
+   */
+  private parseCryptoCsv(csvText: string): Record<string, SymbolSearchResult> {
+    const symbols: Record<string, SymbolSearchResult> = {}
+    const lines = csvText.trim().split('\n')
+
+    // Skip header if it exists
+    const startIndex = lines[0]?.toLowerCase().includes('currency') ? 1 : 0
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (!line) continue
+
+      // Parse CSV line (handle quotes and commas in names)
+      const csvMatch = line.match(/^([^,]+),(.+)$/)
+      if (csvMatch) {
+        const symbol = csvMatch[1].trim()
+        const name = csvMatch[2].trim()
+
+        if (symbol && name) {
+          symbols[symbol] = {
+            symbol,
+            name,
+            type: 'Cryptocurrency',
+            region: 'Global',
+            marketOpen: '00:00',
+            marketClose: '23:59',
+            timezone: 'UTC',
+            currency: 'USD',
+            matchScore: '1.0000'
+          }
+        }
+      }
+    }
+
+    return symbols
+  }
+
+  /**
+   * Fetch cryptocurrency symbols from Alpha Vantage CSV endpoint
+   * @param forceRefresh Force refresh even if cache is valid
+   */
+  private async fetchCryptoSymbols(forceRefresh = false): Promise<Record<string, SymbolSearchResult>> {
+    const now = Date.now()
+    const cacheValidFor = 24 * 60 * 60 * 1000 // 24 hours
+
+    // Return cached data if valid and not forcing refresh
+    if (!forceRefresh && this.cryptoCache && 
+        (now - this.cryptoCache.lastUpdated) < this.cryptoCache.ttl) {
+      console.log('Using cached crypto symbols')
+      return this.cryptoCache.symbols
+    }
+
+    try {
+      console.log('Fetching cryptocurrency symbols from Alpha Vantage...')
+      const response = await fetch(this.cryptoListUrl)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch crypto list: ${response.status} ${response.statusText}`)
+      }
+
+      const csvText = await response.text()
+      const symbols = this.parseCryptoCsv(csvText)
+
+      // Update cache
+      this.cryptoCache = {
+        symbols,
+        lastUpdated: now,
+        ttl: cacheValidFor
+      }
+
+      console.log(`✅ Loaded ${Object.keys(symbols).length} cryptocurrency symbols`)
+      return symbols
+
+    } catch (error) {
+      console.error('Error fetching crypto symbols:', error)
+      
+      // Return cached data if available, even if expired
+      if (this.cryptoCache) {
+        console.warn('Using expired crypto cache due to fetch error')
+        return this.cryptoCache.symbols
+      }
+      
+      // Fallback to minimal crypto set if no cache available
+      console.warn('Using minimal crypto fallback due to fetch error')
+      return {
+        'BTC': { symbol: 'BTC', name: 'Bitcoin', type: 'Cryptocurrency', region: 'Global', marketOpen: '00:00', marketClose: '23:59', timezone: 'UTC', currency: 'USD', matchScore: '1.0000' },
+        'ETH': { symbol: 'ETH', name: 'Ethereum', type: 'Cryptocurrency', region: 'Global', marketOpen: '00:00', marketClose: '23:59', timezone: 'UTC', currency: 'USD', matchScore: '1.0000' },
+        'ADA': { symbol: 'ADA', name: 'Cardano', type: 'Cryptocurrency', region: 'Global', marketOpen: '00:00', marketClose: '23:59', timezone: 'UTC', currency: 'USD', matchScore: '1.0000' }
+      }
+    }
+  }
+
+  /**
+   * Search for symbols using Alpha Vantage SYMBOL_SEARCH function with comprehensive crypto database
+   * @param keywords Search term (company name, ticker, etc.)
+   */
+  async searchSymbols(keywords: string): Promise<SymbolSearchResult[]> {
+    if (!keywords || keywords.trim().length < 1) {
+      return []
+    }
+
+    const normalizedKeywords = keywords.trim().toUpperCase()
+    const results: SymbolSearchResult[] = []
+
+    // First, search comprehensive crypto symbols database
+    try {
+      const cryptoSymbols = await this.fetchCryptoSymbols()
+      const cryptoMatches = Object.values(cryptoSymbols).filter(crypto => {
+        const symbolMatch = crypto.symbol.includes(normalizedKeywords)
+        const nameMatch = crypto.name.toUpperCase().includes(normalizedKeywords)
+        return symbolMatch || nameMatch
+      })
+
+      // Calculate better match scores for crypto symbols
+      cryptoMatches.forEach(crypto => {
+        if (crypto.symbol === normalizedKeywords) {
+          crypto.matchScore = '1.0000' // Exact symbol match
+        } else if (crypto.symbol.includes(normalizedKeywords)) {
+          crypto.matchScore = '0.9000' // Symbol contains keywords
+        } else if (crypto.name.toUpperCase().includes(normalizedKeywords)) {
+          crypto.matchScore = '0.8000' // Name contains keywords
+        }
+      })
+
+      // Add crypto matches
+      results.push(...cryptoMatches)
+      
+    } catch (error) {
+      console.warn('Warning: Could not fetch crypto symbols:', error)
+      // Continue without crypto symbols
+    }
+
+    // If we have an API key, also search Alpha Vantage (for stocks/ETFs)
+    if (this.apiKey) {
+      try {
+        const url = `${this.baseUrl}?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(keywords)}&apikey=${this.apiKey}`
+        const response = await fetch(url)
+        
+        if (!response.ok) {
+          console.warn(`Alpha Vantage API error: ${response.status} ${response.statusText}`)
+        } else {
+          const data = await response.json()
+          
+          // Check for API errors
+          if (data['Error Message']) {
+            console.warn(`Alpha Vantage API error: ${data['Error Message']}`)
+          } else if (data['Note']) {
+            console.warn(`Alpha Vantage API rate limit: ${data['Note']}`)
+          } else {
+            const bestMatches = data['bestMatches']
+            if (bestMatches && Array.isArray(bestMatches)) {
+              const stockMatches = bestMatches.map((match: any) => ({
+                symbol: match['1. symbol'] || '',
+                name: match['2. name'] || '',
+                type: match['3. type'] || '',
+                region: match['4. region'] || '',
+                marketOpen: match['5. marketOpen'] || '',
+                marketClose: match['6. marketClose'] || '',
+                timezone: match['7. timezone'] || '',
+                currency: match['8. currency'] || 'USD',
+                matchScore: match['9. matchScore'] || '0'
+              })).filter(result => result.symbol && result.name)
+
+              results.push(...stockMatches)
+            }
+          }
+        }
+      } catch (error) {
+        console.warn(`Warning: Could not fetch from Alpha Vantage:`, error)
+        // Continue with crypto results only
+      }
+    } else {
+      console.log('Alpha Vantage API key not configured - crypto symbols only')
+    }
+
+    // Remove duplicates and sort by match quality (exact matches first, then crypto, then by match score)
+    const uniqueResults = results.filter((result, index, arr) => 
+      arr.findIndex(r => r.symbol === result.symbol) === index
+    )
+
+    return uniqueResults.sort((a, b) => {
+      // Exact symbol matches first
+      const aExact = a.symbol === normalizedKeywords
+      const bExact = b.symbol === normalizedKeywords
+      
+      if (aExact && !bExact) return -1
+      if (!aExact && bExact) return 1
+      
+      // Then crypto symbols
+      const aIsCrypto = a.type === 'Cryptocurrency'
+      const bIsCrypto = b.type === 'Cryptocurrency'
+      
+      if (aIsCrypto && !bIsCrypto) return -1
+      if (!aIsCrypto && bIsCrypto) return 1
+      
+      // Finally by match score (higher first)
+      return parseFloat(b.matchScore) - parseFloat(a.matchScore)
+    })
   }
 
   /**
