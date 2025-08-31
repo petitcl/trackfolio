@@ -88,7 +88,8 @@ class PriceDataService {
     }
 
     try {
-      const url = `${this.baseUrl}?function=TIME_SERIES_DAILY_ADJUSTED&symbol=${symbol}&outputsize=${outputSize}&apikey=${this.apiKey}`
+      // Use TIME_SERIES_DAILY for free tier (TIME_SERIES_DAILY_ADJUSTED requires premium)
+      const url = `${this.baseUrl}?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=${outputSize}&apikey=${this.apiKey}`
       const response = await fetch(url)
       
       if (!response.ok) {
@@ -124,8 +125,8 @@ class PriceDataService {
           high_price: parseFloat(dayData['2. high']),
           low_price: parseFloat(dayData['3. low']),
           close_price: parseFloat(dayData['4. close']),
-          adjusted_close: parseFloat(dayData['5. adjusted close']),
-          volume: parseInt(dayData['6. volume']),
+          adjusted_close: parseFloat(dayData['4. close']), // Free tier doesn't have adjusted close, use close price
+          volume: parseInt(dayData['5. volume']), // Volume is field 5 in free tier, not 6
           data_source: 'alpha_vantage'
         })
       }

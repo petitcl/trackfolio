@@ -79,7 +79,7 @@
 ### Security & Reliability  
 - [ ] **Input Validation** - Comprehensive form validation
 - [ ] **Error Handling** - Better error boundaries and user feedback
-
+- [ ] **Re-enable Turbopack** - re-enable turbopack (currently clashes with monorepo setup)
 
 ---
 

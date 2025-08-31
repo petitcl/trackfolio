@@ -15,7 +15,7 @@ npm run dev
 # In another terminal, update prices
 node scripts/update-daily-prices.js
 ```
-### Testing Against Production
+### Running Against Production
 
 You can also test against your deployed Vercel app:
 

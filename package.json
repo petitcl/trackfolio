@@ -16,6 +16,8 @@
     "update-daily-prices": "cd webapp && npm run update-daily-prices",
     "update-daily-prices:local": "cd webapp && node scripts/update-daily-prices.js",
     "update-daily-prices:prod": "cd webapp && node scripts/update-daily-prices.js https://trackfolio-jy6d.vercel.app",
+    "backfill-symbol:local": "cd webapp && node scripts/backfill-symbol.js http://localhost:3000",
+    "backfill-symbol:prod": "cd webapp && node scripts/backfill-symbol.js https://trackfolio-jy6d.vercel.app",
     "setup": "npm run install:webapp",
     "clean": "cd webapp && rm -rf .next node_modules && npm install"
   },

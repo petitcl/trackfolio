@@ -14,7 +14,9 @@
       "Bash(npm i:*)",
       "Bash(npm run build:*)",
       "Bash(npm run test:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npx next:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": [],

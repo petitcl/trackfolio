@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { UserSymbolPrice } from '@/lib/supabase/types'
 import { portfolioService } from '@/lib/services/portfolio.service'
@@ -25,11 +25,7 @@ export default function ManualPriceHistory({ user, symbol, onPriceUpdated }: Man
   const [priceToDelete, setPriceToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  useEffect(() => {
-    loadPriceHistory()
-  }, [user, symbol]) // loadPriceHistory is stable, doesn't need to be in deps
-
-  const loadPriceHistory = async () => {
+  const loadPriceHistory = useCallback(async () => {
     try {
       setLoading(true)
       const priceHistory = await portfolioService.getUserSymbolPrices(user, symbol)
@@ -41,7 +37,11 @@ export default function ManualPriceHistory({ user, symbol, onPriceUpdated }: Man
     } finally {
       setLoading(false)
     }
-  }
+  }, [user, symbol])
+
+  useEffect(() => {
+    loadPriceHistory()
+  }, [loadPriceHistory])
 
   const handleEditPrice = async (priceData: PriceFormData) => {
     if (!editingPriceId) return

@@ -96,6 +96,18 @@ npm run update-daily-prices:local  # Update against local server
 npm run update-daily-prices:prod   # Update against production
 ```
 
+#### Symbol Price Backfill
+```bash
+# Backfill historical price data for specific symbols
+npm run backfill-symbol:local SYMBOL   # Against local server
+npm run backfill-symbol:prod SYMBOL    # Against production
+
+# Examples:
+npm run backfill-symbol:local AAPL     # Backfill Apple stock history
+npm run backfill-symbol:prod MSFT      # Backfill Microsoft history (prod)
+npm run backfill-symbol:local BTC-USD  # Backfill Bitcoin history
+```
+
 ### Detailed Setup
 
 #### 1. Database Setup
@@ -151,7 +163,44 @@ npm run update-daily-prices
 npm run update-daily-prices:prod
 ```
 
-See detailed documentation in [`webapp/docs/PRICE_UPDATES.md`](webapp/docs/PRICE_UPDATES.md).
+## 📈 Historical Price Backfill
+
+For new symbols or to populate historical data, use the backfill functionality:
+
+### Features
+- **Symbol-by-symbol processing**: Backfills one symbol at a time for precise control
+- **Full historical data**: Fetches complete price history from Alpha Vantage (20+ years)
+- **Duplicate handling**: Automatically detects and skips existing records
+- **Update existing records**: Refreshes outdated historical data
+- **Custom symbol validation**: Verifies symbol exists in database before processing
+
+### Usage
+```bash
+# Local development backfill
+npm run backfill-symbol:local AAPL
+
+# Production backfill  
+npm run backfill-symbol:prod MSFT
+
+# Direct script usage with custom URL
+cd webapp
+node scripts/backfill-symbol.js https://your-app.vercel.app SYMBOL
+```
+
+### Output Example
+```
+🔄 Starting historical price backfill for symbol: AAPL
+📈 Retrieved 5847 historical price records for AAPL
+💾 Inserted 5847 price history records
+🔄 Updated last_price for 1 symbols  
+✅ Backfill completed successfully!
+```
+
+### Prerequisites
+- Symbol must exist in the database (add via UI first)
+- Alpha Vantage API key configured (`ALPHA_VANTAGE_API_KEY`)
+- CRON_SECRET environment variable set
+- Only works with non-custom symbols (market-traded assets)
 
 ## 🔐 Authentication
 

@@ -13,42 +13,7 @@
  * - Shows detailed response including all results
  */
 
-const fs = require('fs')
-const path = require('path')
-
-// Load environment variables using dotenv
-function loadEnvFile() {
-  const envPath = path.join(__dirname, '../.env.local')
-  
-  if (!fs.existsSync(envPath)) {
-    console.error('❌ .env.local file not found')
-    console.log('Please create .env.local with the required environment variables')
-    process.exit(1)
-  }
-
-  // Load environment variables from .env.local
-  require('dotenv').config({ path: envPath })
-  
-  console.log('✅ Environment variables loaded from .env.local')
-  return process.env
-}
-
-// Check if required environment variables are present
-function validateEnv(env) {
-  const required = ['CRON_SECRET', 'ALPHA_VANTAGE_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY']
-  const missing = required.filter(key => !env[key] || env[key].includes('your_'))
-  
-  if (missing.length > 0) {
-    console.error('❌ Missing or incomplete environment variables:')
-    missing.forEach(key => {
-      console.error(`   - ${key}`)
-    })
-    console.log('\nPlease update your .env.local file with real values')
-    process.exit(1)
-  }
-
-  console.log('✅ Environment variables validated')
-}
+const { loadAndValidateEnv } = require('./env-loader')
 
 // Make the API request
 async function updateDailyPrice(baseUrl, cronSecret) {
@@ -137,19 +102,18 @@ async function main() {
   console.log('')
 
   // Load and validate environment
-  const env = loadEnvFile()
-  validateEnv(env)
+  const env = loadAndValidateEnv(['CRON_SECRET', 'ALPHA_VANTAGE_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY'])
 
   // Determine base URL
-  const baseUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}`
+  const baseUrl = env.VERCEL_URL 
+    ? `https://${env.VERCEL_URL}`
     : process.argv[2] || 'http://localhost:3000'
 
   console.log(`🌐 Target URL: ${baseUrl}`)
   console.log('')
 
   // Test the endpoint
-  await updateDailyPrice(baseUrl, process.env.CRON_SECRET)
+  await updateDailyPrice(baseUrl, env.CRON_SECRET)
 }
 
 // Handle Node.js fetch (for older versions)

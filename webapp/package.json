@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "update-daily-prices": "node scripts/update-daily-prices.js"
@@ -15,7 +15,7 @@
     "@types/lodash": "^4.17.20",
     "chart.js": "^4.5.0",
     "lodash": "^4.17.21",
-    "next": "15.5.1",
+    "next": "^15.5.2",
     "next-pwa": "^5.6.0",
     "papaparse": "^5.5.3",
     "react": "19.1.0",

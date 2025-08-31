@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { clientAuthService, type AuthUser } from '@/lib/auth/client.auth.service'
 import { portfolioService } from '@/lib/services/portfolio.service'
@@ -54,9 +54,9 @@ export default function AddHoldingPage() {
     loadUser()
   }, [router])
 
-  // Debounced search function for Yahoo Finance API alternative
-  const searchSymbols = useCallback(
-    debounce(async (query: string) => {
+  // Debounced search function for Yahoo Finance API alternative  
+  const searchSymbols = useMemo(
+    () => debounce(async (query: string) => {
       if (query.length < 2) {
         setSearchResults([])
         return
@@ -85,7 +85,7 @@ export default function AddHoldingPage() {
         setIsSearching(false)
       }
     }, 300),
-    []
+    [setSearchResults, setIsSearching]
   )
 
   useEffect(() => {
