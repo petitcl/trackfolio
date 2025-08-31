@@ -491,6 +491,7 @@ export class PortfolioService {
     symbol: string
     name: string
     asset_type: Database["public"]["Enums"]["asset_type"]
+    currency?: string
     is_custom: boolean
     created_by_user_id?: string | null
     last_price?: number | null
@@ -543,6 +544,7 @@ export class PortfolioService {
           symbol: symbolData.symbol.toUpperCase(),
           name: symbolData.name,
           asset_type: symbolData.asset_type,
+          currency: symbolData.currency || 'USD',
           is_custom: true,
           created_by_user_id: symbolData.created_by_user_id,
           last_price: symbolData.last_price || null,
@@ -780,6 +782,7 @@ export class PortfolioService {
     symbol: string
     name: string
     assetType: Database["public"]["Enums"]["asset_type"]
+    currency: string
     quantity: number
     purchasePrice: number
     purchaseDate: string
@@ -792,6 +795,7 @@ export class PortfolioService {
         symbol: holdingData.symbol,
         name: holdingData.name,
         asset_type: holdingData.assetType,
+        currency: holdingData.currency,
         is_custom: holdingData.isCustom,
         created_by_user_id: holdingData.isCustom ? user.id : null,
         last_price: holdingData.purchasePrice

@@ -147,6 +147,7 @@ class ClientMockDataStore {
     symbol: string
     name: string
     assetType: string
+    currency: string
     quantity: number
     purchasePrice: number
     purchaseDate: string
@@ -170,7 +171,7 @@ class ClientMockDataStore {
         last_price: holding.purchasePrice,
         last_updated: new Date().toISOString(),
         created_at: new Date().toISOString(),
-        currency: 'USD'
+        currency: holding.currency
       }
       this.symbols.push(newSymbol)
     }

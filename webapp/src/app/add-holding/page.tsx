@@ -14,6 +14,7 @@ interface SearchResult {
   name: string
   type: string
   exchange?: string
+  currency?: string
 }
 
 export default function AddHoldingPage() {
@@ -30,6 +31,7 @@ export default function AddHoldingPage() {
   const [symbol, setSymbol] = useState('')
   const [name, setName] = useState('')
   const [assetType, setAssetType] = useState<AssetType>('stock')
+  const [currency, setCurrency] = useState('USD')
   const [quantity, setQuantity] = useState('')
   const [purchasePrice, setPurchasePrice] = useState('')
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0])
@@ -54,7 +56,7 @@ export default function AddHoldingPage() {
     loadUser()
   }, [router])
 
-  // Debounced search function for Yahoo Finance API alternative  
+  // Debounced search function using the symbols API
   const searchSymbols = useMemo(
     () => debounce(async (query: string) => {
       if (query.length < 2) {
@@ -64,20 +66,13 @@ export default function AddHoldingPage() {
 
       setIsSearching(true)
       try {
-        // Mock search results for demonstration
-        const mockResults: SearchResult[] = [
-          { symbol: 'AAPL', name: 'Apple Inc.', type: 'stock', exchange: 'NASDAQ' },
-          { symbol: 'GOOGL', name: 'Alphabet Inc.', type: 'stock', exchange: 'NASDAQ' },
-          { symbol: 'MSFT', name: 'Microsoft Corporation', type: 'stock', exchange: 'NASDAQ' },
-          { symbol: 'DDOG', name: 'Datadog Inc', type: 'stock', exchange: 'NASDAQ' },
-          { symbol: 'BTC-USD', name: 'Bitcoin USD', type: 'crypto' },
-          { symbol: 'ETH-USD', name: 'Ethereum USD', type: 'crypto' },
-        ].filter(item => 
-          item.symbol.toLowerCase().includes(query.toLowerCase()) ||
-          item.name.toLowerCase().includes(query.toLowerCase())
-        )
+        const response = await fetch(`/api/symbols/search?q=${encodeURIComponent(query)}`)
+        if (!response.ok) {
+          throw new Error('Failed to search symbols')
+        }
         
-        setSearchResults(mockResults)
+        const data = await response.json()
+        setSearchResults(data.results || [])
       } catch (error) {
         console.error('Error searching symbols:', error)
         setSearchResults([])
@@ -99,6 +94,7 @@ export default function AddHoldingPage() {
     setSymbol(result.symbol)
     setName(result.name)
     setAssetType(result.type === 'crypto' ? 'crypto' : 'stock')
+    setCurrency(result.currency || 'USD')
     setSearchQuery(result.symbol)
     setSearchResults([])
   }
@@ -117,6 +113,7 @@ export default function AddHoldingPage() {
           symbol: symbol.toUpperCase(),
           name: name,
           assetType: assetType,
+          currency: currency,
           quantity: parseFloat(quantity),
           purchasePrice: parseFloat(purchasePrice),
           purchaseDate: purchaseDate,
@@ -131,6 +128,7 @@ export default function AddHoldingPage() {
           symbol: symbol.toUpperCase(),
           name: name,
           assetType: assetType,
+          currency: currency,
           quantity: parseFloat(quantity),
           purchasePrice: parseFloat(purchasePrice),
           purchaseDate: purchaseDate,
@@ -161,6 +159,21 @@ export default function AddHoldingPage() {
       { value: 'crypto', label: 'Cryptocurrency' },
       { value: 'real_estate', label: 'Real Estate' },
       { value: 'other', label: 'Other (Collectibles, Private Equity, etc.)' },
+    ]
+  }
+
+  const getCurrencies = (): { value: string; label: string }[] => {
+    return [
+      { value: 'USD', label: 'USD - US Dollar' },
+      { value: 'EUR', label: 'EUR - Euro' },
+      { value: 'GBP', label: 'GBP - British Pound' },
+      { value: 'JPY', label: 'JPY - Japanese Yen' },
+      { value: 'CAD', label: 'CAD - Canadian Dollar' },
+      { value: 'AUD', label: 'AUD - Australian Dollar' },
+      { value: 'CHF', label: 'CHF - Swiss Franc' },
+      { value: 'CNY', label: 'CNY - Chinese Yuan' },
+      { value: 'BTC', label: 'BTC - Bitcoin' },
+      { value: 'ETH', label: 'ETH - Ethereum' },
     ]
   }
 
@@ -272,7 +285,7 @@ export default function AddHoldingPage() {
                             {result.symbol}
                           </div>
                           <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {result.name} {result.exchange && `• ${result.exchange}`}
+                            {result.name} {result.exchange && `• ${result.exchange}`} {result.currency && `• ${result.currency}`}
                           </div>
                         </button>
                       ))}
@@ -332,6 +345,24 @@ export default function AddHoldingPage() {
                   {getAssetTypes().map((type) => (
                     <option key={type.value} value={type.value}>
                       {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Currency */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Currency
+                </label>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {getCurrencies().map((curr) => (
+                    <option key={curr.value} value={curr.value}>
+                      {curr.label}
                     </option>
                   ))}
                 </select>
