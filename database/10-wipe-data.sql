@@ -14,10 +14,6 @@ BEGIN
   USING target_users u
   WHERE p.user_id = u.user_id;
 
-  DELETE FROM portfolio_snapshots s
-  USING target_users u
-  WHERE s.user_id = u.user_id;
-
   DELETE FROM symbols sym
   USING target_users u
   WHERE sym.created_by_user_id = u.user_id;

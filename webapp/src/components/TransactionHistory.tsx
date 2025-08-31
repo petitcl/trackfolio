@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import type { Transaction } from '@/lib/supabase/database.types'
+import type { Transaction } from '@/lib/supabase/types'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import AddTransactionForm, { type TransactionFormData } from './AddTransactionForm'
 import { portfolioService } from '@/lib/services/portfolio.service'
@@ -69,7 +69,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, u
       quantity: transaction.quantity,
       pricePerUnit: transaction.price_per_unit,
       date: transaction.date,
-      fees: transaction.fees,
+      fees: transaction.fees || 0,
       broker: transaction.broker || '',
       currency: transaction.currency || 'USD',
       notes: transaction.notes || ''
@@ -144,7 +144,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, u
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {transactions.map((transaction) => {
-              const total = transaction.quantity * transaction.price_per_unit + transaction.fees
+              const total = transaction.quantity * transaction.price_per_unit + (transaction.fees || 0)
               const isEditing = editingTransactionId === transaction.id
               
               if (isEditing) {
@@ -189,7 +189,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, u
                     {formatCurrency(transaction.price_per_unit)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                    {formatCurrency(transaction.fees)}
+                    {formatCurrency(transaction.fees || 0)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                     {formatCurrency(total)}

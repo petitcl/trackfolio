@@ -166,9 +166,9 @@ Configure in Supabase Dashboard > Authentication > Providers
 
 ### Core Tables
 - `transactions` - All portfolio transactions
-- `symbols` - Asset symbols (public + user custom)
+- `symbols` - Asset symbols (public + user custom)  
 - `user_symbol_prices` - Manual price overrides
-- `portfolio_snapshots` - Historical portfolio values
+- `symbol_price_history` - Historical market prices from APIs
 
 ### Supported Transaction Types
 - `buy` - Asset purchases

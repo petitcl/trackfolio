@@ -1,5 +1,5 @@
 import type { AuthUser } from '@/lib/auth/client.auth.service'
-import type { Database } from '@/lib/supabase/database.types'
+import type { Database } from '@/lib/supabase/types'
 import type { CsvImportConfig } from './BulkCsvImport'
 import { portfolioService } from '@/lib/services/portfolio.service'
 

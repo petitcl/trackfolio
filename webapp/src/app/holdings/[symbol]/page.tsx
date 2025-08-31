@@ -1,23 +1,25 @@
 import HoldingDetailsClient from '@/components/HoldingDetailsClient'
 
 interface HoldingPageProps {
-  params: {
+  params: Promise<{
     symbol: string
-  }
+  }>
 }
 
-export default function HoldingPage({ params }: HoldingPageProps) {
+export default async function HoldingPage({ params }: HoldingPageProps) {
   // Decode the symbol in case it was URL encoded
-  const symbol = decodeURIComponent(params.symbol)
+  const { symbol } = await params
+  const decodedSymbol = decodeURIComponent(symbol)
 
-  return <HoldingDetailsClient symbol={symbol} />
+  return <HoldingDetailsClient symbol={decodedSymbol} />
 }
 
 // Generate metadata for the page
 export async function generateMetadata({ params }: HoldingPageProps) {
-  const symbol = decodeURIComponent(params.symbol)
+  const { symbol } = await params
+  const decodedSymbol = decodeURIComponent(symbol)
   return {
-    title: `${symbol} - Holding Details | Trackfolio`,
-    description: `View detailed information and transaction history for ${symbol}`,
+    title: `${decodedSymbol} - Holding Details | Trackfolio`,
+    description: `View detailed information and transaction history for ${decodedSymbol}`,
   }
 }

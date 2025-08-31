@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { priceDataService } from '@/lib/services/priceData.service'
-import type { Database } from '@/lib/supabase/database.types'
+import type { Database } from '@/lib/supabase/types'
 
 // Initialize Supabase client with service role for cron jobs
 const supabase = createClient<Database>(
@@ -88,7 +88,6 @@ export async function GET(request: NextRequest) {
       .from('symbol_price_history')
       .select('id')
       .eq('date', today)
-      .eq('data_source', 'alpha_vantage')
       .limit(1)
 
     if (existingRun && existingRun.length > 0) {

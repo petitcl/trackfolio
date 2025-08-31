@@ -1,6 +1,6 @@
 // Client-side only mock data store wrapper
 import { mockTransactions, mockSymbols } from './mockData'
-import type { Transaction, Symbol, UserSymbolPrice } from './supabase/database.types'
+import type { Transaction, Symbol, UserSymbolPrice } from './supabase/types'
 import { MOCK_USER_ID, MOCK_DATA_STORAGE_KEY } from './constants/mockConstants'
 
 const STORAGE_KEY = MOCK_DATA_STORAGE_KEY

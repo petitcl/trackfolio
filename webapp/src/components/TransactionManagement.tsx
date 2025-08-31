@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
-import type { Transaction } from '@/lib/supabase/database.types'
+import type { Transaction } from '@/lib/supabase/types'
 import TransactionHistory from './TransactionHistory'
 import AddTransactionForm, { type TransactionFormData } from './AddTransactionForm'
 import { portfolioService } from '@/lib/services/portfolio.service'

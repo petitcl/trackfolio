@@ -12,6 +12,7 @@
     "start": "cd webapp && npm run start",
     "lint": "cd webapp && npm run lint",
     "install:webapp": "cd webapp && npm install",
+    "gen-types:typescript": "npx supabase gen types --lang=typescript --project-id xabgyfpbpksntpjdfcre > webapp/src/lib/supabase/database.types.ts && echo '✅ Generated database.types.ts - helper types in types.ts are preserved'",
     "update-daily-prices": "cd webapp && npm run update-daily-prices",
     "update-daily-prices:local": "cd webapp && node scripts/update-daily-prices.js",
     "update-daily-prices:prod": "cd webapp && node scripts/update-daily-prices.js https://trackfolio-jy6d.vercel.app",

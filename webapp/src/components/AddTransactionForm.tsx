@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import type { TransactionType } from '@/lib/supabase/database.types'
+import type { TransactionType } from '@/lib/supabase/types'
 
 interface AddTransactionFormProps {
   isOpen: boolean

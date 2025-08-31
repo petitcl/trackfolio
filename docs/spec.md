@@ -119,17 +119,6 @@ CREATE TABLE symbols (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Portfolio snapshots for historical tracking
-CREATE TABLE portfolio_snapshots (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) NOT NULL,
-  snapshot_date DATE NOT NULL,
-  total_value DECIMAL(20,8) NOT NULL,
-  cash_balance DECIMAL(20,8) DEFAULT 0,
-  positions JSONB, -- Store position details
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, snapshot_date)
-);
 ```
 
 ## Pages & UI Structure

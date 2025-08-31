@@ -51,7 +51,7 @@ function validateEnv(env) {
 }
 
 // Make the API request
-async function testPriceUpdate(baseUrl, cronSecret) {
+async function updateDailyPrice(baseUrl, cronSecret) {
   const url = `${baseUrl}/api/cron/update-prices`
   const headers = {
     'Authorization': `Bearer ${cronSecret}`,
@@ -149,7 +149,7 @@ async function main() {
   console.log('')
 
   // Test the endpoint
-  await testPriceUpdate(baseUrl, process.env.CRON_SECRET)
+  await updateDailyPrice(baseUrl, process.env.CRON_SECRET)
 }
 
 // Handle Node.js fetch (for older versions)

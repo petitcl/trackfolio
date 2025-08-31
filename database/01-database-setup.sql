@@ -60,18 +60,6 @@ CREATE TABLE user_symbol_prices (
     FOREIGN KEY (symbol) REFERENCES symbols(symbol) ON DELETE CASCADE
 );
 
--- Portfolio snapshots for historical tracking
-CREATE TABLE portfolio_snapshots (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-    snapshot_date DATE NOT NULL,
-    total_value DECIMAL(20,8) NOT NULL,
-    cash_balance DECIMAL(20,8) DEFAULT 0 NOT NULL,
-    positions JSONB, -- Store position details as JSON
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    UNIQUE(user_id, snapshot_date)
-);
-
 CREATE TABLE symbol_price_history (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     symbol TEXT NOT NULL,
@@ -96,7 +84,6 @@ CREATE TABLE symbol_price_history (
 CREATE INDEX idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX idx_transactions_user_symbol ON transactions(user_id, symbol);
 CREATE INDEX idx_transactions_date ON transactions(date);
-CREATE INDEX idx_portfolio_snapshots_user_date ON portfolio_snapshots(user_id, snapshot_date);
 CREATE INDEX idx_symbols_is_custom ON symbols(is_custom);
 CREATE INDEX idx_symbols_created_by ON symbols(created_by_user_id) WHERE is_custom = TRUE;
 CREATE INDEX idx_user_symbol_prices_user_symbol ON user_symbol_prices(user_id, symbol);
@@ -133,7 +120,6 @@ CREATE TRIGGER update_user_symbol_prices_updated_at
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE symbols ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_symbol_prices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE portfolio_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE symbol_price_history ENABLE ROW LEVEL SECURITY;
 
 
@@ -168,19 +154,6 @@ CREATE POLICY "Users can delete their own custom symbols" ON symbols
 
 CREATE POLICY "Service role can manage public symbols" ON symbols
     FOR ALL USING (auth.role() = 'service_role');
-
--- Portfolio snapshots policies - users can only access their own snapshots
-CREATE POLICY "Users can view own portfolio snapshots" ON portfolio_snapshots
-    FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own portfolio snapshots" ON portfolio_snapshots
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own portfolio snapshots" ON portfolio_snapshots
-    FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own portfolio snapshots" ON portfolio_snapshots
-    FOR DELETE USING (auth.uid() = user_id);
 
 -- User symbol prices policies - users can only manage their own manual prices
 CREATE POLICY "Users can view own manual prices" ON user_symbol_prices

@@ -11,14 +11,12 @@ DROP FUNCTION IF EXISTS update_updated_at_column();
 DROP INDEX IF EXISTS idx_transactions_user_id;
 DROP INDEX IF EXISTS idx_transactions_user_symbol;
 DROP INDEX IF EXISTS idx_transactions_date;
-DROP INDEX IF EXISTS idx_portfolio_snapshots_user_date;
 DROP INDEX IF EXISTS idx_symbols_is_custom;
 DROP INDEX IF EXISTS idx_symbols_created_by;
 DROP INDEX IF EXISTS idx_user_symbol_prices_user_symbol;
 DROP INDEX IF EXISTS idx_user_symbol_prices_date;
 
 -- Drop tables (in reverse dependency order)
-DROP TABLE IF EXISTS portfolio_snapshots CASCADE;
 DROP TABLE IF EXISTS user_symbol_prices CASCADE;
 DROP TABLE IF EXISTS symbols CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;

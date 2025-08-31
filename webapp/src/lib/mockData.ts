@@ -1,7 +1,7 @@
 // Mock data for testing the application without Supabase connection
 // This mirrors the data structure from our sample-data.sql
 
-import type { Transaction, Symbol, PortfolioSnapshot, AssetType, TransactionType } from './supabase/database.types'
+import type { Transaction, Symbol, AssetType, TransactionType } from './supabase/types'
 import { MOCK_USER_ID, MOCK_USER_EMAIL } from './constants/mockConstants'
 
 export const mockUser = {

@@ -1,46 +1,66 @@
-// TypeScript types for Supabase database schema
-// This would normally be generated using: npx supabase gen types --lang=typescript --project-id YOUR_PROJECT_ID > database.types.ts
-
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.4"
+  }
   public: {
     Tables: {
-      portfolio_snapshots: {
+      symbol_price_history: {
         Row: {
-          cash_balance: number
+          adjusted_close: number | null
+          close_price: number
           created_at: string
+          data_source: string | null
+          date: string
+          high_price: number | null
           id: string
-          positions: Json | null
-          snapshot_date: string
-          total_value: number
-          user_id: string
+          low_price: number | null
+          open_price: number | null
+          symbol: string
+          volume: number | null
         }
         Insert: {
-          cash_balance?: number
+          adjusted_close?: number | null
+          close_price: number
           created_at?: string
+          data_source?: string | null
+          date: string
+          high_price?: number | null
           id?: string
-          positions?: Json | null
-          snapshot_date: string
-          total_value: number
-          user_id: string
+          low_price?: number | null
+          open_price?: number | null
+          symbol: string
+          volume?: number | null
         }
         Update: {
-          cash_balance?: number
+          adjusted_close?: number | null
+          close_price?: number
           created_at?: string
+          data_source?: string | null
+          date?: string
+          high_price?: number | null
           id?: string
-          positions?: Json | null
-          snapshot_date?: string
-          total_value?: number
-          user_id?: string
+          low_price?: number | null
+          open_price?: number | null
+          symbol?: string
+          volume?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "portfolio_snapshots_user_id_fkey"
-            columns: ["user_id"]
+            foreignKeyName: "symbol_price_history_symbol_fkey"
+            columns: ["symbol"]
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
+            referencedRelation: "symbols"
+            referencedColumns: ["symbol"]
           },
         ]
       }
@@ -75,15 +95,7 @@ export type Database = {
           name?: string
           symbol?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "symbols_created_by_user_id_fkey"
-            columns: ["created_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       transactions: {
         Row: {
@@ -91,7 +103,7 @@ export type Database = {
           created_at: string
           currency: string
           date: string
-          fees: number
+          fees: number | null
           id: string
           notes: string | null
           price_per_unit: number
@@ -106,7 +118,7 @@ export type Database = {
           created_at?: string
           currency?: string
           date: string
-          fees?: number
+          fees?: number | null
           id?: string
           notes?: string | null
           price_per_unit: number
@@ -121,7 +133,7 @@ export type Database = {
           created_at?: string
           currency?: string
           date?: string
-          fees?: number
+          fees?: number | null
           id?: string
           notes?: string | null
           price_per_unit?: number
@@ -131,22 +143,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_symbol_fkey"
-            columns: ["symbol"]
-            isOneToOne: false
-            referencedRelation: "symbols"
-            referencedColumns: ["symbol"]
-          },
-          {
-            foreignKeyName: "transactions_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_symbol_prices: {
         Row: {
@@ -187,65 +184,8 @@ export type Database = {
             referencedRelation: "symbols"
             referencedColumns: ["symbol"]
           },
-          {
-            foreignKeyName: "user_symbol_prices_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
         ]
-      },
-      symbol_price_history: {
-        Row: {
-          id: string
-          symbol: string
-          date: string
-          open_price: number | null
-          high_price: number | null
-          low_price: number | null
-          close_price: number
-          volume: number | null
-          adjusted_close: number | null
-          data_source: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          symbol: string
-          date: string
-          open_price?: number | null
-          high_price?: number | null
-          low_price?: number | null
-          close_price: number
-          volume?: number | null
-          adjusted_close?: number | null
-          data_source?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          symbol?: string
-          date?: string
-          open_price?: number | null
-          high_price?: number | null
-          low_price?: number | null
-          close_price?: number
-          volume?: number | null
-          adjusted_close?: number | null
-          data_source?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "symbol_price_history_symbol_fkey"
-            columns: ["symbol"]
-            isOneToOne: false
-            referencedRelation: "symbols"
-            referencedColumns: ["symbol"]
-          }
-        ]
-      }      
+      }
     }
     Views: {
       [_ in never]: never
@@ -255,7 +195,13 @@ export type Database = {
     }
     Enums: {
       asset_type: "stock" | "etf" | "crypto" | "cash" | "real_estate" | "other"
-      transaction_type: "buy" | "sell" | "dividend" | "bonus" | "deposit" | "withdrawal"
+      transaction_type:
+        | "buy"
+        | "sell"
+        | "dividend"
+        | "bonus"
+        | "deposit"
+        | "withdrawal"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -263,27 +209,33 @@ export type Database = {
   }
 }
 
-type PublicSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  PublicTableNameOrOptions extends
-    | keyof (PublicSchema["Tables"] & PublicSchema["Views"])
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-        Database[PublicTableNameOrOptions["schema"]]["Views"])
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? (Database[PublicTableNameOrOptions["schema"]]["Tables"] &
-      Database[PublicTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
     ? R
     : never
-  : PublicTableNameOrOptions extends keyof (PublicSchema["Tables"] &
-        PublicSchema["Views"])
-    ? (PublicSchema["Tables"] &
-        PublicSchema["Views"])[PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -291,20 +243,24 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I
     }
     ? I
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Insert: infer I
       }
       ? I
@@ -312,20 +268,24 @@ export type TablesInsert<
     : never
 
 export type TablesUpdate<
-  PublicTableNameOrOptions extends
-    | keyof PublicSchema["Tables"]
-    | { schema: keyof Database },
-  TableName extends PublicTableNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicTableNameOrOptions["schema"]]["Tables"]
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = PublicTableNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U
     }
     ? U
     : never
-  : PublicTableNameOrOptions extends keyof PublicSchema["Tables"]
-    ? PublicSchema["Tables"][PublicTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
         Update: infer U
       }
       ? U
@@ -333,23 +293,51 @@ export type TablesUpdate<
     : never
 
 export type Enums<
-  PublicEnumNameOrOptions extends
-    | keyof PublicSchema["Enums"]
-    | { schema: keyof Database },
-  EnumName extends PublicEnumNameOrOptions extends { schema: keyof Database }
-    ? keyof Database[PublicEnumNameOrOptions["schema"]]["Enums"]
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = PublicEnumNameOrOptions extends { schema: keyof Database }
-  ? Database[PublicEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
-    ? PublicSchema["Enums"][PublicEnumNameOrOptions]
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
-// Helper types for the application
-export type Transaction = Tables<'transactions'>
-export type Symbol = Tables<'symbols'>
-export type UserSymbolPrice = Tables<'user_symbol_prices'>
-export type PortfolioSnapshot = Tables<'portfolio_snapshots'>
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
-export type TransactionType = Database['public']['Enums']['transaction_type']
-export type AssetType = Database['public']['Enums']['asset_type']
+export const Constants = {
+  public: {
+    Enums: {
+      asset_type: ["stock", "etf", "crypto", "cash", "real_estate", "other"],
+      transaction_type: [
+        "buy",
+        "sell",
+        "dividend",
+        "bonus",
+        "deposit",
+        "withdrawal",
+      ],
+    },
+  },
+} as const

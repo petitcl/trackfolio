@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
-import type { Transaction, Symbol } from '@/lib/supabase/database.types'
+import type { Transaction, Symbol } from '@/lib/supabase/types'
 import { portfolioService, type PortfolioPosition, type PortfolioData } from '@/lib/services/portfolio.service'
 import ValueEvolutionChart from './charts/ValueEvolutionChart'
 import TimeRangeSelector, { type TimeRange } from './TimeRangeSelector'
@@ -181,7 +181,7 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
     .filter(t => t.type === 'sell')
     .reduce((total, t) => {
       // Simplified calculation - in reality you'd track cost basis more precisely
-      return total + ((t.price_per_unit - (position?.avgCost || 0)) * t.quantity) - t.fees
+      return total + ((t.price_per_unit - (position?.avgCost || 0)) * t.quantity) - (t.fees || 0)
     }, 0)
 
   const totalReturn = position ? position.unrealizedPnL + realizedPnL : realizedPnL
@@ -237,7 +237,7 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
     const timeRangeRealizedPnL = transactions
       .filter(t => t.type === 'sell' && t.date >= startDateString)
       .reduce((total, t) => {
-        return total + ((t.price_per_unit - (position?.avgCost || 0)) * t.quantity) - t.fees
+        return total + ((t.price_per_unit - (position?.avgCost || 0)) * t.quantity) - (t.fees || 0)
       }, 0)
 
     // Find position value at start of time range from historical data

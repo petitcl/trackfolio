@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
-import type { UserSymbolPrice } from '@/lib/supabase/database.types'
+import type { UserSymbolPrice } from '@/lib/supabase/types'
 import { portfolioService } from '@/lib/services/portfolio.service'
 import AddPriceForm, { type PriceFormData } from './AddPriceForm'
 import ConfirmDialog from './ConfirmDialog'

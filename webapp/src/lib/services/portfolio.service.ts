@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import { clientAuthService } from '@/lib/auth/client.auth.service'
-import type { Transaction, Symbol, Database, UserSymbolPrice, TransactionType } from '@/lib/supabase/database.types'
+import type { Transaction, Symbol, Database, UserSymbolPrice, TransactionType } from '@/lib/supabase/types'
 import { 
   mockSymbolPriceHistory,
   type HistoricalDataPoint 

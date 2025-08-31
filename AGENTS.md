@@ -28,9 +28,8 @@ trackfolio/
 ### 💾 Database Schema
 - `transactions` - All portfolio transactions with full history
 - `symbols` - Asset symbols (public market + user custom assets)
-- `symbol_price_history` - Daily Price History of "real" symbols 
+- `symbol_price_history` - Daily price history from APIs 
 - `user_symbol_prices` - Manual price overrides by users
-- `portfolio_snapshots` - Historical portfolio valuations
 
 Supports: stocks, ETFs, crypto, real estate, cash, custom assets
 
