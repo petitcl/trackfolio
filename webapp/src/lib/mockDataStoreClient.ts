@@ -1,6 +1,6 @@
 // Client-side only mock data store wrapper
 import { mockTransactions, mockSymbols } from './mockData'
-import type { Transaction, Symbol } from './supabase/database.types'
+import type { Transaction, Symbol, UserSymbolPrice } from './supabase/database.types'
 import { MOCK_USER_ID, MOCK_DATA_STORAGE_KEY } from './constants/mockConstants'
 
 const STORAGE_KEY = MOCK_DATA_STORAGE_KEY
@@ -8,12 +8,14 @@ const STORAGE_KEY = MOCK_DATA_STORAGE_KEY
 interface StoredMockData {
   transactions: Transaction[]
   symbols: Symbol[]
+  userSymbolPrices: UserSymbolPrice[]
   lastTransactionId: number
 }
 
 class ClientMockDataStore {
   private transactions: Transaction[] = []
   private symbols: Symbol[] = []
+  private userSymbolPrices: UserSymbolPrice[] = []
   private lastTransactionId: number = 0
   private initialized: boolean = false
 
@@ -33,6 +35,7 @@ class ClientMockDataStore {
         const data = JSON.parse(stored) as StoredMockData
         this.transactions = data.transactions
         this.symbols = data.symbols
+        this.userSymbolPrices = data.userSymbolPrices || []
         this.lastTransactionId = data.lastTransactionId
         console.log('📦 Loaded mock data from localStorage:', {
           transactions: this.transactions.length,
@@ -42,6 +45,7 @@ class ClientMockDataStore {
         // Initialize with the static mock data
         this.transactions = [...mockTransactions]
         this.symbols = [...mockSymbols]
+        this.userSymbolPrices = [] // Start with empty price history
         this.lastTransactionId = Math.max(...mockTransactions.map(t => 
           parseInt(t.id.replace('mock-transaction-', ''))
         ))
@@ -68,6 +72,7 @@ class ClientMockDataStore {
       const dataToStore: StoredMockData = {
         transactions: this.transactions,
         symbols: this.symbols,
+        userSymbolPrices: this.userSymbolPrices,
         lastTransactionId: this.lastTransactionId
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore))
@@ -249,9 +254,78 @@ class ClientMockDataStore {
     return true
   }
 
+  getUserSymbolPrices(symbol: string): UserSymbolPrice[] {
+    if (!this.initialized && typeof window !== 'undefined') {
+      this.initialize()
+    }
+    
+    return this.userSymbolPrices
+      .filter(price => price.symbol === symbol.toUpperCase())
+      .sort((a, b) => new Date(b.price_date).getTime() - new Date(a.price_date).getTime())
+  }
+
+  async addUserSymbolPrice(priceData: UserSymbolPrice): Promise<void> {
+    if (!this.initialized && typeof window !== 'undefined') {
+      this.initialize()
+    }
+    
+    // Add the new price entry
+    this.userSymbolPrices.push(priceData)
+    
+    // Update the symbol's last_price with the latest price
+    const symbolToUpdate = this.symbols.find(s => s.symbol === priceData.symbol.toUpperCase())
+    if (symbolToUpdate) {
+      symbolToUpdate.last_price = priceData.manual_price
+      symbolToUpdate.last_updated = new Date().toISOString()
+    }
+    
+    // Save to localStorage
+    this.saveToLocalStorage()
+    
+    console.log('💰 Added price entry to mock data:', {
+      symbol: priceData.symbol,
+      price: priceData.manual_price,
+      date: priceData.price_date
+    })
+  }
+
+  async deleteUserSymbolPrice(priceId: string): Promise<void> {
+    if (!this.initialized && typeof window !== 'undefined') {
+      this.initialize()
+    }
+    
+    const priceIndex = this.userSymbolPrices.findIndex(price => price.id === priceId)
+    if (priceIndex === -1) {
+      console.error('Price entry not found for deletion:', priceId)
+      return
+    }
+    
+    const deletedPrice = this.userSymbolPrices[priceIndex]
+    
+    // Remove the price entry
+    this.userSymbolPrices.splice(priceIndex, 1)
+    
+    // If we deleted a price entry, update the symbol's last_price to the most recent remaining price
+    const remainingPrices = this.userSymbolPrices
+      .filter(p => p.symbol === deletedPrice.symbol)
+      .sort((a, b) => new Date(b.price_date).getTime() - new Date(a.price_date).getTime())
+    
+    const symbolToUpdate = this.symbols.find(s => s.symbol === deletedPrice.symbol)
+    if (symbolToUpdate && remainingPrices.length > 0) {
+      symbolToUpdate.last_price = remainingPrices[0].manual_price
+      symbolToUpdate.last_updated = new Date().toISOString()
+    }
+    
+    // Save to localStorage
+    this.saveToLocalStorage()
+    
+    console.log('🗑️ Deleted price entry from mock data:', priceId)
+  }
+
   reset(): void {
     this.transactions = [...mockTransactions]
     this.symbols = [...mockSymbols]
+    this.userSymbolPrices = [] // Reset price history
     this.lastTransactionId = Math.max(...mockTransactions.map(t => 
       parseInt(t.id.replace('mock-transaction-', ''))
     ))
@@ -276,6 +350,9 @@ export const getClientMockDataStore = (): ClientMockDataStore => {
       updateTransaction: () => false,
       deleteTransaction: () => false,
       addHolding: () => {},
+      getUserSymbolPrices: () => [],
+      addUserSymbolPrice: async () => {},
+      deleteUserSymbolPrice: async () => {},
       reset: () => {}
     } as unknown as ClientMockDataStore
   }

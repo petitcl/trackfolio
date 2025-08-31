@@ -1,0 +1,4 @@
+symbol,date,price,notes
+MY_HOUSE,2024-01-15,50000.00,Initial valuation
+MY_HOUSE,2024-02-15,54000.50,Market update
+MY_HOUSE,2024-08-15,60000.75,Quarterly review

@@ -13,6 +13,7 @@ import QuickActions from './QuickActions'
 import DemoModeBanner from './DemoModeBanner'
 import ConfirmDialog from './ConfirmDialog'
 import AddTransactionForm, { type TransactionFormData } from './AddTransactionForm'
+import PriceManagement from './PriceManagement'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -481,33 +482,8 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
           </div>
         )}
 
-        {/* Manual Price Update (for custom assets only) */}
-        {symbolData?.is_custom && (
-          <div className="bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700 mb-8">
-            <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Manual Price Update</h3>
-              <div className="flex items-center space-x-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Current Price
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    defaultValue={symbolData.last_price || 0}
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <button className="mt-6 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
-                  Update Price
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Transaction History */}
-        <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md border dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md border dark:border-gray-700 mb-8">
           <div className="px-4 py-5 sm:px-6">
             <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">Transaction History</h3>
             <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
@@ -572,6 +548,13 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
             </table>
           </div>
         </div>
+
+        {/* Price Management (for custom assets only) */}
+        {symbolData?.is_custom && (
+          <div className="mb-8">
+            <PriceManagement user={user} symbol={symbol} />
+          </div>
+        )}
 
         {/* Quick Actions */}
         <QuickActions

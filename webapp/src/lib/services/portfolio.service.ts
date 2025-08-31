@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import { clientAuthService } from '@/lib/auth/client.auth.service'
-import type { Transaction, Symbol, Database } from '@/lib/supabase/database.types'
+import type { Transaction, Symbol, Database, UserSymbolPrice } from '@/lib/supabase/database.types'
 import { 
   mockSymbolPriceHistory,
   type HistoricalDataPoint 
@@ -900,6 +900,171 @@ export class PortfolioService {
     } catch (error) {
       console.error('Error deleting holding:', error)
       return { success: false, error: 'An unexpected error occurred while deleting the holding' }
+    }
+  }
+
+  /**
+   * Get user symbol price history for a specific symbol
+   */
+  async getUserSymbolPrices(user: AuthUser, symbol: string): Promise<UserSymbolPrice[]> {
+    // For demo users, use mock data store
+    if (user.isDemo) {
+      return getClientMockDataStore().getUserSymbolPrices(symbol)
+    }
+
+    try {
+      const { data, error } = await this.supabase
+        .from('user_symbol_prices')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('symbol', symbol.toUpperCase())
+        .order('price_date', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching user symbol prices:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Error in getUserSymbolPrices:', error)
+      return []
+    }
+  }
+
+  /**
+   * Add a new user symbol price entry
+   */
+  async addUserSymbolPrice(user: AuthUser, priceData: {
+    symbol: string
+    manual_price: number
+    price_date: string
+    notes?: string | null
+  }): Promise<void> {
+    // For demo users, add to mock data store
+    if (user.isDemo) {
+      await getClientMockDataStore().addUserSymbolPrice({
+        id: crypto.randomUUID(),
+        user_id: user.id,
+        symbol: priceData.symbol.toUpperCase(),
+        manual_price: priceData.manual_price,
+        price_date: priceData.price_date,
+        notes: priceData.notes || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      return
+    }
+
+    try {
+      // Add the price entry
+      const { error: priceError } = await this.supabase
+        .from('user_symbol_prices')
+        .insert({
+          user_id: user.id,
+          symbol: priceData.symbol.toUpperCase(),
+          manual_price: priceData.manual_price,
+          price_date: priceData.price_date,
+          notes: priceData.notes,
+        })
+
+      if (priceError) {
+        console.error('Error adding user symbol price:', priceError)
+        throw new Error('Failed to add price entry')
+      }
+
+      // Update the symbol's last_price with the new price
+      const { error: symbolError } = await this.supabase
+        .from('symbols')
+        .update({
+          last_price: priceData.manual_price,
+          last_updated: new Date().toISOString()
+        })
+        .eq('symbol', priceData.symbol.toUpperCase())
+
+      if (symbolError) {
+        console.error('Error updating symbol last_price:', symbolError)
+        // Don't throw here as the price entry was successfully added
+        console.warn('Price entry added but failed to update symbol last_price')
+      }
+
+      console.log(`✅ Added price entry for ${priceData.symbol}: ${priceData.manual_price} on ${priceData.price_date}`)
+    } catch (error) {
+      console.error('Error in addUserSymbolPrice:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Delete a user symbol price entry
+   */
+  async deleteUserSymbolPrice(user: AuthUser, priceId: string): Promise<void> {
+    // For demo users, remove from mock data store
+    if (user.isDemo) {
+      await getClientMockDataStore().deleteUserSymbolPrice(priceId)
+      return
+    }
+
+    try {
+      // First, get the price entry to know which symbol it belongs to
+      const { data: deletedPrice, error: fetchError } = await this.supabase
+        .from('user_symbol_prices')
+        .select('symbol')
+        .eq('id', priceId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (fetchError || !deletedPrice) {
+        console.error('Error fetching price entry for deletion:', fetchError)
+        throw new Error('Price entry not found')
+      }
+
+      // Delete the price entry
+      const { error: deleteError } = await this.supabase
+        .from('user_symbol_prices')
+        .delete()
+        .eq('id', priceId)
+        .eq('user_id', user.id)
+
+      if (deleteError) {
+        console.error('Error deleting user symbol price:', deleteError)
+        throw new Error('Failed to delete price entry')
+      }
+
+      // Get the most recent remaining price for this symbol
+      const { data: remainingPrices, error: remainingError } = await this.supabase
+        .from('user_symbol_prices')
+        .select('manual_price, price_date')
+        .eq('user_id', user.id)
+        .eq('symbol', deletedPrice.symbol)
+        .order('price_date', { ascending: false })
+        .limit(1)
+
+      if (remainingError) {
+        console.error('Error fetching remaining prices:', remainingError)
+        // Don't throw here as the deletion was successful
+      }
+
+      // Update the symbol's last_price if there are remaining prices
+      if (remainingPrices && remainingPrices.length > 0) {
+        const { error: symbolError } = await this.supabase
+          .from('symbols')
+          .update({
+            last_price: remainingPrices[0].manual_price,
+            last_updated: new Date().toISOString()
+          })
+          .eq('symbol', deletedPrice.symbol)
+
+        if (symbolError) {
+          console.error('Error updating symbol last_price after deletion:', symbolError)
+          // Don't throw here as the deletion was successful
+        }
+      }
+
+      console.log(`✅ Deleted price entry ${priceId}`)
+    } catch (error) {
+      console.error('Error in deleteUserSymbolPrice:', error)
+      throw error
     }
   }
 

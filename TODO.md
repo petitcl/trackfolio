@@ -18,7 +18,7 @@
 - ✅ Demo user authentication for testing
 - ✅ Mock data system for development/testing
 - ✅ Real transaction data support (buy, sell, dividend, bonus, deposit, withdrawal)
-- ✅ Manual price updates for custom assets
+- ✅ Manual price updates for custom assets with full history management
 - ✅ Row Level Security (RLS) policies
 
 ### Chart & Analytics Features
@@ -28,14 +28,17 @@
 - ✅ P&L calculations (realized vs unrealized)
 - ✅ Portfolio weight calculations
 - ✅ Currency formatting and percentage displays
+- [ ] Portfolio history can switch betwen % and absolute value
 
 ## 🐛 Bug Fixes
 
 - ✅ Fix the light mode (it still doesn't work)
+- ✅ Delete all traces of light theme (incl login page)
+- ✅ Fix demo mode outside of development env
 - [ ] Make charts take into account custom prices
 - [ ] Revisit all charts styles + logic
-- [ ] Delete all traces of light theme (incl login page)
-- [ ] Fix demo mode outside of development env
+- [ ] Fix hover on buttons
+- [ ] Creating a custom holding should redirect to holding detail page instead of homepage 
 
 ## 🎯 Priority Features
 
@@ -49,14 +52,19 @@
 - ✅ **Add Holding Page**
 - ✅ **Add Custom Holding Page** - Form for real estate, collectibles, private equity
 - ✅ **Delete Holding** - "Delete Holding" button
-- [ ] **Custom Holding Price Management** - Manual price updates with history
+- ✅ **Custom Holding Price Management** - Manual price updates with history, CSV import, and full table view
 
 ### Data & Sync
 - [ ] **Daily prices updates** - Daily prices updates
 - [ ] **Data Export** - Portfolio export to CSV
 - [ ] **Data Backup/Restore** - Portfolio backup
 
+### Other
+- [ ] Multi currency support
+
 ## 🎨 UI/UX Enhancements
+- [ ] Hardcoded list of brokers to pick from
+- [ ] Enhance fonts
 
 ## 🔧 Technical Improvements
 
