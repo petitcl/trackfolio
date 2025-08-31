@@ -24,25 +24,35 @@ const command = process.argv[3] // 'search' or 'add'
 const searchTerm = process.argv[4]
 const symbolName = process.argv[5] // optional for add command
 const currency = process.argv[6] // optional for add command
+const assetType = process.argv[7] // optional for add command
 
 if (!command || !searchTerm) {
   console.error('❌ Error: Command and search term/symbol are required')
   console.log('')
   console.log('Usage:')
   console.log('  Search: node scripts/search-and-add-symbol.js [BASE_URL] search "company name"')
-  console.log('  Add:    node scripts/search-and-add-symbol.js [BASE_URL] add SYMBOL ["Company Name"] [CURRENCY]')
+  console.log('  Add:    node scripts/search-and-add-symbol.js [BASE_URL] add SYMBOL ["Company Name"] [CURRENCY] [ASSET_TYPE]')
+  console.log('')
+  console.log('Asset Types: stock, etf, crypto, currency, cash, real_estate, other')
   console.log('')
   console.log('Examples:')
   console.log('  node scripts/search-and-add-symbol.js http://localhost:3000 search "apple"')
   console.log('  node scripts/search-and-add-symbol.js https://trackfolio.vercel.app search "microsoft"')
   console.log('  node scripts/search-and-add-symbol.js http://localhost:3000 add AAPL')
-  console.log('  node scripts/search-and-add-symbol.js https://trackfolio.vercel.app add MSFT "Microsoft Corporation" USD')
-  console.log('  node scripts/search-and-add-symbol.js http://localhost:3000 add BTC "Bitcoin" USD')
+  console.log('  node scripts/search-and-add-symbol.js https://trackfolio.vercel.app add MSFT "Microsoft Corporation" USD stock')
+  console.log('  node scripts/search-and-add-symbol.js http://localhost:3000 add BTC "Bitcoin" USD crypto')
+  console.log('  node scripts/search-and-add-symbol.js http://localhost:3000 add MY_HOUSE "Primary Residence" USD real_estate')
   process.exit(1)
 }
 
 if (!['search', 'add'].includes(command)) {
   console.error('❌ Error: Command must be "search" or "add"')
+  process.exit(1)
+}
+
+// Validate asset type if provided
+if (assetType && !['stock', 'etf', 'crypto', 'currency', 'cash', 'real_estate', 'other'].includes(assetType.toLowerCase())) {
+  console.error('❌ Error: Invalid asset type. Must be one of: stock, etf, crypto, currency, cash, real_estate, other')
   process.exit(1)
 }
 
@@ -161,7 +171,7 @@ async function main() {
       
       // Calculate optimal column widths based on content
       const symbolWidth = Math.max(6, ...results.map(r => r.symbol.length)) + 2
-      const nameWidth = Math.max(12, ...results.map(r => r.name.length > 30 ? 30 : r.name.length)) + 2
+      const nameWidth = Math.max(12, ...results.map(r => r.name.length > 60 ? 60 : r.name.length)) + 2
       const typeWidth = Math.max(4, ...results.map(r => r.type.length)) + 2
       const regionWidth = Math.max(6, ...results.map(r => r.region.length)) + 2
       const currencyWidth = Math.max(8, ...results.map(r => (r.currency || 'USD').length)) + 2
@@ -175,7 +185,7 @@ async function main() {
 
       results.forEach((result, index) => {
         const symbol = result.symbol.padEnd(symbolWidth)
-        const name = result.name.length > nameWidth - 5 ? 
+        const name = result.name.length > nameWidth - 2 ? 
           (result.name.substring(0, nameWidth - 5) + '...').padEnd(nameWidth) : 
           result.name.padEnd(nameWidth)
         const type = result.type.padEnd(typeWidth)
@@ -197,7 +207,8 @@ async function main() {
       const requestBody = {
         symbol: searchTerm.toUpperCase(),
         ...(symbolName && { name: symbolName }),
-        ...(currency && { currency: currency.toUpperCase() })
+        ...(currency && { currency: currency.toUpperCase() }),
+        ...(assetType && { assetType: assetType.toLowerCase() })
       }
       
       console.log(`➕ Adding symbol: ${JSON.stringify(requestBody, null, 2)}`)
