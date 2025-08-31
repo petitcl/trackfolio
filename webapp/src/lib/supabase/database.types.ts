@@ -197,7 +197,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      asset_type: "stock" | "etf" | "crypto" | "cash" | "real_estate" | "other"
+      asset_type: "stock" | "etf" | "crypto" | "currency" | "cash" | "real_estate" | "other"
       transaction_type:
         | "buy"
         | "sell"
@@ -332,7 +332,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      asset_type: ["stock", "etf", "crypto", "cash", "real_estate", "other"],
+      asset_type: ["stock", "etf", "crypto", "currency", "cash", "real_estate", "other"],
       transaction_type: [
         "buy",
         "sell",

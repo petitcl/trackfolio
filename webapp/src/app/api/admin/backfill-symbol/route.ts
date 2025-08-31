@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Skip asset types that don't have market data (cash, real_estate, other)
-    if (!['stock', 'etf', 'crypto'].includes(symbolData.asset_type)) {
+    if (!['stock', 'etf', 'crypto', 'currency'].includes(symbolData.asset_type)) {
       console.log(`Skipping non-market asset type: ${upperSymbol} (${symbolData.asset_type})`)
       return NextResponse.json({
         symbol: upperSymbol,

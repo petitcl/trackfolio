@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       .from('symbols')
       .select('symbol, name, asset_type, currency')
       .eq('is_custom', false)
-      .in('asset_type', ['stock', 'etf', 'crypto'])
+      .in('asset_type', ['stock', 'etf', 'crypto', 'currency'])
       .order('symbol')
 
     if (symbolsError) {

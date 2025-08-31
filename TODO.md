@@ -54,11 +54,12 @@
 - ✅ Edit + Delete button for both custom prices and transactions
 - ✅ Use confirm modal for delete price & delete transactions
 - [ ] Infinite scrolling in Transaction History
+- [ ] Support for cash positions
 
 ### Data & Sync
 - ✅ **Daily prices updates** - Daily prices updates
 - ✅ **Symbol price backfill**
-- [ ] Fix Crypto price update
+- ✅ Fix Crypto price update
 - [ ] Multi currency support (EUR, USD) -> use symbols?
 - [ ] **Data Export** - Portfolio export to CSV
 - [ ] **Data Backup/Restore** - Portfolio backup

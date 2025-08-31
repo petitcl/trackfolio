@@ -91,6 +91,40 @@ export const mockSymbols: Symbol[] = [
     created_by_user_id: null,
     created_at: new Date().toISOString()
   },
+  // Currency pairs for FX tracking
+  {
+    symbol: 'EURUSD',
+    name: 'Euro to US Dollar',
+    asset_type: 'currency' as AssetType,
+    currency: 'USD',
+    last_price: 1.0856,
+    last_updated: new Date().toISOString(),
+    is_custom: false,
+    created_by_user_id: null,
+    created_at: new Date().toISOString()
+  },
+  {
+    symbol: 'GBPUSD',
+    name: 'British Pound to US Dollar',
+    asset_type: 'currency' as AssetType,
+    currency: 'USD',
+    last_price: 1.2845,
+    last_updated: new Date().toISOString(),
+    is_custom: false,
+    created_by_user_id: null,
+    created_at: new Date().toISOString()
+  },
+  {
+    symbol: 'USDJPY',
+    name: 'US Dollar to Japanese Yen',
+    asset_type: 'currency' as AssetType,
+    currency: 'JPY',
+    last_price: 149.85,
+    last_updated: new Date().toISOString(),
+    is_custom: false,
+    created_by_user_id: null,
+    created_at: new Date().toISOString()
+  },
   // Custom investments
   {
     symbol: 'MY_HOUSE',

@@ -138,18 +138,32 @@ export async function POST(request: NextRequest) {
       detectedAssetType = 'crypto'
     }
 
-    // Try to get current price to verify symbol exists
+    // For currency symbols, detect based on common currency pair patterns
+    // Currency symbols are typically 6 characters: EURUSD, GBPUSD, etc.
+    const currencyPattern = /^[A-Z]{6}$|^[A-Z]{3}\/[A-Z]{3}$/
+    const commonCurrencyPairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD']
+    if (currencyPattern.test(upperSymbol) || commonCurrencyPairs.includes(upperSymbol) || 
+        symbolName.toLowerCase().includes('dollar') || symbolName.toLowerCase().includes('euro') || 
+        symbolName.toLowerCase().includes('yen') || symbolName.toLowerCase().includes('pound')) {
+      detectedAssetType = 'currency'
+    }
+
+    // Try to get current price to verify symbol exists (only for market-tradeable assets)
     let currentPrice: number | undefined
-    try {
-      console.log(`📈 Fetching current price for ${upperSymbol}...`)
-      const quote = await priceDataService.fetchCurrentQuote(upperSymbol, detectedAssetType, symbolCurrency as any)
-      if (quote) {
-        currentPrice = quote.price
-        console.log(`✅ Current price: $${currentPrice}`)
+    const marketTypes = ['stock', 'etf', 'crypto', 'currency'] as const
+    
+    if (marketTypes.includes(detectedAssetType as any)) {
+      try {
+        console.log(`📈 Fetching current price for ${upperSymbol}...`)
+        const quote = await priceDataService.fetchCurrentQuote(upperSymbol, detectedAssetType as any, symbolCurrency as any)
+        if (quote) {
+          currentPrice = quote.price
+          console.log(`✅ Current price: $${currentPrice}`)
+        }
+      } catch (priceError) {
+        console.warn(`Warning: Could not fetch current price:`, priceError)
+        // Don't fail the addition if price fetch fails
       }
-    } catch (priceError) {
-      console.warn(`Warning: Could not fetch current price:`, priceError)
-      // Don't fail the addition if price fetch fails
     }
 
     // Insert the symbol into database

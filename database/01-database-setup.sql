@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create custom types
 CREATE TYPE transaction_type AS ENUM ('buy', 'sell', 'dividend', 'bonus', 'deposit', 'withdrawal');
-CREATE TYPE asset_type AS ENUM ('stock', 'etf', 'crypto', 'cash', 'real_estate', 'other');
+CREATE TYPE asset_type AS ENUM ('stock', 'etf', 'crypto', 'currency', 'cash', 'real_estate', 'other');
 
 -- Transactions table
 CREATE TABLE transactions (

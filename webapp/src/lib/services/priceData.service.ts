@@ -3,7 +3,7 @@
  * Currently supports Alpha Vantage API for stocks and cryptocurrencies
  */
 
-export type SymbolType = 'stock' | 'crypto' | 'etf'
+export type SymbolType = 'stock' | 'crypto' | 'etf' | 'currency'
 export type BaseCurrency = 'USD' | 'EUR'
 
 export interface PriceData {
@@ -130,7 +130,7 @@ class PriceDataService {
     }
 
     try {
-      // Use different API functions for crypto vs stocks
+      // Use different API functions for different symbol types
       if (symbolType === 'crypto') {
         // For crypto, get the latest price from daily data
         const historicalData = await this.fetchCryptocurrencyData(symbol, baseCurrency)
@@ -146,6 +146,19 @@ class PriceDataService {
           price: latestPrice.close_price,
           lastUpdated: latestPrice.date
         }
+      } else if (symbolType === 'currency') {
+        // For currencies, parse the currency pair and fetch exchange rate
+        // Symbol should be in format like "EURUSD" or "EUR/USD"
+        const cleanSymbol = symbol.replace('/', '')
+        
+        if (cleanSymbol.length !== 6) {
+          throw new Error(`Invalid currency pair format: ${symbol}. Expected format: EURUSD or EUR/USD`)
+        }
+        
+        const fromCurrency = cleanSymbol.slice(0, 3)
+        const toCurrency = cleanSymbol.slice(3, 6)
+        
+        return await this.fetchCurrentCurrencyRate(fromCurrency, toCurrency)
       } else {
         // For stocks, use GLOBAL_QUOTE
         const url = `${this.baseUrl}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.apiKey}`
@@ -206,11 +219,25 @@ class PriceDataService {
     }
 
     try {
-      // Use different API functions for crypto vs stocks
+      // Use different API functions for different symbol types
       if (symbolType === 'crypto') {
         // For crypto, use DIGITAL_CURRENCY_DAILY (outputSize doesn't apply)
         console.log(`Fetching cryptocurrency historical data for: ${symbol} in ${baseCurrency}`)
         return await this.fetchCryptocurrencyData(symbol, baseCurrency)
+      } else if (symbolType === 'currency') {
+        // For currencies, parse the currency pair and fetch FX data
+        // Symbol should be in format like "EURUSD" or "EUR/USD"
+        const cleanSymbol = symbol.replace('/', '')
+        
+        if (cleanSymbol.length !== 6) {
+          throw new Error(`Invalid currency pair format: ${symbol}. Expected format: EURUSD or EUR/USD`)
+        }
+        
+        const fromCurrency = cleanSymbol.slice(0, 3)
+        const toCurrency = cleanSymbol.slice(3, 6)
+        
+        console.log(`Fetching currency exchange rate historical data for: ${fromCurrency}/${toCurrency}`)
+        return await this.fetchCurrencyData(fromCurrency, toCurrency)
       } else {
         // For stocks, use TIME_SERIES_DAILY
         console.log(`Fetching stock historical data for: ${symbol}`)
@@ -529,6 +556,101 @@ class PriceDataService {
       // Finally by match score (higher first)
       return parseFloat(b.matchScore) - parseFloat(a.matchScore)
     })
+  }
+
+  /**
+   * Fetch currency exchange rate data using FX_DAILY
+   */
+  private async fetchCurrencyData(fromCurrency: string, toCurrency: string = 'USD'): Promise<PriceData[]> {
+    const currencyPair = `${fromCurrency}${toCurrency}`
+    const url = `${this.baseUrl}?function=FX_DAILY&from_symbol=${fromCurrency}&to_symbol=${toCurrency}&apikey=${this.apiKey}`
+    const response = await fetch(url)
+    
+    if (!response.ok) {
+      throw new Error(`Alpha Vantage API error: ${response.status} ${response.statusText}`)
+    }
+    
+    const data = await response.json()
+    
+    // Check for API errors
+    if (data['Error Message']) {
+      throw new Error(`Alpha Vantage API error: ${data['Error Message']}`)
+    }
+    
+    if (data['Note']) {
+      throw new Error(`Alpha Vantage API rate limit: ${data['Note']}`)
+    }
+    
+    if (data['Information']) {
+      throw new Error(`Alpha Vantage API rate limit: ${data['Information']}`)
+    }
+
+    const timeSeries = data['Time Series FX (Daily)']
+    if (!timeSeries) {
+      console.warn(`No currency exchange data found for ${fromCurrency}/${toCurrency}`)
+      return []
+    }
+
+    const prices: PriceData[] = []
+    
+    for (const [date, values] of Object.entries(timeSeries)) {
+      const dayData = values as any
+      
+      prices.push({
+        symbol: currencyPair,
+        date,
+        open_price: parseFloat(dayData['1. open']),
+        high_price: parseFloat(dayData['2. high']),
+        low_price: parseFloat(dayData['3. low']),
+        close_price: parseFloat(dayData['4. close']),
+        adjusted_close: parseFloat(dayData['4. close']),
+        volume: 0, // FX doesn't have volume
+        data_source: 'alpha_vantage',
+        symbol_type: 'currency',
+        base_currency: toCurrency as BaseCurrency
+      })
+    }
+
+    return prices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  }
+
+  /**
+   * Fetch current currency exchange rate using CURRENCY_EXCHANGE_RATE
+   */
+  private async fetchCurrentCurrencyRate(fromCurrency: string, toCurrency: string = 'USD'): Promise<DailyPriceResponse | null> {
+    const url = `${this.baseUrl}?function=CURRENCY_EXCHANGE_RATE&from_currency=${fromCurrency}&to_currency=${toCurrency}&apikey=${this.apiKey}`
+    const response = await fetch(url)
+    
+    if (!response.ok) {
+      throw new Error(`Alpha Vantage API error: ${response.status} ${response.statusText}`)
+    }
+    
+    const data = await response.json()
+    
+    // Check for API errors
+    if (data['Error Message']) {
+      throw new Error(`Alpha Vantage API error: ${data['Error Message']}`)
+    }
+    
+    if (data['Note']) {
+      throw new Error(`Alpha Vantage API rate limit: ${data['Note']}`)
+    }
+    
+    if (data['Information']) {
+      throw new Error(`Alpha Vantage API rate limit: ${data['Information']}`)
+    }
+
+    const exchangeRate = data['Realtime Currency Exchange Rate']
+    if (!exchangeRate) {
+      console.warn(`No exchange rate data found for ${fromCurrency}/${toCurrency}`)
+      return null
+    }
+
+    return {
+      symbol: `${fromCurrency}${toCurrency}`,
+      price: parseFloat(exchangeRate['5. Exchange Rate']),
+      lastUpdated: exchangeRate['6. Last Refreshed']
+    }
   }
 
   /**
