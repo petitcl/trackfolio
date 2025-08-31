@@ -60,9 +60,6 @@ export default function ValueEvolutionChart({
     let startDate: Date
     
     switch (range) {
-      case '1d':
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-        break
       case '5d':
         startDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
         break
@@ -146,7 +143,7 @@ export default function ValueEvolutionChart({
     labels: filteredData.map(point => {
       const date = new Date(point.date)
       // Format based on time range
-      if (timeRange === '1d' || timeRange === '5d') {
+      if (timeRange === '5d') {
         return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
       } else if (timeRange === '1m' || timeRange === '6m') {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })

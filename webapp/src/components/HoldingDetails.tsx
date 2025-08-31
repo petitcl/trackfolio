@@ -206,9 +206,6 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
     let startDate: Date
     
     switch (timeRange) {
-      case '1d':
-        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-        break
       case '5d':
         startDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
         break
