@@ -65,6 +65,27 @@ async function updateDailyPrice(baseUrl, cronSecret) {
       console.log(`❌ Failed: ${data.failed || 0}`)
     }
     
+    // Show provider statistics if available
+    if (data.providerStats && data.providerStats.length > 0) {
+      console.log('')
+      console.log('🔧 Provider Status:')
+      data.providerStats.forEach(provider => {
+        const enabledIcon = provider.enabled ? '🟢' : '🔴'
+        const status = provider.available ? '✅' : '❌'
+        const delay = provider.rateLimitDelay ? ` (${provider.rateLimitDelay}ms delay)` : ''
+        console.log(`   ${enabledIcon} ${status} ${provider.name}${delay}`)
+      })
+    }
+
+    // Show results by provider if available
+    if (data.resultsByProvider) {
+      console.log('')
+      console.log('📊 Results by Provider:')
+      Object.entries(data.resultsByProvider).forEach(([provider, count]) => {
+        console.log(`   ${provider}: ${count} successful`)
+      })
+    }
+    
     if (data.results && data.results.length > 0) {
       console.log('')
       console.log('📋 Detailed Results:')
@@ -72,9 +93,10 @@ async function updateDailyPrice(baseUrl, cronSecret) {
       data.results.forEach((result, index) => {
         const status = result.success ? '✅' : '❌'
         const price = result.price ? `$${result.price.toFixed(2)}` : 'N/A'
+        const provider = result.provider ? ` [${result.provider}]` : ''
         const error = result.error ? ` (${result.error})` : ''
         
-        console.log(`   ${index + 1}. ${status} ${result.symbol}: ${price}${error}`)
+        console.log(`   ${index + 1}. ${status} ${result.symbol}: ${price}${provider}${error}`)
       })
     }
     

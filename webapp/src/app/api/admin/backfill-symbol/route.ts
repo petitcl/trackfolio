@@ -28,6 +28,8 @@ interface BackfillResult {
   duplicatesSkipped: number
   errors: string[]
   duration: string
+  provider?: string
+  providerStats?: Array<{ name: string; enabled: boolean; available: boolean; rateLimitDelay: number }>
 }
 
 export async function POST(request: NextRequest) {
@@ -126,6 +128,10 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Retrieved ${historicalPrices.length} historical price records for ${upperSymbol}`)
 
+    // Determine which provider was used (use the first record's provider)
+    const usedProvider = historicalPrices[0]?.provider || 'unknown'
+    console.log(`📊 Historical data provided by: ${usedProvider}`)
+
     // Process and store historical data
     const result: BackfillResult = {
       symbol: upperSymbol,
@@ -133,7 +139,8 @@ export async function POST(request: NextRequest) {
       recordsUpdated: 0,
       duplicatesSkipped: 0,
       errors: [],
-      duration: ''
+      duration: '',
+      provider: usedProvider
     }
 
     // Check which dates we already have
@@ -256,13 +263,15 @@ export async function POST(request: NextRequest) {
 
     // Finalize result
     result.duration = timer.getDuration()
+    result.providerStats = priceDataService.getProviderStats()
 
     console.log(`🎉 Backfill completed for ${upperSymbol}:`, {
       recordsInserted: result.recordsInserted,
       recordsUpdated: result.recordsUpdated,
       duplicatesSkipped: result.duplicatesSkipped,
       errors: result.errors.length,
-      duration: result.duration
+      duration: result.duration,
+      provider: result.provider
     })
 
     // Log any errors for monitoring

@@ -39,6 +39,9 @@ interface AddSymbolResult {
   currentPrice?: number
   error?: string
   duration: string
+  searchProvider?: string
+  priceProvider?: string
+  providerStats?: Array<{ name: string; enabled: boolean; available: boolean; rateLimitDelay: number }>
 }
 
 export async function POST(request: NextRequest) {
@@ -94,8 +97,9 @@ export async function POST(request: NextRequest) {
     let symbolName = name
     let symbolCurrency = currency || 'USD'
     let detectedAssetType: AssetType = assetType || 'stock'
+    let searchProvider: string | undefined
 
-    // If name not provided, try to fetch from Alpha Vantage search
+    // If name not provided, try to fetch from search providers
     if (!symbolName) {
       try {
         console.log(`🔍 Searching for symbol info: ${upperSymbol}`)
@@ -108,8 +112,9 @@ export async function POST(request: NextRequest) {
           
           symbolName = bestMatch.name
           symbolCurrency = bestMatch.currency || 'USD'
+          searchProvider = bestMatch.provider
           
-          // Detect asset type based on Alpha Vantage type
+          // Detect asset type based on provider type
           if (bestMatch.type.toLowerCase().includes('etf')) {
             detectedAssetType = 'etf'
           } else if (bestMatch.type.toLowerCase().includes('mutual fund')) {
@@ -118,10 +123,10 @@ export async function POST(request: NextRequest) {
             detectedAssetType = 'stock'
           }
           
-          console.log(`✅ Found symbol info: ${symbolName} (${detectedAssetType}, ${symbolCurrency})`)
+          console.log(`✅ Found symbol info: ${symbolName} (${detectedAssetType}, ${symbolCurrency}) from ${searchProvider}`)
         }
       } catch (searchError) {
-        console.warn(`Warning: Could not fetch symbol info from Alpha Vantage:`, searchError)
+        console.warn(`Warning: Could not fetch symbol info from providers:`, searchError)
         // Continue with provided values or defaults
       }
     }
@@ -150,6 +155,7 @@ export async function POST(request: NextRequest) {
 
     // Try to get current price to verify symbol exists (only for market-tradeable assets)
     let currentPrice: number | undefined
+    let priceProvider: string | undefined
     const marketTypes = ['stock', 'etf', 'crypto', 'currency'] as const
     
     if (marketTypes.includes(detectedAssetType as any)) {
@@ -158,7 +164,8 @@ export async function POST(request: NextRequest) {
         const quote = await priceDataService.fetchCurrentQuote(upperSymbol, detectedAssetType as any, symbolCurrency as any)
         if (quote) {
           currentPrice = quote.price
-          console.log(`✅ Current price: $${currentPrice}`)
+          priceProvider = quote.provider
+          console.log(`✅ Current price: $${currentPrice} from ${priceProvider}`)
         }
       } catch (priceError) {
         console.warn(`Warning: Could not fetch current price:`, priceError)
@@ -186,6 +193,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`🎉 Successfully added symbol: ${upperSymbol}`)
 
+    // Get provider statistics
+    const providerStats = priceDataService.getProviderStats()
+
     const result: AddSymbolResult = {
       symbol: upperSymbol,
       name: symbolName,
@@ -193,6 +203,9 @@ export async function POST(request: NextRequest) {
       currency: symbolCurrency,
       added: true,
       currentPrice,
+      searchProvider,
+      priceProvider,
+      providerStats,
       duration: timer.getDuration()
     }
 

@@ -28,6 +28,7 @@ interface UpdateResult {
   error?: string
   price?: number
   date?: string
+  provider?: string
 }
 
 export async function GET(request: NextRequest) {
@@ -46,19 +47,19 @@ export async function GET(request: NextRequest) {
 
     // Check if we've already run today to prevent duplicate runs
     const today = new Date().toISOString().split('T')[0]
-    const { data: existingRun } = await supabase
-      .from('symbol_price_history')
-      .select('id')
-      .eq('date', today)
-      .limit(1)
+    // const { data: existingRun } = await supabase
+    //   .from('symbol_price_history')
+    //   .select('id')
+    //   .eq('date', today)
+    //   .limit(1)
 
-    if (existingRun && existingRun.length > 0) {
-      console.log('✅ Price update already completed for today')
-      return NextResponse.json({
-        message: 'Already processed today',
-        date: today
-      })
-    }
+    // if (existingRun && existingRun.length > 0) {
+    //   console.log('✅ Price update already completed for today')
+    //   return NextResponse.json({
+    //     message: 'Already processed today',
+    //     date: today
+    //   })
+    // }
 
     // Get all non-custom symbols that need price updates (only market-data symbols)
     const { data: symbols, error: symbolsError } = await supabase
@@ -138,7 +139,8 @@ export async function GET(request: NextRequest) {
           symbol: symbol.symbol,
           success: true,
           price: quote.price,
-          date: quote.lastUpdated
+          date: quote.lastUpdated,
+          provider: quote.provider
         })
 
       } catch (error) {
@@ -187,6 +189,17 @@ export async function GET(request: NextRequest) {
     const successful = results.filter(r => r.success).length
     const failed = results.filter(r => !r.success).length
 
+    // Group results by provider for statistics
+    const providerStats = priceDataService.getProviderStats()
+    const resultsByProvider = results.reduce((acc, result) => {
+      if (result.success && result.provider) {
+        const provider = result.provider
+        if (!acc[provider]) acc[provider] = 0
+        acc[provider]++
+      }
+      return acc
+    }, {} as Record<string, number>)
+
     const summary = {
       message: 'Daily price update completed',
       date: today,
@@ -194,6 +207,8 @@ export async function GET(request: NextRequest) {
       total: results.length,
       successful,
       failed,
+      providerStats,
+      resultsByProvider,
       results: results
     }
 

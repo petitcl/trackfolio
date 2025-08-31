@@ -82,6 +82,23 @@ const req = httpModule.request(options, (res) => {
         console.log(`⏱️ Duration: ${result.duration}`)
         console.log(`🕒 Completed at: ${endTime.toISOString()}`)
         
+        // Show provider information if available
+        if (result.provider) {
+          console.log(`🔧 Data Provider: ${result.provider}`)
+        }
+
+        // Show provider statistics if available
+        if (result.providerStats && result.providerStats.length > 0) {
+          console.log('')
+          console.log('📊 Provider Status:')
+          result.providerStats.forEach(provider => {
+            const enabledIcon = provider.enabled ? '🟢' : '🔴'
+            const status = provider.available ? '✅' : '❌'
+            const delay = provider.rateLimitDelay ? ` (${provider.rateLimitDelay}ms delay)` : ''
+            console.log(`   ${enabledIcon} ${status} ${provider.name}${delay}`)
+          })
+        }
+        
         if (result.errors && result.errors.length > 0) {
           console.log('\n⚠️ Warnings/Errors:')
           result.errors.forEach((error, index) => {

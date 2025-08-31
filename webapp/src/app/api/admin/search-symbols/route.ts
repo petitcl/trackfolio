@@ -49,12 +49,29 @@ export async function GET(request: NextRequest) {
 
     console.log(`✅ Found ${results.length} symbol matches for "${keywords}"`)
 
-    // Return results with timing info
+    // Get provider statistics
+    const providerStats = priceDataService.getProviderStats()
+    
+    // Group results by provider for better visibility
+    const resultsByProvider = results.reduce((acc, result) => {
+      const provider = result.provider || 'unknown'
+      if (!acc[provider]) acc[provider] = []
+      acc[provider].push(result)
+      return acc
+    }, {} as Record<string, typeof results>)
+
+    // Return results with timing info and provider statistics
     return NextResponse.json({
       keywords,
       results,
       count: results.length,
-      duration: timer.getDuration()
+      duration: timer.getDuration(),
+      providerStats,
+      resultsByProvider: Object.entries(resultsByProvider).map(([provider, providerResults]) => ({
+        provider,
+        count: providerResults.length,
+        results: providerResults
+      }))
     })
 
   } catch (error) {

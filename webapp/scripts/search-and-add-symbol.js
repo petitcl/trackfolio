@@ -128,6 +128,28 @@ async function main() {
       console.log('✅ Search completed!')
       console.log(`📊 Found ${results.length} matches for "${searchTerm}"`)
       console.log(`⏱️ Duration: ${response.data.duration}`)
+      
+      // Show provider statistics if available
+      if (response.data.providerStats && response.data.providerStats.length > 0) {
+        console.log('')
+        console.log('🔧 Provider Status:')
+        response.data.providerStats.forEach(provider => {
+          const enabledIcon = provider.enabled ? '🟢' : '🔴'
+          const status = provider.available ? '✅' : '❌'
+          const delay = provider.rateLimitDelay ? ` (${provider.rateLimitDelay}ms delay)` : ''
+          console.log(`   ${enabledIcon} ${status} ${provider.name}${delay}`)
+        })
+      }
+
+      // Show results by provider if available
+      if (response.data.resultsByProvider && response.data.resultsByProvider.length > 0) {
+        console.log('')
+        console.log('📊 Results by Provider:')
+        response.data.resultsByProvider.forEach(providerGroup => {
+          console.log(`   ${providerGroup.provider}: ${providerGroup.count} results`)
+        })
+      }
+      
       console.log('')
 
       if (results.length === 0) {
@@ -139,15 +161,16 @@ async function main() {
       
       // Calculate optimal column widths based on content
       const symbolWidth = Math.max(6, ...results.map(r => r.symbol.length)) + 2
-      const nameWidth = Math.max(12, ...results.map(r => r.name.length > 35 ? 35 : r.name.length)) + 2
+      const nameWidth = Math.max(12, ...results.map(r => r.name.length > 30 ? 30 : r.name.length)) + 2
       const typeWidth = Math.max(4, ...results.map(r => r.type.length)) + 2
       const regionWidth = Math.max(6, ...results.map(r => r.region.length)) + 2
-      const currencyWidth = Math.max(8, ...results.map(r => (r.currency || 'USD').length))
+      const currencyWidth = Math.max(8, ...results.map(r => (r.currency || 'USD').length)) + 2
+      const providerWidth = Math.max(8, ...results.map(r => (r.provider || 'unknown').length))
       
-      const totalWidth = symbolWidth + nameWidth + typeWidth + regionWidth + currencyWidth
+      const totalWidth = symbolWidth + nameWidth + typeWidth + regionWidth + currencyWidth + providerWidth
       
       console.log(''.padEnd(totalWidth, '='))
-      console.log('Symbol'.padEnd(symbolWidth) + 'Company Name'.padEnd(nameWidth) + 'Type'.padEnd(typeWidth) + 'Region'.padEnd(regionWidth) + 'Currency')
+      console.log('Symbol'.padEnd(symbolWidth) + 'Company Name'.padEnd(nameWidth) + 'Type'.padEnd(typeWidth) + 'Region'.padEnd(regionWidth) + 'Currency'.padEnd(currencyWidth) + 'Provider')
       console.log(''.padEnd(totalWidth, '-'))
 
       results.forEach((result, index) => {
@@ -158,8 +181,9 @@ async function main() {
         const type = result.type.padEnd(typeWidth)
         const region = result.region.padEnd(regionWidth)
         const currency = (result.currency || 'USD').padEnd(currencyWidth)
+        const provider = (result.provider || 'unknown').padEnd(providerWidth)
         
-        console.log(`${symbol}${name}${type}${region}${currency}`)
+        console.log(`${symbol}${name}${type}${region}${currency}${provider}`)
       })
 
       console.log(''.padEnd(totalWidth, '='))
@@ -199,6 +223,30 @@ async function main() {
       console.log(`   Current Price: ${result.currentPrice ? '$' + result.currentPrice.toFixed(2) : 'N/A'}`)
       console.log(`   Added: ${result.added ? 'Yes' : 'No (already existed)'}`)
       console.log(`   Duration: ${result.duration}`)
+      
+      // Show provider information if available
+      if (result.searchProvider || result.priceProvider) {
+        console.log('')
+        console.log('🔧 Provider Information:')
+        if (result.searchProvider) {
+          console.log(`   Search Provider: ${result.searchProvider}`)
+        }
+        if (result.priceProvider) {
+          console.log(`   Price Provider: ${result.priceProvider}`)
+        }
+      }
+
+      // Show provider statistics if available
+      if (result.providerStats && result.providerStats.length > 0) {
+        console.log('')
+        console.log('📊 Provider Status:')
+        result.providerStats.forEach(provider => {
+          const enabledIcon = provider.enabled ? '🟢' : '🔴'
+          const status = provider.available ? '✅' : '❌'
+          const delay = provider.rateLimitDelay ? ` (${provider.rateLimitDelay}ms delay)` : ''
+          console.log(`   ${enabledIcon} ${status} ${provider.name}${delay}`)
+        })
+      }
 
       if (result.added) {
         console.log('')

@@ -53,12 +53,33 @@ node scripts/update-daily-prices.js https://trackfolio-jy6d.vercel.app
 ✅ Successful: 15
 ❌ Failed: 0
 
+🔧 Provider Status:
+   🔴 ✅ alpha_vantage (12000ms delay)
+   🟢 ✅ yahoo_finance (1000ms delay)
+
+📊 Results by Provider:
+   yahoo_finance: 15 successful
+
 📋 Detailed Results:
-   1. ✅ AAPL: $192.53
-   2. ✅ GOOGL: $2847.28
-   3. ✅ MSFT: $404.87
+   1. ✅ AAPL: $192.53 [yahoo_finance]
+   2. ✅ GOOGL: $2847.28 [yahoo_finance]
+   3. ✅ MSFT: $404.87 [yahoo_finance]
    ...
 ```
+
+### Provider Information
+
+All scripts now show which price provider was used for each operation:
+
+- **🟢 Enabled**: Provider is active and will be used in the waterfall
+- **🔴 Disabled**: Provider is configured but temporarily disabled
+- **✅ Available**: Provider is properly configured (API keys, etc.)
+- **❌ Unavailable**: Provider configuration is missing or invalid
+- **alpha_vantage**: Currently disabled, more comprehensive but with rate limits
+- **yahoo_finance**: Currently enabled as primary provider
+- **Provider Status**: Shows enabled/disabled status, availability, and rate limit delays
+- **Results by Provider**: Summary of how many symbols each provider handled
+- **Individual Results**: Each price/symbol shows `[provider_name]` to indicate source
 
 ### Troubleshooting
 
@@ -72,5 +93,6 @@ node scripts/update-daily-prices.js https://trackfolio-jy6d.vercel.app
 
 **"Rate limit exceeded"**
 - Alpha Vantage free tier has 25 requests per day
-- Wait until the next day or upgrade to premium plan
+- System automatically falls back to Yahoo Finance when this happens
+- Wait until the next day or upgrade Alpha Vantage to premium plan
 

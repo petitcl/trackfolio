@@ -3,22 +3,26 @@
 -- Note: Replace 'TEST_USER_UUID' with actual user UUID from auth.users
 
 -- First, insert popular public symbols into the symbols cache
-INSERT INTO symbols (symbol, name, asset_type, last_price, last_updated, is_custom, created_by_user_id) VALUES
-    ('AAPL', 'Apple Inc.', 'stock', 185.50, NOW(), FALSE, NULL),
-    ('MSFT', 'Microsoft Corporation', 'stock', 420.30, NOW(), FALSE, NULL),
-    ('GOOGL', 'Alphabet Inc.', 'stock', 142.80, NOW(), FALSE, NULL),
-    ('TSLA', 'Tesla Inc.', 'stock', 248.90, NOW(), FALSE, NULL),
-    ('VTI', 'Vanguard Total Stock Market ETF', 'etf', 245.60, NOW(), FALSE, NULL),
-    ('BTC', 'Bitcoin', 'crypto', 43500.00, NOW(), FALSE, NULL),
-    ('ETH', 'Ethereum', 'crypto', 2650.00, NOW(), FALSE, NULL)
+INSERT INTO symbols (symbol, name, asset_type, currency, last_price, last_updated, is_custom, created_by_user_id) VALUES
+    ('AAPL', 'Apple Inc.', 'stock', 'USD', 185.50, NOW(), FALSE, NULL),
+    ('MSFT', 'Microsoft Corporation', 'stock', 'USD', 420.30, NOW(), FALSE, NULL),
+    ('GOOGL', 'Alphabet Inc.', 'stock', 'USD', 142.80, NOW(), FALSE, NULL),
+    ('TSLA', 'Tesla Inc.', 'stock', 'USD', 248.90, NOW(), FALSE, NULL),
+    ('VTI', 'Vanguard Total Stock Market ETF', 'etf', 'USD', 245.60, NOW(), FALSE, NULL),
+    ('BTC', 'Bitcoin', 'crypto', 'USD', 43500.00, NOW(), FALSE, NULL),
+    ('ETH', 'Ethereum', 'crypto', 'USD', 2650.00, NOW(), FALSE, NULL),
+    -- Major currency pairs
+    ('EURUSD', 'Euro/US Dollar', 'currency', 'USD', 1.0850, NOW(), FALSE, NULL),
+    ('GBPUSD', 'British Pound/US Dollar', 'currency', 'USD', 1.2650, NOW(), FALSE, NULL),
+    ('EURGBP', 'Euro/British Pound', 'currency', 'EUR', 0.8580, NOW(), FALSE, NULL)
 ON CONFLICT (symbol) DO NOTHING;
 
 -- Add some custom user investments
-INSERT INTO symbols (symbol, name, asset_type, last_price, last_updated, is_custom, created_by_user_id) VALUES
-    ('MY_CASH', 'Cash Account', 'cash', 120000.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1'),
-    ('MY_HOUSE', 'Primary Residence', 'real_estate', 120000.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1'),
-    ('VINTAGE_WATCH', 'Rolex Submariner Collection', 'other', 12500.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1'),
-    ('STARTUP_XYZ', 'Private Company XYZ Shares', 'other', 50.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1');
+INSERT INTO symbols (symbol, name, asset_type, currency, last_price, last_updated, is_custom, created_by_user_id) VALUES
+    ('MY_CASH', 'Cash Account', 'cash', 'USD', 120000.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1'),
+    ('MY_HOUSE', 'Primary Residence', 'real_estate', 'USD', 120000.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1'),
+    ('VINTAGE_WATCH', 'Rolex Submariner Collection', 'other', 'USD', 12500.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1'),
+    ('STARTUP_XYZ', 'Private Company XYZ Shares', 'other', 'USD', 50.00, NOW(), TRUE, '49c7a133-05b8-4175-927c-a406fcd78ff1');
 
 -- Sample transactions for a test user
 -- Replace '49c7a133-05b8-4175-927c-a406fcd78ff1' with the actual UUID from your Supabase auth.users table
@@ -62,6 +66,13 @@ INSERT INTO transactions (user_id, date, symbol, type, quantity, price_per_unit,
     
     -- Recent dividend - December 2024
     ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-15', 'AAPL', 'dividend', 105.00, 0.25, 'USD', 0, 'Q4 2024 dividend'),
+    
+    -- Currency trading examples
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-10-05', 'EURUSD', 'buy', 10000.00, 1.0920, 'USD', 5.00, 'Euro long position - expecting rate cut'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-10-15', 'GBPUSD', 'buy', 5000.00, 1.2800, 'USD', 3.50, 'GBP position on Brexit news'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-10', 'USDJPY', 'buy', 15000.00, 148.50, 'USD', 7.50, 'USD/JPY carry trade'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-25', 'EURUSD', 'sell', 5000.00, 1.0880, 'USD', 2.50, 'Partial profit taking on EUR'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-05', 'AUDUSD', 'buy', 8000.00, 0.6620, 'USD', 4.00, 'AUD commodity play'),
     
     -- Cash management
     ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-20', 'MY_CASH', 'deposit', 2000.00, 1.00, 'USD', 0, 'Additional funding for 2025'),
