@@ -1,7 +1,10 @@
 /**
  * Service for fetching market price data from external APIs
- * Currently supports Alpha Vantage API
+ * Currently supports Alpha Vantage API for stocks and cryptocurrencies
  */
+
+export type SymbolType = 'stock' | 'crypto' | 'etf'
+export type BaseCurrency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CNY' | 'CAD' | 'AUD'
 
 export interface PriceData {
   symbol: string
@@ -13,6 +16,8 @@ export interface PriceData {
   volume?: number
   adjusted_close?: number
   data_source: string
+  symbol_type?: SymbolType
+  base_currency?: BaseCurrency
 }
 
 export interface DailyPriceResponse {
@@ -34,42 +39,119 @@ class PriceDataService {
   }
 
   /**
-   * Fetch current quote for a symbol
+   * Fetch cryptocurrency data using DIGITAL_CURRENCY_DAILY
    */
-  async fetchCurrentQuote(symbol: string): Promise<DailyPriceResponse | null> {
+  private async fetchCryptocurrencyData(symbol: string, baseCurrency: BaseCurrency = 'USD'): Promise<PriceData[]> {
+    const url = `${this.baseUrl}?function=DIGITAL_CURRENCY_DAILY&symbol=${symbol}&market=${baseCurrency}&apikey=${this.apiKey}`
+    const response = await fetch(url)
+    
+    if (!response.ok) {
+      throw new Error(`Alpha Vantage API error: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    
+    // Check for API errors
+    if (data['Error Message']) {
+      throw new Error(`Alpha Vantage API error: ${data['Error Message']}`)
+    }
+    
+    if (data['Note']) {
+      throw new Error(`Alpha Vantage API rate limit: ${data['Note']}`)
+    }
+
+    const timeSeries = data['Time Series (Digital Currency Daily)']
+    if (!timeSeries) {
+      console.warn(`No cryptocurrency data found for symbol: ${symbol}`)
+      return []
+    }
+
+    const prices: PriceData[] = []
+    
+    for (const [date, values] of Object.entries(timeSeries)) {
+      const dayData = values as any
+      
+      prices.push({
+        symbol,
+        date,
+        open_price: parseFloat(dayData[`1a. open (${baseCurrency})`] || dayData['1b. open (USD)']),
+        high_price: parseFloat(dayData[`2a. high (${baseCurrency})`] || dayData['2b. high (USD)']),
+        low_price: parseFloat(dayData[`3a. low (${baseCurrency})`] || dayData['3b. low (USD)']),
+        close_price: parseFloat(dayData[`4a. close (${baseCurrency})`] || dayData['4b. close (USD)']),
+        adjusted_close: parseFloat(dayData[`4a. close (${baseCurrency})`] || dayData['4b. close (USD)']),
+        volume: parseFloat(dayData['5. volume']),
+        data_source: 'alpha_vantage',
+        symbol_type: 'crypto',
+        base_currency: baseCurrency
+      })
+    }
+
+    return prices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  }
+
+  /**
+   * Fetch current quote for a symbol
+   * @param symbol The ticker symbol (e.g., 'AAPL', 'BTC', 'ETH')
+   * @param symbolType The type of symbol ('stock', 'crypto', 'etf')
+   * @param baseCurrency The base currency for pricing (defaults to 'USD')
+   */
+  async fetchCurrentQuote(
+    symbol: string, 
+    symbolType: SymbolType, 
+    baseCurrency: BaseCurrency = 'USD'
+  ): Promise<DailyPriceResponse | null> {
     if (!this.apiKey) {
       throw new Error('Alpha Vantage API key not configured')
     }
 
     try {
-      const url = `${this.baseUrl}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.apiKey}`
-      const response = await fetch(url)
-      
-      if (!response.ok) {
-        throw new Error(`Alpha Vantage API error: ${response.status} ${response.statusText}`)
-      }
+      // Use different API functions for crypto vs stocks
+      if (symbolType === 'crypto') {
+        // For crypto, get the latest price from daily data
+        const historicalData = await this.fetchCryptocurrencyData(symbol, baseCurrency)
+        
+        if (historicalData.length === 0) {
+          console.warn(`No cryptocurrency data found for symbol: ${symbol}`)
+          return null
+        }
+        
+        const latestPrice = historicalData[0] // Already sorted by date desc
+        return {
+          symbol: symbol,
+          price: latestPrice.close_price,
+          lastUpdated: latestPrice.date
+        }
+      } else {
+        // For stocks, use GLOBAL_QUOTE
+        const url = `${this.baseUrl}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${this.apiKey}`
+        const response = await fetch(url)
+        
+        if (!response.ok) {
+          throw new Error(`Alpha Vantage API error: ${response.status} ${response.statusText}`)
+        }
 
-      const data = await response.json()
-      
-      // Check for API errors
-      if (data['Error Message']) {
-        throw new Error(`Alpha Vantage API error: ${data['Error Message']}`)
-      }
-      
-      if (data['Note']) {
-        throw new Error(`Alpha Vantage API rate limit: ${data['Note']}`)
-      }
+        const data = await response.json()
+        
+        // Check for API errors
+        if (data['Error Message']) {
+          throw new Error(`Alpha Vantage API error: ${data['Error Message']}`)
+        }
+        
+        if (data['Note']) {
+          throw new Error(`Alpha Vantage API rate limit: ${data['Note']}`)
+        }
 
-      const quote = data['Global Quote']
-      if (!quote) {
-        console.warn(`No quote data found for symbol: ${symbol}`)
-        return null
-      }
+        const quote = data['Global Quote']
+        if (!quote) {
+          console.warn(`No quote data found for symbol: ${symbol}`)
+          return null
+        }
 
-      return {
-        symbol: quote['01. symbol'],
-        price: parseFloat(quote['05. price']),
-        lastUpdated: quote['07. latest trading day']
+        return {
+          symbol: quote['01. symbol'],
+          price: parseFloat(quote['05. price']),
+          lastUpdated: quote['07. latest trading day']
+        }
       }
     } catch (error) {
       console.error(`Error fetching quote for ${symbol}:`, error)
@@ -79,59 +161,76 @@ class PriceDataService {
 
   /**
    * Fetch historical daily prices for a symbol
-   * @param symbol Stock symbol (e.g., 'AAPL')
-   * @param outputSize 'compact' (last 100 days) or 'full' (20+ years)
+   * @param symbol The ticker symbol (e.g., 'AAPL', 'BTC', 'ETH')
+   * @param symbolType The type of symbol ('stock', 'crypto', 'etf')
+   * @param baseCurrency The base currency for pricing (defaults to 'USD')
+   * @param outputSize 'compact' (last 100 days) or 'full' (20+ years) - only applies to stocks
    */
-  async fetchHistoricalPrices(symbol: string, outputSize: 'compact' | 'full' = 'full'): Promise<PriceData[]> {
+  async fetchHistoricalPrices(
+    symbol: string, 
+    symbolType: SymbolType, 
+    baseCurrency: BaseCurrency = 'USD',
+    outputSize: 'compact' | 'full' = 'full'
+  ): Promise<PriceData[]> {
     if (!this.apiKey) {
       throw new Error('Alpha Vantage API key not configured')
     }
 
     try {
-      // Use TIME_SERIES_DAILY for free tier (TIME_SERIES_DAILY_ADJUSTED requires premium)
-      const url = `${this.baseUrl}?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=${outputSize}&apikey=${this.apiKey}`
-      const response = await fetch(url)
-      
-      if (!response.ok) {
-        throw new Error(`Alpha Vantage API error: ${response.status} ${response.statusText}`)
-      }
-
-      const data = await response.json()
-      
-      // Check for API errors
-      if (data['Error Message']) {
-        throw new Error(`Alpha Vantage API error: ${data['Error Message']}`)
-      }
-      
-      if (data['Note']) {
-        throw new Error(`Alpha Vantage API rate limit: ${data['Note']}`)
-      }
-
-      const timeSeries = data['Time Series (Daily)']
-      if (!timeSeries) {
-        console.warn(`No historical data found for symbol: ${symbol}`)
-        return []
-      }
-
-      const prices: PriceData[] = []
-      
-      for (const [date, values] of Object.entries(timeSeries)) {
-        const dayData = values as any
+      // Use different API functions for crypto vs stocks
+      if (symbolType === 'crypto') {
+        // For crypto, use DIGITAL_CURRENCY_DAILY (outputSize doesn't apply)
+        console.log(`Fetching cryptocurrency historical data for: ${symbol} in ${baseCurrency}`)
+        return await this.fetchCryptocurrencyData(symbol, baseCurrency)
+      } else {
+        // For stocks, use TIME_SERIES_DAILY
+        console.log(`Fetching stock historical data for: ${symbol}`)
+        const url = `${this.baseUrl}?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=${outputSize}&apikey=${this.apiKey}`
+        const response = await fetch(url)
         
-        prices.push({
-          symbol,
-          date,
-          open_price: parseFloat(dayData['1. open']),
-          high_price: parseFloat(dayData['2. high']),
-          low_price: parseFloat(dayData['3. low']),
-          close_price: parseFloat(dayData['4. close']),
-          adjusted_close: parseFloat(dayData['4. close']), // Free tier doesn't have adjusted close, use close price
-          volume: parseInt(dayData['5. volume']), // Volume is field 5 in free tier, not 6
-          data_source: 'alpha_vantage'
-        })
-      }
+        if (!response.ok) {
+          throw new Error(`Alpha Vantage API error: ${response.status} ${response.statusText}`)
+        }
 
-      return prices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        const data = await response.json()
+        
+        // Check for API errors
+        if (data['Error Message']) {
+          throw new Error(`Alpha Vantage API error: ${data['Error Message']}`)
+        }
+        
+        if (data['Note']) {
+          throw new Error(`Alpha Vantage API rate limit: ${data['Note']}`)
+        }
+
+        const timeSeries = data['Time Series (Daily)']
+        if (!timeSeries) {
+          console.warn(`No historical data found for symbol: ${symbol}`)
+          return []
+        }
+
+        const prices: PriceData[] = []
+        
+        for (const [date, values] of Object.entries(timeSeries)) {
+          const dayData = values as any
+          
+          prices.push({
+            symbol,
+            date,
+            open_price: parseFloat(dayData['1. open']),
+            high_price: parseFloat(dayData['2. high']),
+            low_price: parseFloat(dayData['3. low']),
+            close_price: parseFloat(dayData['4. close']),
+            adjusted_close: parseFloat(dayData['4. close']), // Free tier doesn't have adjusted close, use close price
+            volume: parseInt(dayData['5. volume']), // Volume is field 5 in free tier, not 6
+            data_source: 'alpha_vantage',
+            symbol_type: symbolType,
+            base_currency: baseCurrency
+          })
+        }
+
+        return prices.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      }
     } catch (error) {
       console.error(`Error fetching historical prices for ${symbol}:`, error)
       throw error
@@ -142,25 +241,27 @@ class PriceDataService {
    * Get multiple quotes in batch (respecting rate limits)
    * Alpha Vantage free tier: 25 requests per day, 5 requests per minute
    */
-  async fetchMultipleQuotes(symbols: string[]): Promise<Map<string, DailyPriceResponse>> {
+  async fetchMultipleQuotes(
+    symbolData: Array<{ symbol: string; symbolType: SymbolType; baseCurrency?: BaseCurrency }>
+  ): Promise<Map<string, DailyPriceResponse>> {
     const results = new Map<string, DailyPriceResponse>()
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
     
-    console.log(`Fetching quotes for ${symbols.length} symbols...`)
+    console.log(`Fetching quotes for ${symbolData.length} symbols...`)
     
-    for (let i = 0; i < symbols.length; i++) {
-      const symbol = symbols[i]
+    for (let i = 0; i < symbolData.length; i++) {
+      const { symbol, symbolType, baseCurrency = 'USD' } = symbolData[i]
       
       try {
-        console.log(`Fetching quote ${i + 1}/${symbols.length}: ${symbol}`)
-        const quote = await this.fetchCurrentQuote(symbol)
+        console.log(`Fetching quote ${i + 1}/${symbolData.length}: ${symbol} (${symbolType}, ${baseCurrency})`)
+        const quote = await this.fetchCurrentQuote(symbol, symbolType, baseCurrency)
         
         if (quote) {
           results.set(symbol, quote)
         }
         
         // Rate limiting: wait 12 seconds between requests (5 per minute)
-        if (i < symbols.length - 1) {
+        if (i < symbolData.length - 1) {
           console.log('Waiting 12 seconds for rate limiting...')
           await delay(12000)
         }
@@ -170,12 +271,13 @@ class PriceDataService {
       }
     }
     
-    console.log(`Successfully fetched ${results.size}/${symbols.length} quotes`)
+    console.log(`Successfully fetched ${results.size}/${symbolData.length} quotes`)
     return results
   }
 
   /**
-   * Check if markets are likely open (basic check)
+   * Check if stock markets are likely open (basic check)
+   * Note: Cryptocurrency markets are open 24/7
    * More sophisticated logic could check holidays, market hours by timezone
    */
   isMarketHours(): boolean {
@@ -184,6 +286,7 @@ class PriceDataService {
     const dayOfWeek = now.getUTCDay()
     
     // Basic check: Monday-Friday, 9:30 AM - 4:00 PM EST (14:30 - 21:00 UTC)
+    // This applies to traditional stock markets only - crypto markets are 24/7
     const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5
     const isDuringMarketHours = utcHour >= 14 && utcHour < 21
     

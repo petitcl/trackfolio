@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { priceDataService } from '@/lib/services/priceData.service'
+import { priceDataService, type SymbolType, type BaseCurrency } from '@/lib/services/priceData.service'
 import type { Database } from '@/lib/supabase/types'
 
 // Initialize Supabase client with service role for cron jobs
@@ -33,6 +33,23 @@ interface UpdateResult {
   error?: string
   price?: number
   date?: string
+}
+
+/**
+ * Map database asset_type to priceDataService SymbolType
+ */
+function mapAssetTypeToSymbolType(assetType: string): SymbolType {
+  switch (assetType) {
+    case 'stock':
+      return 'stock'
+    case 'etf':
+      return 'etf'
+    case 'crypto':
+      return 'crypto'
+    default:
+      // For cash, real_estate, other - these don't have market data, should be filtered out
+      throw new Error(`Asset type '${assetType}' does not support market data fetching`)
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -98,11 +115,12 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Get all non-custom symbols that need price updates
+    // Get all non-custom symbols that need price updates (only market-data symbols)
     const { data: symbols, error: symbolsError } = await supabase
       .from('symbols')
       .select('symbol, name, asset_type')
       .eq('is_custom', false)
+      .in('asset_type', ['stock', 'etf', 'crypto'])
       .order('symbol')
 
     if (symbolsError) {
@@ -117,11 +135,24 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    console.log(`📈 Found ${symbols.length} symbols to update:`, symbols.map(s => s.symbol))
+    console.log(`📈 Found ${symbols.length} symbols to update:`, symbols.map(s => `${s.symbol} (${s.asset_type})`))
 
     // Fetch current quotes for all symbols (with rate limiting)
-    const symbolList = symbols.map(s => s.symbol)
-    const quotes = await priceDataService.fetchMultipleQuotes(symbolList)
+    const symbolData = symbols.map(s => {
+      try {
+        return {
+          symbol: s.symbol,
+          symbolType: mapAssetTypeToSymbolType(s.asset_type),
+          baseCurrency: 'USD' as BaseCurrency // Default to USD for all symbols
+        }
+      } catch (error) {
+        console.error(`Skipping ${s.symbol}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        return null
+      }
+    }).filter(Boolean) as Array<{ symbol: string; symbolType: SymbolType; baseCurrency: BaseCurrency }>
+
+    console.log(`📊 Processing ${symbolData.length} valid symbols for price updates`)
+    const quotes = await priceDataService.fetchMultipleQuotes(symbolData)
     
     console.log(`✅ Retrieved ${quotes.size} quotes from Alpha Vantage`)
 

@@ -105,7 +105,7 @@ npm run backfill-symbol:prod SYMBOL    # Against production
 # Examples:
 npm run backfill-symbol:local AAPL     # Backfill Apple stock history
 npm run backfill-symbol:prod MSFT      # Backfill Microsoft history (prod)
-npm run backfill-symbol:local BTC-USD  # Backfill Bitcoin history
+npm run backfill-symbol:local BTC      # Backfill Bitcoin history
 ```
 
 ### Detailed Setup

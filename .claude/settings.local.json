@@ -16,7 +16,9 @@
       "Bash(npm run test:*)",
       "Bash(npm run dev:*)",
       "Bash(npx next:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "WebFetch(domain:www.alphavantage.co)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": [],

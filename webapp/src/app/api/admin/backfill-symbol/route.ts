@@ -11,7 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { priceDataService, type PriceData } from '@/lib/services/priceData.service'
+import { priceDataService, type PriceData, type SymbolType, type BaseCurrency } from '@/lib/services/priceData.service'
 import type { Database } from '@/lib/supabase/types'
 
 // Initialize Supabase client with service role for admin operations
@@ -33,6 +33,23 @@ interface BackfillResult {
   duplicatesSkipped: number
   errors: string[]
   duration: string
+}
+
+/**
+ * Map database asset_type to priceDataService SymbolType
+ */
+function mapAssetTypeToSymbolType(assetType: string): SymbolType {
+  switch (assetType) {
+    case 'stock':
+      return 'stock'
+    case 'etf':
+      return 'etf'
+    case 'crypto':
+      return 'crypto'
+    default:
+      // For cash, real_estate, other - these don't have market data, should be handled upstream
+      throw new Error(`Asset type '${assetType}' does not support market data fetching`)
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -129,9 +146,26 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Skip asset types that don't have market data (cash, real_estate, other)
+    if (!['stock', 'etf', 'crypto'].includes(symbolData.asset_type)) {
+      console.log(`Skipping non-market asset type: ${upperSymbol} (${symbolData.asset_type})`)
+      return NextResponse.json({
+        symbol: upperSymbol,
+        recordsInserted: 0,
+        recordsUpdated: 0,
+        duplicatesSkipped: 0,
+        errors: [`Skipped: ${upperSymbol} has asset type '${symbolData.asset_type}' which does not have market price data`],
+        duration: `${Date.now() - startTime}ms`
+      })
+    }
+
+    // Map asset type to symbol type for the price service
+    const symbolType = mapAssetTypeToSymbolType(symbolData.asset_type)
+    const baseCurrency: BaseCurrency = 'USD' // Default to USD, could be extended to support other currencies
+    
     // Fetch historical price data from Alpha Vantage
-    console.log(`📈 Fetching historical prices for ${upperSymbol}...`)
-    const historicalPrices = await priceDataService.fetchHistoricalPrices(upperSymbol, 'full')
+    console.log(`📈 Fetching historical prices for ${upperSymbol} (${symbolType}, ${baseCurrency})...`)
+    const historicalPrices = await priceDataService.fetchHistoricalPrices(upperSymbol, symbolType, baseCurrency, 'full')
     
     if (historicalPrices.length === 0) {
       console.warn(`No historical price data found for ${upperSymbol}`)

@@ -31,11 +31,10 @@
 - [ ] Portfolio history can switch betwen % and absolute value
 
 ## 🐛 Bug Fixes
-
 - ✅ Fix the light mode (it still doesn't work)
 - ✅ Delete all traces of light theme (incl login page)
 - ✅ Fix demo mode outside of development env
-- [ ] Make charts take into account custom prices
+- [ ] Make all charts (homepage, holding page) take into account custom prices
 - [ ] Revisit all charts styles + logic
 - [ ] Add cursor: pointer; hover on all buttons
 
@@ -54,27 +53,26 @@
 - ✅ **Custom Holding Price Management** - Manual price updates with history, CSV import, and full table view
 - ✅ Edit + Delete button for both custom prices and transactions
 - ✅ Use confirm modal for delete price & delete transactions
-- [ ] Re-add holding price history chart
 - [ ] Infinite scrolling in Transaction History
 
 ### Data & Sync
-- [ ] **Daily prices updates** - Daily prices updates
+- ✅ **Daily prices updates** - Daily prices updates
+- ✅ **Symbol price backfill**
+- [ ] Fix Crypto price update
+- [ ] Multi currency support (EUR, USD, JPY, GBP, RMB) -> use symbols?
 - [ ] **Data Export** - Portfolio export to CSV
 - [ ] **Data Backup/Restore** - Portfolio backup
 - [ ] **Database backups** - Automatic Database Backups
 - [ ] **Live price Updates** - Live price Updates using Yahoo Finance API
 
-### Other
-- [ ] Multi currency support (EUR, USD, JPY, GBP, RMB)
-
-## 🎨 UI/UX Enhancements
+### 🎨 UI/UX Enhancements
 - [ ] Hardcoded list of brokers to pick from
 - [ ] Creating a custom holding should redirect to holding detail page instead of homepage 
 - [ ] Delete holding button should be red / danger
 - [ ] Edit custom holding price
 - [ ] Enhance fonts
+- [ ] Toggle / switch component 
 
-## 🔧 Technical Improvements
 
 ### Security & Reliability  
 - [ ] **Input Validation** - Comprehensive form validation

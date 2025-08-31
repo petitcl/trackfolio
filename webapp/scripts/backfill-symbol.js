@@ -9,7 +9,7 @@
  * Examples:
  *   node scripts/backfill-symbol.js http://localhost:3000 AAPL
  *   node scripts/backfill-symbol.js https://trackfolio.vercel.app MSFT
- *   node scripts/backfill-symbol.js https://trackfolio.vercel.app BTC-USD
+ *   node scripts/backfill-symbol.js https://trackfolio.vercel.app BTC
  */
 
 const https = require('https')
@@ -29,7 +29,7 @@ if (!symbol) {
   console.log('Examples:')
   console.log('  node scripts/backfill-symbol.js http://localhost:3000 AAPL')
   console.log('  node scripts/backfill-symbol.js https://trackfolio.vercel.app MSFT')
-  console.log('  node scripts/backfill-symbol.js https://trackfolio.vercel.app BTC-USD')
+  console.log('  node scripts/backfill-symbol.js https://trackfolio.vercel.app BTC')
   process.exit(1)
 }
 
