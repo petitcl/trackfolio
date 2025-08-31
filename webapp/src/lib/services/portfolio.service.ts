@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/client'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import { clientAuthService } from '@/lib/auth/client.auth.service'
-import type { Transaction, Symbol, Database, UserSymbolPrice } from '@/lib/supabase/database.types'
+import type { Transaction, Symbol, Database, UserSymbolPrice, TransactionType } from '@/lib/supabase/database.types'
 import { 
   mockSymbolPriceHistory,
   type HistoricalDataPoint 
@@ -991,6 +991,165 @@ export class PortfolioService {
       console.log(`✅ Added price entry for ${priceData.symbol}: ${priceData.manual_price} on ${priceData.price_date}`)
     } catch (error) {
       console.error('Error in addUserSymbolPrice:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update a user symbol price entry
+   */
+  async updateUserSymbolPrice(user: AuthUser, priceId: string, priceData: {
+    symbol: string
+    manual_price: number
+    price_date: string
+    notes?: string | null
+  }): Promise<void> {
+    // For demo users, update in mock data store
+    if (user.isDemo) {
+      await getClientMockDataStore().updateUserSymbolPrice(priceId, {
+        manual_price: priceData.manual_price,
+        price_date: priceData.price_date,
+        notes: priceData.notes,
+        updated_at: new Date().toISOString()
+      })
+      return
+    }
+
+    try {
+      // Update the price entry
+      const { error: updateError } = await this.supabase
+        .from('user_symbol_prices')
+        .update({
+          manual_price: priceData.manual_price,
+          price_date: priceData.price_date,
+          notes: priceData.notes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', priceId)
+        .eq('user_id', user.id)
+
+      if (updateError) {
+        console.error('Error updating price entry:', updateError)
+        throw new Error('Failed to update price entry')
+      }
+
+      // Update the symbol's last_price if this is the most recent price
+      const { data: mostRecentPrice } = await this.supabase
+        .from('user_symbol_prices')
+        .select('manual_price, price_date')
+        .eq('user_id', user.id)
+        .eq('symbol', priceData.symbol.toUpperCase())
+        .order('price_date', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (mostRecentPrice) {
+        const { error: symbolError } = await this.supabase
+          .from('symbols')
+          .update({
+            last_price: mostRecentPrice.manual_price,
+            last_updated: new Date().toISOString()
+          })
+          .eq('symbol', priceData.symbol.toUpperCase())
+
+        if (symbolError) {
+          console.warn('Price entry updated but failed to update symbol last_price')
+        }
+      }
+
+      console.log(`✅ Updated price entry for ${priceData.symbol}: ${priceData.manual_price} on ${priceData.price_date}`)
+    } catch (error) {
+      console.error('Error in updateUserSymbolPrice:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update a transaction
+   */
+  async updateTransaction(user: AuthUser, transactionId: string, transactionData: {
+    symbol: string
+    type: TransactionType
+    quantity: number
+    pricePerUnit: number
+    date: string
+    fees: number
+    currency?: string
+    broker?: string
+    notes?: string
+  }): Promise<void> {
+    // For demo users, update in mock data store
+    if (user.isDemo) {
+      await getClientMockDataStore().updateTransaction(transactionId, {
+        type: transactionData.type as any,
+        quantity: transactionData.quantity,
+        pricePerUnit: transactionData.pricePerUnit,
+        date: transactionData.date,
+        fees: transactionData.fees,
+        currency: transactionData.currency || 'USD',
+        broker: transactionData.broker,
+        notes: transactionData.notes
+      })
+      return
+    }
+
+    try {
+      const { error } = await this.supabase
+        .from('transactions')
+        .update({
+          type: transactionData.type,
+          quantity: transactionData.quantity,
+          price_per_unit: transactionData.pricePerUnit,
+          date: transactionData.date,
+          fees: transactionData.fees,
+          currency: transactionData.currency || 'USD',
+          broker: transactionData.broker,
+          notes: transactionData.notes,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', transactionId)
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Error updating transaction:', error)
+        throw new Error('Failed to update transaction')
+      }
+
+      console.log(`✅ Updated transaction ${transactionId}`)
+    } catch (error) {
+      console.error('Error in updateTransaction:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Delete a transaction
+   */
+  async deleteTransaction(user: AuthUser, transactionId: string): Promise<void> {
+    // For demo users, delete from mock data store
+    if (user.isDemo) {
+      const success = getClientMockDataStore().deleteTransaction(transactionId)
+      if (!success) {
+        throw new Error('Transaction not found')
+      }
+      return
+    }
+
+    try {
+      const { error } = await this.supabase
+        .from('transactions')
+        .delete()
+        .eq('id', transactionId)
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Error deleting transaction:', error)
+        throw new Error('Failed to delete transaction')
+      }
+
+      console.log(`✅ Deleted transaction ${transactionId}`)
+    } catch (error) {
+      console.error('Error in deleteTransaction:', error)
       throw error
     }
   }

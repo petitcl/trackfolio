@@ -289,6 +289,50 @@ class ClientMockDataStore {
     })
   }
 
+  async updateUserSymbolPrice(priceId: string, updates: {
+    manual_price: number
+    price_date: string
+    notes?: string | null
+    updated_at: string
+  }): Promise<void> {
+    if (!this.initialized && typeof window !== 'undefined') {
+      this.initialize()
+    }
+    
+    const priceIndex = this.userSymbolPrices.findIndex(price => price.id === priceId)
+    if (priceIndex === -1) {
+      console.error('Price entry not found for update:', priceId)
+      throw new Error('Price entry not found')
+    }
+    
+    const existingPrice = this.userSymbolPrices[priceIndex]
+    
+    // Update the price entry
+    this.userSymbolPrices[priceIndex] = {
+      ...existingPrice,
+      manual_price: updates.manual_price,
+      price_date: updates.price_date,
+      notes: updates.notes || null,
+      updated_at: updates.updated_at
+    }
+    
+    // Update the symbol's last_price if this is the most recent price for this symbol
+    const symbolPrices = this.userSymbolPrices
+      .filter(p => p.symbol === existingPrice.symbol)
+      .sort((a, b) => new Date(b.price_date).getTime() - new Date(a.price_date).getTime())
+    
+    const symbolToUpdate = this.symbols.find(s => s.symbol === existingPrice.symbol)
+    if (symbolToUpdate && symbolPrices.length > 0) {
+      symbolToUpdate.last_price = symbolPrices[0].manual_price
+      symbolToUpdate.last_updated = new Date().toISOString()
+    }
+    
+    // Save to localStorage
+    this.saveToLocalStorage()
+    
+    console.log(`Updated price entry for ${existingPrice.symbol}: ${updates.manual_price} on ${updates.price_date}`)
+  }
+
   async deleteUserSymbolPrice(priceId: string): Promise<void> {
     if (!this.initialized && typeof window !== 'undefined') {
       this.initialize()

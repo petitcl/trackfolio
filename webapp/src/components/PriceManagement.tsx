@@ -26,6 +26,11 @@ export default function PriceManagement({ user, symbol }: PriceManagementProps) 
     }
   }
 
+  const handlePriceAdded = async (priceData?: any) => {
+    // This is called when adding a new price (not editing)
+    handlePriceUpdated()
+  }
+
   const renderActionButtons = () => (
     <div className="flex flex-col sm:flex-row gap-3 mb-6">
       <button
@@ -79,7 +84,7 @@ export default function PriceManagement({ user, symbol }: PriceManagementProps) 
           <AddPriceForm
             user={user}
             symbol={symbol}
-            onPriceAdded={handlePriceUpdated}
+            onPriceAdded={handlePriceAdded}
             onCancel={() => setViewMode('history')}
           />
         )

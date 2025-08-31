@@ -52,6 +52,10 @@
 - ✅ **Add Custom Holding Page** - Form for real estate, collectibles, private equity
 - ✅ **Delete Holding** - "Delete Holding" button
 - ✅ **Custom Holding Price Management** - Manual price updates with history, CSV import, and full table view
+- ✅ Edit + Delete button for both custom prices and transactions
+- ✅ Use confirm modal for delete price & delete transactions
+- [ ] Re-add holding price history chart
+- [ ] Infinite scrolling in Transaction History
 
 ### Data & Sync
 - [ ] **Daily prices updates** - Daily prices updates
@@ -64,12 +68,9 @@
 
 ## 🎨 UI/UX Enhancements
 - [ ] Hardcoded list of brokers to pick from
-- [ ] Infinite scrolling in Transaction History
 - [ ] Creating a custom holding should redirect to holding detail page instead of homepage 
 - [ ] Delete holding button should be red / danger
 - [ ] Edit custom holding price
-- [ ] Edit + Delete button for both custom prices and transactions
-- [ ] Use confirm modal for delete price & delete transactions
 - [ ] Enhance fonts
 
 ## 🔧 Technical Improvements

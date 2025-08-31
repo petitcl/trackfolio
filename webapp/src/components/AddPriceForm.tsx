@@ -4,18 +4,39 @@ import React, { useState } from 'react'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import { portfolioService } from '@/lib/services/portfolio.service'
 
+export interface PriceFormData {
+  price: number
+  date: string
+  notes: string
+}
+
 interface AddPriceFormProps {
   user: AuthUser
   symbol: string
-  onPriceAdded?: () => void
+  onPriceAdded?: (priceData: PriceFormData) => void
   onCancel?: () => void
+  onDelete?: () => void
+  editMode?: boolean
+  initialData?: PriceFormData
+  isInline?: boolean
+  isLoading?: boolean
 }
 
-export default function AddPriceForm({ user, symbol, onPriceAdded, onCancel }: AddPriceFormProps) {
+export default function AddPriceForm({ 
+  user, 
+  symbol, 
+  onPriceAdded, 
+  onCancel, 
+  onDelete,
+  editMode = false,
+  initialData,
+  isInline = false,
+  isLoading = false
+}: AddPriceFormProps) {
   const [formData, setFormData] = useState({
-    price: '',
-    date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
-    notes: ''
+    price: initialData?.price?.toString() || '',
+    date: initialData?.date || new Date().toISOString().split('T')[0],
+    notes: initialData?.notes || ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,21 +76,33 @@ export default function AddPriceForm({ user, symbol, onPriceAdded, onCancel }: A
     try {
       setLoading(true)
       
-      await portfolioService.addUserSymbolPrice(user, {
-        symbol: symbol,
-        manual_price: parseFloat(formData.price),
-        price_date: formData.date,
-        notes: formData.notes.trim() || null
-      })
+      const priceData: PriceFormData = {
+        price: parseFloat(formData.price),
+        date: formData.date,
+        notes: formData.notes.trim()
+      }
 
-      // Reset form
-      setFormData({
-        price: '',
-        date: new Date().toISOString().split('T')[0],
-        notes: ''
-      })
-      
-      onPriceAdded?.()
+      if (editMode) {
+        // Call the parent handler for edit mode
+        onPriceAdded?.(priceData)
+      } else {
+        // Add new price for create mode
+        await portfolioService.addUserSymbolPrice(user, {
+          symbol: symbol,
+          manual_price: priceData.price,
+          price_date: priceData.date,
+          notes: priceData.notes || null
+        })
+
+        // Reset form only in create mode
+        setFormData({
+          price: '',
+          date: new Date().toISOString().split('T')[0],
+          notes: ''
+        })
+        
+        onPriceAdded?.(priceData)
+      }
     } catch (err) {
       console.error('Error adding price:', err)
       setError('Failed to add price. Please try again.')
@@ -78,12 +111,14 @@ export default function AddPriceForm({ user, symbol, onPriceAdded, onCancel }: A
     }
   }
 
-  return (
-    <div className="bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700">
+  const formContent = (
+    <div className={isInline ? 'bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700' : 'bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700'}>
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Add Price Entry</h3>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+          {editMode ? 'Edit Price Entry' : 'Add Price Entry'}
+        </h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Add a manual price for {symbol}
+          {editMode ? `Update price for ${symbol}` : `Add a manual price for ${symbol}`}
         </p>
       </div>
 
@@ -144,25 +179,43 @@ export default function AddPriceForm({ user, symbol, onPriceAdded, onCancel }: A
           />
         </div>
 
-        <div className="flex justify-end space-x-3">
-          {onCancel && (
+        <div className="flex justify-between">
+          <div className="flex space-x-3">
+            {editMode && onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || isLoading}
+              >
+                Delete
+              </button>
+            )}
+          </div>
+          
+          <div className="flex space-x-3">
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800"
+                disabled={loading || isLoading}
+              >
+                Cancel
+              </button>
+            )}
             <button
-              type="button"
-              onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800"
+              type="submit"
+              disabled={loading || isLoading}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
+              {loading || isLoading ? 'Saving...' : (editMode ? 'Update Price' : 'Add Price')}
             </button>
-          )}
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Adding...' : 'Add Price'}
-          </button>
+          </div>
         </div>
       </form>
     </div>
   )
+
+  return formContent
 }

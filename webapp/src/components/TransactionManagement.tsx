@@ -149,6 +149,9 @@ export default function TransactionManagement({
             key={refreshKey}
             transactions={transactions}
             symbol={symbol}
+            symbolName={symbolName}
+            user={user}
+            onTransactionUpdated={handleTransactionUpdated}
           />
         )
     }

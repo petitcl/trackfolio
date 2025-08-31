@@ -1,16 +1,80 @@
 'use client'
 
-import React from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState } from 'react'
 import type { Transaction } from '@/lib/supabase/database.types'
+import type { AuthUser } from '@/lib/auth/client.auth.service'
+import AddTransactionForm, { type TransactionFormData } from './AddTransactionForm'
+import { portfolioService } from '@/lib/services/portfolio.service'
+import ConfirmDialog from './ConfirmDialog'
 
 interface TransactionHistoryProps {
   transactions: Transaction[]
   symbol: string
+  symbolName: string
+  user: AuthUser
+  onTransactionUpdated?: () => void
 }
 
-export default function TransactionHistory({ transactions, symbol }: TransactionHistoryProps) {
-  const router = useRouter()
+export default function TransactionHistory({ transactions, symbol, symbolName, user, onTransactionUpdated }: TransactionHistoryProps) {
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleEditTransaction = async (transactionData: TransactionFormData) => {
+    if (!editingTransactionId) return
+    
+    setIsUpdating(true)
+    try {
+      await portfolioService.updateTransaction(user, editingTransactionId, {
+        ...transactionData,
+        symbol
+      })
+      setEditingTransactionId(null)
+      onTransactionUpdated?.()
+    } catch (err) {
+      console.error('Error updating transaction:', err)
+      alert('Failed to update transaction')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleDeleteTransaction = async () => {
+    if (!transactionToDelete) return
+    
+    setIsDeleting(true)
+    try {
+      await portfolioService.deleteTransaction(user, transactionToDelete)
+      setShowDeleteConfirm(false)
+      setTransactionToDelete(null)
+      onTransactionUpdated?.()
+    } catch (err) {
+      console.error('Error deleting transaction:', err)
+      alert('Failed to delete transaction')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const initiateDeleteTransaction = (transactionId: string) => {
+    setTransactionToDelete(transactionId)
+    setShowDeleteConfirm(true)
+  }
+
+  const getEditFormData = (transaction: Transaction): TransactionFormData => {
+    return {
+      type: transaction.type,
+      quantity: transaction.quantity,
+      pricePerUnit: transaction.price_per_unit,
+      date: transaction.date,
+      fees: transaction.fees,
+      broker: transaction.broker || '',
+      currency: transaction.currency || 'USD',
+      notes: transaction.notes || ''
+    }
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -81,6 +145,33 @@ export default function TransactionHistory({ transactions, symbol }: Transaction
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {transactions.map((transaction) => {
               const total = transaction.quantity * transaction.price_per_unit + transaction.fees
+              const isEditing = editingTransactionId === transaction.id
+              
+              if (isEditing) {
+                return (
+                  <React.Fragment key={transaction.id}>
+                    <tr>
+                      <td colSpan={8} className="px-0 py-0">
+                        <div className="p-4 bg-gray-50 dark:bg-gray-900 border-l-4 border-blue-500">
+                          <AddTransactionForm
+                            isOpen={true}
+                            onClose={() => setEditingTransactionId(null)}
+                            onSubmit={handleEditTransaction}
+                            onDelete={() => initiateDeleteTransaction(transaction.id)}
+                            symbol={symbol}
+                            symbolName={symbolName}
+                            isLoading={isUpdating}
+                            editMode={true}
+                            initialData={getEditFormData(transaction)}
+                            isInline={true}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  </React.Fragment>
+                )
+              }
+              
               return (
                 <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
@@ -106,13 +197,20 @@ export default function TransactionHistory({ transactions, symbol }: Transaction
                   <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                     {transaction.notes || '-'}
                   </td>
-                  <td className="px-6 py-4 text-sm">
+                  <td className="px-6 py-4 text-sm space-x-2">
                     <button
-                      onClick={() => router.push(`/transactions/${transaction.id}/edit`)}
+                      onClick={() => setEditingTransactionId(transaction.id)}
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
                       title="Edit transaction"
                     >
                       ✏️
+                    </button>
+                    <button
+                      onClick={() => initiateDeleteTransaction(transaction.id)}
+                      className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors"
+                      title="Delete transaction"
+                    >
+                      🗑️
                     </button>
                   </td>
                 </tr>
@@ -121,6 +219,21 @@ export default function TransactionHistory({ transactions, symbol }: Transaction
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false)
+          setTransactionToDelete(null)
+        }}
+        onConfirm={handleDeleteTransaction}
+        title="Delete Transaction"
+        message="Are you sure you want to delete this transaction? This action cannot be undone."
+        confirmText="Delete"
+        confirmButtonClass="bg-red-600 hover:bg-red-700 text-white"
+        isLoading={isDeleting}
+        loadingText="Deleting..."
+      />
     </div>
   )
 }

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { UserSymbolPrice } from '@/lib/supabase/database.types'
 import { portfolioService } from '@/lib/services/portfolio.service'
+import AddPriceForm, { type PriceFormData } from './AddPriceForm'
+import ConfirmDialog from './ConfirmDialog'
 
 interface ManualPriceHistoryProps {
   user: AuthUser
@@ -17,6 +19,11 @@ export default function ManualPriceHistory({ user, symbol, onPriceUpdated }: Man
   const [error, setError] = useState<string | null>(null)
   const [displayedCount, setDisplayedCount] = useState(20)
   const [hasMore, setHasMore] = useState(false)
+  const [editingPriceId, setEditingPriceId] = useState<string | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [priceToDelete, setPriceToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     loadPriceHistory()
@@ -36,18 +43,56 @@ export default function ManualPriceHistory({ user, symbol, onPriceUpdated }: Man
     }
   }
 
-  const handleDeletePrice = async (priceId: string) => {
-    if (!confirm('Are you sure you want to delete this price entry?')) {
-      return
-    }
-
+  const handleEditPrice = async (priceData: PriceFormData) => {
+    if (!editingPriceId) return
+    
+    setIsUpdating(true)
     try {
-      await portfolioService.deleteUserSymbolPrice(user, priceId)
-      await loadPriceHistory() // Refresh the list
+      await portfolioService.updateUserSymbolPrice(user, editingPriceId, {
+        symbol,
+        manual_price: priceData.price,
+        price_date: priceData.date,
+        notes: priceData.notes.trim() || null
+      })
+      setEditingPriceId(null)
+      await loadPriceHistory()
+      onPriceUpdated?.()
+    } catch (err) {
+      console.error('Error updating price:', err)
+      alert('Failed to update price')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleDeletePrice = async () => {
+    if (!priceToDelete) return
+    
+    setIsDeleting(true)
+    try {
+      await portfolioService.deleteUserSymbolPrice(user, priceToDelete)
+      setShowDeleteConfirm(false)
+      setPriceToDelete(null)
+      await loadPriceHistory()
       onPriceUpdated?.()
     } catch (err) {
       console.error('Error deleting price:', err)
       alert('Failed to delete price entry')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const initiateDeletePrice = (priceId: string) => {
+    setPriceToDelete(priceId)
+    setShowDeleteConfirm(true)
+  }
+
+  const getEditFormData = (price: UserSymbolPrice): PriceFormData => {
+    return {
+      price: price.manual_price,
+      date: price.price_date,
+      notes: price.notes || ''
     }
   }
 
@@ -150,6 +195,31 @@ export default function ManualPriceHistory({ user, symbol, onPriceUpdated }: Man
               {displayedPrices.map((price, index) => {
                 const previousPrice = index < displayedPrices.length - 1 ? displayedPrices[index + 1].manual_price : null
                 const priceChange = calculatePriceChange(price.manual_price, previousPrice)
+                const isEditing = editingPriceId === price.id
+                
+                if (isEditing) {
+                  return (
+                    <React.Fragment key={price.id}>
+                      <tr>
+                        <td colSpan={5} className="px-0 py-0">
+                          <div className="p-4 bg-gray-50 dark:bg-gray-900 border-l-4 border-blue-500">
+                            <AddPriceForm
+                              user={user}
+                              symbol={symbol}
+                              onPriceAdded={handleEditPrice}
+                              onCancel={() => setEditingPriceId(null)}
+                              onDelete={() => initiateDeletePrice(price.id)}
+                              editMode={true}
+                              initialData={getEditFormData(price)}
+                              isInline={true}
+                              isLoading={isUpdating}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  )
+                }
                 
                 return (
                   <tr key={price.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -180,15 +250,20 @@ export default function ManualPriceHistory({ user, symbol, onPriceUpdated }: Man
                         {price.notes || '-'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                       <button
-                        onClick={() => handleDeletePrice(price.id)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                        title="Delete this price entry"
+                        onClick={() => setEditingPriceId(price.id)}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
+                        title="Edit price entry"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => initiateDeletePrice(price.id)}
+                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors"
+                        title="Delete price entry"
+                      >
+                        🗑️
                       </button>
                     </td>
                   </tr>
@@ -209,6 +284,21 @@ export default function ManualPriceHistory({ user, symbol, onPriceUpdated }: Man
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false)
+          setPriceToDelete(null)
+        }}
+        onConfirm={handleDeletePrice}
+        title="Delete Price Entry"
+        message="Are you sure you want to delete this price entry? This action cannot be undone."
+        confirmText="Delete"
+        confirmButtonClass="bg-red-600 hover:bg-red-700 text-white"
+        isLoading={isDeleting}
+        loadingText="Deleting..."
+      />
     </div>
   )
 }
