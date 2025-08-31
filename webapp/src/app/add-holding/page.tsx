@@ -64,10 +64,6 @@ export default function AddHoldingPage() {
 
       setIsSearching(true)
       try {
-        // Using Alpha Vantage free API as an example (requires free API key)
-        // For now, we'll use mock data but you can replace with actual API call
-        // const response = await fetch(`https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${query}&apikey=MALNCL4LXK8WUZBI`)
-        
         // Mock search results for demonstration
         const mockResults: SearchResult[] = [
           { symbol: 'AAPL', name: 'Apple Inc.', type: 'stock', exchange: 'NASDAQ' },

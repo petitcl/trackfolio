@@ -1,0 +1,13 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/update-prices",
+      "schedule": "0 21 * * 1-5"
+    }
+  ],
+  "functions": {
+    "src/app/api/cron/update-prices/route.ts": {
+      "maxDuration": 300
+    }
+  }
+}

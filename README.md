@@ -40,6 +40,7 @@ trackfolio/
 - **Tailwind CSS** for responsive design
 - **Google OAuth** authentication
 - **Row-level security** for multi-user data isolation
+- **Automatic Price Updates** with Alpha Vantage API and Vercel cron
 - **Mock data** for testing without database connection
 
 ## 📱 Demo Mode
@@ -56,7 +57,48 @@ The app includes comprehensive mock data for testing:
 
 ## 🛠️ Setup & Installation
 
-### 1. Database Setup
+### Quick Start (Root Directory)
+
+```bash
+# Install all dependencies
+npm run setup
+
+# Start development server  
+npm run dev
+
+# Test automatic price updates
+npm run update-daily-prices
+```
+
+Visit `http://localhost:3000`
+
+### Available Commands
+
+#### Development
+```bash
+npm run dev              # Start development server
+npm run build           # Build for production  
+npm run start           # Start production server
+npm run lint            # Run ESLint
+```
+
+#### Setup & Maintenance
+```bash
+npm run setup           # Install all dependencies
+npm run install:webapp  # Install webapp dependencies only
+npm run clean           # Clean build files and reinstall
+```
+
+#### Price Updates & Testing
+```bash
+npm run update-daily-prices        # Update daily prices locally
+npm run update-daily-prices:local  # Update against local server
+npm run update-daily-prices:prod   # Update against production
+```
+
+### Detailed Setup
+
+#### 1. Database Setup
 1. Create a Supabase project at [supabase.com](https://supabase.com)
 2. Follow the detailed guide in `docs/SETUP-INSTRUCTIONS.md`
 3. Run the SQL scripts in this order:
@@ -64,25 +106,52 @@ The app includes comprehensive mock data for testing:
    - `database/row-level-security.sql`
    - `database/sample-data.sql` (after updating user UUID)
 
-### 2. Environment Configuration
+#### 2. Environment Configuration
 ```bash
-cd webapp
-cp .env.local.example .env.local
-# Edit .env.local with your Supabase credentials
+# Copy environment template (from root directory)
+cp webapp/.env.example webapp/.env.local
+# Edit webapp/.env.local with your credentials
 ```
 
-### 3. Install Dependencies
+Required environment variables:
 ```bash
-cd webapp
-npm install
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Price Data API (Alpha Vantage)
+ALPHA_VANTAGE_API_KEY=your_api_key
+ALPHA_VANTAGE_PLAN=free
+
+# Cron Job Security  
+CRON_SECRET=your_secure_random_string
 ```
 
-### 4. Run Development Server
+#### 3. Get API Keys
+- **Supabase**: Create project at [supabase.com](https://supabase.com)
+- **Alpha Vantage**: Get free API key at [alphavantage.co](https://www.alphavantage.co/support/#api-key)
+
+## 🔄 Automatic Price Updates
+
+The app automatically fetches daily market prices using a Vercel cron job:
+
+- **Schedule**: Daily at 9 PM UTC (4 PM EST, after US market close)
+- **Source**: Alpha Vantage API (25 free requests/day)
+- **Security**: Protected with authorization headers
+- **Coverage**: Updates all non-custom symbols automatically
+
+### Testing Price Updates
+
 ```bash
-npm run dev
+# Test locally (requires dev server running)
+npm run update-daily-prices
+
+# Test against production deployment  
+npm run update-daily-prices:prod
 ```
 
-Visit `http://localhost:3000`
+See detailed documentation in [`webapp/docs/PRICE_UPDATES.md`](webapp/docs/PRICE_UPDATES.md).
 
 ## 🔐 Authentication
 

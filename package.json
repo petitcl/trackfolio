@@ -1,0 +1,36 @@
+{
+  "name": "trackfolio",
+  "version": "1.0.0",
+  "description": "Personal portfolio tracking application",
+  "private": true,
+  "workspaces": [
+    "webapp"
+  ],
+  "scripts": {
+    "dev": "cd webapp && npm run dev",
+    "build": "cd webapp && npm run build",
+    "start": "cd webapp && npm run start",
+    "lint": "cd webapp && npm run lint",
+    "install:webapp": "cd webapp && npm install",
+    "update-daily-prices": "cd webapp && npm run update-daily-prices",
+    "update-daily-prices:local": "cd webapp && node scripts/update-daily-prices.js",
+    "update-daily-prices:prod": "cd webapp && node scripts/update-daily-prices.js https://trackfolio-jy6d.vercel.app",
+    "setup": "npm run install:webapp",
+    "clean": "cd webapp && rm -rf .next node_modules && npm install"
+  },
+  "keywords": [
+    "portfolio",
+    "finance",
+    "tracking",
+    "nextjs",
+    "supabase"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "devDependencies": {},
+  "dependencies": {}
+}

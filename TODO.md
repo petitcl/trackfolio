@@ -62,6 +62,7 @@
 - [ ] **Data Export** - Portfolio export to CSV
 - [ ] **Data Backup/Restore** - Portfolio backup
 - [ ] **Database backups** - Automatic Database Backups
+- [ ] **Live price Updates** - Live price Updates using Yahoo Finance API
 
 ### Other
 - [ ] Multi currency support (EUR, USD, JPY, GBP, RMB)
