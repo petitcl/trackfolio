@@ -10,21 +10,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { priceDataService, type PriceData, type SymbolType, type BaseCurrency } from '@/lib/services/priceData.service'
-import type { Database } from '@/lib/supabase/types'
-
-// Initialize Supabase client with service role for admin operations
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // Service role key for admin operations
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+import { priceDataService, type PriceData, type BaseCurrency } from '@/lib/services/priceData.service'
+import { 
+  createAdminSupabaseClient,
+  validateAdminAuth,
+  validateAdminEnvironment,
+  mapAssetTypeToSymbolType,
+  createMethodNotAllowedResponse,
+  createErrorResponse,
+  createTimer
+} from '@/lib/api/admin-auth'
 
 interface BackfillResult {
   symbol: string
@@ -35,67 +30,17 @@ interface BackfillResult {
   duration: string
 }
 
-/**
- * Map database asset_type to priceDataService SymbolType
- */
-function mapAssetTypeToSymbolType(assetType: string): SymbolType {
-  switch (assetType) {
-    case 'stock':
-      return 'stock'
-    case 'etf':
-      return 'etf'
-    case 'crypto':
-      return 'crypto'
-    default:
-      // For cash, real_estate, other - these don't have market data, should be handled upstream
-      throw new Error(`Asset type '${assetType}' does not support market data fetching`)
-  }
-}
-
 export async function POST(request: NextRequest) {
-  const startTime = Date.now()
-  const isLocal = process.env.NODE_ENV === 'development'
+  const timer = createTimer()
+  const supabase = createAdminSupabaseClient()
   
   try {
-    // Security: Validate authorization
-    const authHeader = request.headers.get('authorization')
-    const expectedAuth = `Bearer ${process.env.CRON_SECRET}`
+    // Security validation
+    const authError = validateAdminAuth(request)
+    if (authError) return authError
     
-    if (!authHeader || authHeader !== expectedAuth) {
-      const errorDetail = isLocal ? {
-        received: authHeader,
-        expected: expectedAuth,
-        cronSecretConfigured: !!process.env.CRON_SECRET
-      } : {}
-      
-      console.error('Unauthorized backfill request - invalid authorization header', errorDetail)
-      return NextResponse.json(
-        { 
-          error: 'Unauthorized',
-          ...(isLocal && { debug: errorDetail })
-        }, 
-        { status: 401 }
-      )
-    }
-
-    // Environment validation for local development
-    if (isLocal) {
-      const missingVars = []
-      if (!process.env.ALPHA_VANTAGE_API_KEY) missingVars.push('ALPHA_VANTAGE_API_KEY')
-      if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missingVars.push('SUPABASE_SERVICE_ROLE_KEY')
-      if (!process.env.CRON_SECRET) missingVars.push('CRON_SECRET')
-      
-      if (missingVars.length > 0) {
-        console.error('Missing required environment variables:', missingVars)
-        return NextResponse.json(
-          { 
-            error: 'Configuration error',
-            missingEnvironmentVariables: missingVars
-          }, 
-          { status: 500 }
-        )
-      }
-    }
+    const envError = validateAdminEnvironment()
+    if (envError) return envError
 
     // Parse request body
     const body = await request.json()
@@ -142,7 +87,7 @@ export async function POST(request: NextRequest) {
         recordsUpdated: 0,
         duplicatesSkipped: 0,
         errors: [`Skipped: ${upperSymbol} is a custom symbol and does not have market price data`],
-        duration: `${Date.now() - startTime}ms`
+        duration: timer.getDuration()
       })
     }
 
@@ -155,7 +100,7 @@ export async function POST(request: NextRequest) {
         recordsUpdated: 0,
         duplicatesSkipped: 0,
         errors: [`Skipped: ${upperSymbol} has asset type '${symbolData.asset_type}' which does not have market price data`],
-        duration: `${Date.now() - startTime}ms`
+        duration: timer.getDuration()
       })
     }
 
@@ -175,7 +120,7 @@ export async function POST(request: NextRequest) {
         recordsUpdated: 0,
         duplicatesSkipped: 0,
         errors: [`No historical price data found for ${upperSymbol}`],
-        duration: `${Date.now() - startTime}ms`
+        duration: timer.getDuration()
       })
     }
 
@@ -310,7 +255,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Finalize result
-    result.duration = `${Date.now() - startTime}ms`
+    result.duration = timer.getDuration()
 
     console.log(`🎉 Backfill completed for ${upperSymbol}:`, {
       recordsInserted: result.recordsInserted,
@@ -328,30 +273,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result)
 
   } catch (error) {
-    const duration = Date.now() - startTime
-    
-    console.error('❌ Symbol backfill failed:', error)
-    
-    return NextResponse.json(
-      {
-        error: 'Symbol backfill failed',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        duration: `${duration}ms`
-      },
-      { status: 500 }
-    )
+    return createErrorResponse(error, 'Symbol backfill', timer.startTime)
   }
 }
 
 // Only allow POST requests
 export async function GET() {
-  return NextResponse.json({ error: 'Method not allowed. Use POST with { symbol: "SYMBOL" }' }, { status: 405 })
+  return createMethodNotAllowedResponse('POST', '{ symbol: "SYMBOL" }')
 }
 
 export async function PUT() {
-  return NextResponse.json({ error: 'Method not allowed. Use POST with { symbol: "SYMBOL" }' }, { status: 405 })
+  return createMethodNotAllowedResponse('POST', '{ symbol: "SYMBOL" }')
 }
 
 export async function DELETE() {
-  return NextResponse.json({ error: 'Method not allowed. Use POST with { symbol: "SYMBOL" }' }, { status: 405 })
+  return createMethodNotAllowedResponse('POST', '{ symbol: "SYMBOL" }')
 }

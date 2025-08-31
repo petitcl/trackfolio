@@ -59,7 +59,7 @@
 - ✅ **Daily prices updates** - Daily prices updates
 - ✅ **Symbol price backfill**
 - [ ] Fix Crypto price update
-- [ ] Multi currency support (EUR, USD, JPY, GBP, RMB) -> use symbols?
+- [ ] Multi currency support (EUR, USD) -> use symbols?
 - [ ] **Data Export** - Portfolio export to CSV
 - [ ] **Data Backup/Restore** - Portfolio backup
 - [ ] **Database backups** - Automatic Database Backups

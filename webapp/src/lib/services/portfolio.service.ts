@@ -512,7 +512,8 @@ export class PortfolioService {
           last_price: symbolData.last_price || null,
           last_updated: new Date().toISOString(),
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          currency: 'USD'
         } as Symbol
       }
 

@@ -27,7 +27,7 @@ node scripts/update-daily-prices.js https://trackfolio-jy6d.vercel.app
 
 1. **Loads Environment Variables**: Uses `dotenv` to read from `.env.local`
 2. **Validates Configuration**: Ensures all required API keys are set
-3. **Makes Authenticated Request**: Calls the cron endpoint with proper auth
+3. **Makes Authenticated Request**: Calls the admin endpoint with proper auth
 4. **Pretty Output**: Shows formatted results with success/failure details
 
 ### Example Output
@@ -40,7 +40,7 @@ node scripts/update-daily-prices.js https://trackfolio-jy6d.vercel.app
 ✅ Environment variables validated
 🌐 Target URL: http://localhost:3000
 
-🔗 Calling: http://localhost:3000/api/cron/update-prices
+🔗 Calling: http://localhost:3000/api/admin/update-prices
 🔐 Auth: Bearer xa0*7G3#...
 
 📊 Status: 200 OK

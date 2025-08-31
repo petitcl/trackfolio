@@ -9,9 +9,6 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '1mb'
     },
   },
-  turbopack: {
-    root: path.resolve(__dirname),
-  },
   outputFileTracingRoot: path.resolve(__dirname),
 };
 

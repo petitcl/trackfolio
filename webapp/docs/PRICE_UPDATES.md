@@ -19,7 +19,7 @@ The system automatically fetches daily market prices for all non-custom symbols 
    - Manages rate limiting and error handling
    - Fetches both current quotes and historical data
 
-2. **Cron Job** (`/src/app/api/cron/update-prices/route.ts`)
+2. **Admin Endpoint** (`/src/app/api/admin/update-prices/route.ts`)
    - Runs daily at 9 PM UTC (after US market close)
    - Protected with authorization header
    - Updates both `symbol_price_history` and `symbols.last_price`
@@ -36,7 +36,7 @@ Daily at 9 PM UTC
 ↓
 Vercel Cron Scheduler
 ↓
-/api/cron/update-prices
+/api/admin/update-prices
 ↓
 Fetch non-custom symbols from DB
 ↓
@@ -94,7 +94,7 @@ The `vercel.json` file configures the cron job:
 {
   "crons": [
     {
-      "path": "/api/cron/update-prices",
+      "path": "/api/admin/update-prices",
       "schedule": "0 21 * * 1-5"  // Monday-Friday at 9 PM UTC
     }
   ]
@@ -194,13 +194,13 @@ Test the cron endpoint directly:
 
 **Local Development:**
 ```bash
-curl -X GET http://localhost:3000/api/cron/update-prices \
+curl -X GET http://localhost:3000/api/admin/update-prices \
   -H "Authorization: Bearer xa0*7G3#bbdzIB*D!rkOwqJu"
 ```
 
 **Production:**
 ```bash
-curl -X GET https://your-app.vercel.app/api/cron/update-prices \
+curl -X GET https://your-app.vercel.app/api/admin/update-prices \
   -H "Authorization: Bearer your_cron_secret_here"
 ```
 

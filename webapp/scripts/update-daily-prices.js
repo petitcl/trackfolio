@@ -17,7 +17,7 @@ const { loadAndValidateEnv } = require('./env-loader')
 
 // Make the API request
 async function updateDailyPrice(baseUrl, cronSecret) {
-  const url = `${baseUrl}/api/cron/update-prices`
+  const url = `${baseUrl}/api/admin/update-prices`
   const headers = {
     'Authorization': `Bearer ${cronSecret}`,
     'Content-Type': 'application/json'

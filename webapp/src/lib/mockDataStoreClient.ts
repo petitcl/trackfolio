@@ -169,7 +169,8 @@ class ClientMockDataStore {
         created_by_user_id: holding.isCustom ? MOCK_USER_ID : null,
         last_price: holding.purchasePrice,
         last_updated: new Date().toISOString(),
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        currency: 'USD'
       }
       this.symbols.push(newSymbol)
     }

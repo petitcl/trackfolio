@@ -69,6 +69,7 @@ export type Database = {
           asset_type: Database["public"]["Enums"]["asset_type"]
           created_at: string
           created_by_user_id: string | null
+          currency: string | null
           is_custom: boolean
           last_price: number | null
           last_updated: string | null
@@ -79,6 +80,7 @@ export type Database = {
           asset_type?: Database["public"]["Enums"]["asset_type"]
           created_at?: string
           created_by_user_id?: string | null
+          currency?: string | null
           is_custom?: boolean
           last_price?: number | null
           last_updated?: string | null
@@ -89,6 +91,7 @@ export type Database = {
           asset_type?: Database["public"]["Enums"]["asset_type"]
           created_at?: string
           created_by_user_id?: string | null
+          currency?: string | null
           is_custom?: boolean
           last_price?: number | null
           last_updated?: string | null
