@@ -26,7 +26,8 @@ const assetTypeLabels: Record<string, string> = {
   crypto: 'Crypto',
   real_estate: 'Real Estate',
   other: 'Other Assets',
-  cash: 'Cash'
+  cash: 'Cash',
+  currency: 'Currency',
 }
 
 export default function PortfolioRepartitionChart({ 

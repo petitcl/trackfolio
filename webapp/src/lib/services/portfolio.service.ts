@@ -6,6 +6,7 @@ import {
   mockSymbolPriceHistory,
   type HistoricalDataPoint 
 } from '@/lib/mockData'
+import type { TimeRange } from '@/components/TimeRangeSelector'
 import { getClientMockDataStore } from '@/lib/mockDataStoreClient'
 
 // Currency conversion rate (mocked for now - in production would come from API)
@@ -38,6 +39,8 @@ export interface PortfolioData {
 
 export class PortfolioService {
   private supabase = createClient()
+  private historicalPriceCache = new Map<string, Map<string, number>>()
+  private userCustomPriceCache = new Map<string, Map<string, Map<string, number>>>()
 
   /**
    * Standardized error handling for service methods
@@ -45,6 +48,14 @@ export class PortfolioService {
   private handleError<T>(operation: string, error: unknown, fallback: T): T {
     console.error(`Error ${operation}:`, error)
     return fallback
+  }
+
+  /**
+   * Clear historical price cache (useful for testing or when data changes)
+   */
+  clearHistoricalPriceCache(): void {
+    this.historicalPriceCache.clear()
+    this.userCustomPriceCache.clear()
   }
 
   async getPortfolioData(user: AuthUser): Promise<PortfolioData> {
@@ -138,9 +149,36 @@ export class PortfolioService {
     }
   }
 
-  async getHistoricalData(user: AuthUser): Promise<HistoricalDataPoint[]> {
-    console.log('📊 Building historical data for user')
-    return await this.buildHistoricalData(user)
+  async getPortfolioHistoricalData(user: AuthUser): Promise<HistoricalDataPoint[]> {
+    console.log('📊 Building portfolio historical data for user')
+    return await this.buildPortfolioHistoricalData(user)
+  }
+
+  async getPortfolioHistoricalDataByTimeRange(user: AuthUser, timeRange: TimeRange): Promise<HistoricalDataPoint[]> {
+    try {
+      console.log('📊 Getting portfolio historical data for time range:', timeRange)
+      
+      // Get full historical data
+      const fullHistoricalData = await this.getPortfolioHistoricalData(user)
+      
+      if (fullHistoricalData.length === 0) {
+        console.log('📊 No historical data available')
+        return []
+      }
+      
+      // Apply time-based filtering
+      const filteredData = this.filterDataByTimeRange(fullHistoricalData, timeRange)
+      
+      // Apply aggregation based on time range
+      const aggregatedData = this.aggregateDataByTimeRange(filteredData, timeRange)
+      
+      console.log(`📊 Processed historical data: ${fullHistoricalData.length} → ${filteredData.length} → ${aggregatedData.length} points`)
+      return aggregatedData
+      
+    } catch (error) {
+      console.error('❌ Error getting historical data by time range:', error)
+      return []
+    }
   }
 
   async getHoldingHistoricalData(user: AuthUser, symbol: string): Promise<HistoricalDataPoint[]> {
@@ -153,6 +191,49 @@ export class PortfolioService {
     return allTransactions.filter(t => t.symbol === symbol)
   }
 
+  async getPortfolioRepartitionData(user: AuthUser, date?: string): Promise<Array<{ 
+    assetType: string; 
+    value: number; 
+    percentage: number 
+  }>> {
+    try {
+      console.log('📊 Getting portfolio repartition data for user:', user.email, 'date:', date || 'current')
+      
+      // Get historical data (which includes both allocations and values)
+      const historicalData = await this.getPortfolioHistoricalData(user)
+      
+      if (historicalData.length === 0) {
+        console.log('📊 No historical data available')
+        return []
+      }
+      
+      // Find the data point for the target date, or use the last available point
+      const targetDate = date || new Date().toISOString().split('T')[0]
+      let targetDataPoint = historicalData.find(point => point.date === targetDate)
+      
+      // If no exact date match, use the last available point (most current data)
+      if (!targetDataPoint) {
+        targetDataPoint = historicalData[historicalData.length - 1]
+        console.log(`📊 Using last available data point: ${targetDataPoint.date} (requested: ${targetDate})`)
+      }
+      
+      // Convert to chart format using both values and percentages from historical data
+      const result = Object.entries(targetDataPoint.assetTypeAllocations)
+        .filter(([_, percentage]) => percentage > 0)
+        .map(([assetType, percentage]) => ({
+          assetType,
+          value: targetDataPoint.assetTypeValues[assetType] || 0,
+          percentage
+        }))
+      
+      console.log('📊 Portfolio repartition from historical data:', result.length, 'asset types')
+      return result
+      
+    } catch (error) {
+      console.error('❌ Error getting portfolio repartition data:', error)
+      return []
+    }
+  }
 
   private calculatePositionsFromTransactions(transactions: Transaction[], symbols: Symbol[]): PortfolioPosition[] {
     const positionMap = new Map<string, PortfolioPosition>()
@@ -232,27 +313,177 @@ export class PortfolioService {
   /**
    * Get historical price for a symbol on a specific date
    * Finds the latest price <= the given date
+   * Supports both market symbols (symbol_price_history) and custom symbols (user_symbol_prices)
    */
-  private getHistoricalPriceForDate(symbol: string, date: string, fallbackPrice: number): number {
+  private async getHistoricalPriceForDate(
+    symbol: string, 
+    date: string, 
+    fallbackPrice: number,
+    user: AuthUser,
+    symbolData: Symbol | null
+  ): Promise<number> {
+    const upperSymbol = symbol.toUpperCase()
+    
     if (clientAuthService.isCurrentUserMock()) {
       const relevantPrices = mockSymbolPriceHistory
-        .filter(p => p.symbol === symbol && p.date <= date)
+        .filter(p => p.symbol === upperSymbol && p.date <= date)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       
       return relevantPrices.length > 0 ? relevantPrices[0].close_price : fallbackPrice
     } else {
-      // TODO: Implement historical price fetching for real users
-      return fallbackPrice
+      // Handle custom symbols - they use user_symbol_prices
+      if (symbolData?.is_custom === true) {
+        return await this.getCustomSymbolHistoricalPrice(upperSymbol, date, fallbackPrice, user)
+      }
+      
+      // Handle regular market symbols - use symbol_price_history
+      return await this.getMarketSymbolHistoricalPrice(upperSymbol, date, fallbackPrice)
     }
+  }
+
+  /**
+   * Get historical price for custom symbols from user_symbol_prices table
+   */
+  private async getCustomSymbolHistoricalPrice(
+    symbol: string,
+    date: string,
+    fallbackPrice: number,
+    user: AuthUser
+  ): Promise<number> {
+    // Check cache first
+    let userCache = this.userCustomPriceCache.get(user.id)
+    if (!userCache) {
+      userCache = new Map()
+      this.userCustomPriceCache.set(user.id, userCache)
+    }
+    
+    let symbolPriceMap = userCache.get(symbol)
+    
+    if (!symbolPriceMap) {
+      // Cache miss - fetch all user manual prices for this symbol
+      try {
+        const { data: userPrices = [], error } = await this.supabase
+          .from('user_symbol_prices')
+          .select('price_date, manual_price')
+          .eq('user_id', user.id)
+          .eq('symbol', symbol)
+          .order('price_date', { ascending: true })
+        
+        if (error) {
+          console.warn(`Failed to fetch user prices for custom symbol ${symbol}:`, error)
+          return fallbackPrice
+        }
+        
+        symbolPriceMap = new Map()
+        userPrices.forEach(p => {
+          const price = Number(p.manual_price)
+          if (!isNaN(price) && price > 0) {
+            symbolPriceMap!.set(p.price_date, price)
+          }
+        })
+        userCache.set(symbol, symbolPriceMap)
+        
+        if (symbolPriceMap.size === 0) {
+          console.warn(`No manual prices found for custom symbol ${symbol}`)
+          return fallbackPrice
+        }
+      } catch (error) {
+        console.error(`Error fetching user prices for custom symbol ${symbol}:`, error)
+        return fallbackPrice
+      }
+    }
+    
+    // Find the latest price <= the given date
+    let latestPrice = fallbackPrice
+    let latestDate = ''
+    
+    for (const [priceDate, price] of symbolPriceMap.entries()) {
+      if (priceDate <= date && priceDate > latestDate) {
+        latestDate = priceDate
+        latestPrice = price
+      }
+    }
+    
+    return latestPrice
+  }
+
+  /**
+   * Get historical price for market symbols from symbol_price_history table
+   */
+  private async getMarketSymbolHistoricalPrice(
+    symbol: string,
+    date: string,
+    fallbackPrice: number
+  ): Promise<number> {
+    // Check cache first
+    let symbolPriceMap = this.historicalPriceCache.get(symbol)
+    
+    if (!symbolPriceMap) {
+      // Cache miss - fetch all historical prices for this symbol
+      try {
+        const { data: allPrices = [], error } = await this.supabase
+          .from('symbol_price_history')
+          .select('date, close_price')
+          .eq('symbol', symbol)
+          .order('date', { ascending: true })
+        
+        if (error) {
+          console.warn(`Failed to fetch historical prices for ${symbol}:`, error)
+          return fallbackPrice
+        }
+        
+        symbolPriceMap = new Map()
+        allPrices.forEach(p => {
+          const price = Number(p.close_price)
+          if (!isNaN(price) && price > 0) {
+            symbolPriceMap!.set(p.date, price)
+          }
+        })
+        this.historicalPriceCache.set(symbol, symbolPriceMap)
+        
+        if (symbolPriceMap.size === 0) {
+          console.warn(`No valid historical prices found for ${symbol}`)
+          return fallbackPrice
+        }
+      } catch (error) {
+        console.error(`Error fetching historical prices for ${symbol}:`, error)
+        return fallbackPrice
+      }
+    }
+    
+    // Find the latest price <= the given date
+    let latestPrice = fallbackPrice
+    let latestDate = ''
+    
+    for (const [priceDate, price] of symbolPriceMap.entries()) {
+      if (priceDate <= date && priceDate > latestDate) {
+        latestDate = priceDate
+        latestPrice = price
+      }
+    }
+    
+    return latestPrice
   }
 
   /**
    * Calculate portfolio value for positions on a specific date
    */
-  private calculatePortfolioValueForDate(positions: PortfolioPosition[], date: string): number {
+  private async calculatePortfolioValueForDate(
+    positions: PortfolioPosition[], 
+    date: string, 
+    user: AuthUser, 
+    symbols: Symbol[]
+  ): Promise<number> {
     let totalValue = 0
     for (const position of positions) {
-      const historicalPrice = this.getHistoricalPriceForDate(position.symbol, date, position.currentPrice)
+      const symbolData = symbols.find(s => s.symbol === position.symbol) || null
+      const historicalPrice = await this.getHistoricalPriceForDate(
+        position.symbol, 
+        date, 
+        position.currentPrice, 
+        user, 
+        symbolData
+      )
       totalValue += position.quantity * historicalPrice
     }
     return totalValue
@@ -261,34 +492,53 @@ export class PortfolioService {
   /**
    * Calculate asset type allocations for positions on a specific date
    */
-  private calculateAssetTypeAllocations(positions: PortfolioPosition[], symbols: Symbol[], date: string, cashBalance: number): Record<string, number> {
+  private async calculateAssetTypeAllocations(
+    positions: PortfolioPosition[], 
+    symbols: Symbol[], 
+    date: string, 
+    cashBalance: number, 
+    user: AuthUser
+  ): Promise<{ allocations: Record<string, number>; values: Record<string, number> }> {
     const assetTypeValues: Record<string, number> = {
       stock: 0,
       etf: 0,
       crypto: 0,
       real_estate: 0,
-      other: 0,
-      cash: cashBalance
+      cash: cashBalance,
+      currency: 0,
+      other: 0
     }
     
-    positions.forEach(position => {
-      const symbol = symbols.find(s => s.symbol === position.symbol)
-      const assetType = symbol?.asset_type || 'other'
-      const historicalPrice = this.getHistoricalPriceForDate(position.symbol, date, position.currentPrice)
+    for (const position of positions) {
+      const symbolData = symbols.find(s => s.symbol === position.symbol)
+      const assetType = symbolData?.asset_type || 'other'
+      const historicalPrice = await this.getHistoricalPriceForDate(
+        position.symbol, 
+        date, 
+        position.currentPrice, 
+        user, 
+        symbolData || null
+      )
+      // console.log("calculateAssetTypeAllocations", "fetched historicalPrice", "symbol=", position.symbol, "date=", date, "price=", historicalPrice, "quantity=", position.quantity);
       const historicalValue = position.quantity * historicalPrice
       assetTypeValues[assetType] += historicalValue
-    })
+    }
     
-    const totalPortfolioValue = Object.values(assetTypeValues).reduce((sum, value) => sum + value, 0)
+    const totalPortfolioValue = Object.values(assetTypeValues).reduce((sum, value) => (sum || 0) + (value || 0), 0)
     const assetTypeAllocations: Record<string, number> = {}
+
+    // console.log("calculateAssetTypeAllocations", "date=", date, totalPortfolioValue, assetTypeValues)
     
     if (totalPortfolioValue > 0) {
       Object.keys(assetTypeValues).forEach(assetType => {
         assetTypeAllocations[assetType] = (assetTypeValues[assetType] / totalPortfolioValue) * 100
       })
     }
-    
-    return assetTypeAllocations
+
+    return {
+      allocations: assetTypeAllocations,
+      values: assetTypeValues
+    }
   }
 
   /**
@@ -329,7 +579,7 @@ export class PortfolioService {
     }, 0)
   }
 
-  private async buildHistoricalData(user: AuthUser): Promise<HistoricalDataPoint[]> {
+  private async buildPortfolioHistoricalData(user: AuthUser): Promise<HistoricalDataPoint[]> {
     try {
       const transactions = await this.getTransactions(user)
       const symbols = await this.getSymbols(user)
@@ -355,33 +605,21 @@ export class PortfolioService {
         
         // Calculate positions as of this date
         const positions = this.calculatePositionsFromTransactions(transactionsUpToDate, symbols)
-        
+
         // Calculate values for this date
-        const totalValue = this.calculatePortfolioValueForDate(positions, currentDate)
+        const totalValue = await this.calculatePortfolioValueForDate(positions, currentDate, user, symbols)
         const cashBalance = this.calculateCashBalanceForDate(sortedTransactions, currentDate)
         const totalPortfolioValue = totalValue + cashBalance
         const cumulativeInvested = this.calculateCumulativeInvestedForDate(sortedTransactions, currentDate)
-        
+
         // Calculate asset allocations
-        const assetTypeAllocations = this.calculateAssetTypeAllocations(positions, symbols, currentDate, cashBalance)
-        
-        // Calculate returns (simplified - using total portfolio growth)
-        const initialValue = historicalData[0]?.totalValue || totalPortfolioValue
-        const portfolioReturn = initialValue > 0 ? (totalPortfolioValue - initialValue) / initialValue : 0
-        
-        const assetTypeReturns: Record<string, number> = {
-          stock: portfolioReturn * 0.4,   // TODO: Calculate actual returns per asset type
-          etf: portfolioReturn * 0.3,
-          crypto: portfolioReturn * 0.2,
-          real_estate: portfolioReturn * 0.08,
-          other: portfolioReturn * 0.02
-        }
+        const { allocations: assetTypeAllocations, values: assetTypeValues } = await this.calculateAssetTypeAllocations(positions, symbols, currentDate, cashBalance, user)
         
         historicalData.push({
           date: currentDate,
           totalValue: totalPortfolioValue,
           assetTypeAllocations,
-          assetTypeReturns,
+          assetTypeValues,
           costBasis: cumulativeInvested
         })
       }
@@ -443,7 +681,8 @@ export class PortfolioService {
         // Get price from historical data - skip if not available
         const historicalPrice = priceMap.get(currentDate)
         if (!historicalPrice) {
-          continue // Skip dates without real historical price data
+          // Skip dates without real historical price data
+          continue
         }
         const adjustedPrice = historicalPrice
   
@@ -453,7 +692,6 @@ export class PortfolioService {
           date: currentDate,
           totalValue: currentValue * USD_TO_EUR_RATE,
           assetTypeAllocations: { [symbolData?.asset_type || 'other']: 100 },
-          assetTypeReturns: { [symbolData?.asset_type || 'other']: totalCost > 0 ? (currentValue - totalCost) / totalCost : 0 },
           costBasis: totalCost * USD_TO_EUR_RATE
         }
   
@@ -1230,6 +1468,226 @@ export class PortfolioService {
       console.error('Error in deleteUserSymbolPrice:', error)
       throw error
     }
+  }
+
+  /**
+   * Filter historical data based on time range
+   */
+  private filterDataByTimeRange(data: HistoricalDataPoint[], range: TimeRange): HistoricalDataPoint[] {
+    const now = new Date()
+    let startDate: Date
+    
+    switch (range) {
+      case '5d':
+        startDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
+        break
+      case '1m':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        break
+      case '6m':
+        startDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000)
+        break
+      case 'ytd':
+        startDate = new Date(now.getFullYear(), 0, 1)
+        break
+      case '1y':
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+        break
+      case '5y':
+        startDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000)
+        break
+      case 'all':
+      default:
+        return data
+    }
+    
+    return data.filter(point => new Date(point.date) >= startDate)
+  }
+
+  /**
+   * Aggregate historical data points based on time range to avoid too many bars
+   */
+  private aggregateDataByTimeRange(data: HistoricalDataPoint[], range: TimeRange): HistoricalDataPoint[] {
+    if (data.length === 0) return data
+    
+    let groupBy: 'day' | 'week' | 'month' | 'quarter' | 'year'
+    
+    switch (range) {
+      case '5d':
+        groupBy = 'day'
+        break
+      case '1m':
+        groupBy = 'week'
+        break
+      case '6m':
+      case 'ytd':
+      case '1y':
+        groupBy = 'month'
+        break
+      case '5y':
+        groupBy = 'quarter'
+        break
+      case 'all':
+      default:
+        groupBy = 'year'
+        break
+    }
+    
+    // First, determine all time periods that should be displayed
+    const startDate = new Date(data[0].date)
+    const endDate = new Date(data[data.length - 1].date)
+    const allPeriods = new Set<string>()
+    
+    // Generate all periods between start and end date
+    for (let d = new Date(startDate); d <= endDate; ) {
+      let key: string
+      
+      switch (groupBy) {
+        case 'day':
+          key = d.toISOString().split('T')[0]
+          d.setDate(d.getDate() + 1)
+          break
+        case 'week':
+          const weekStart = new Date(d)
+          weekStart.setDate(d.getDate() - d.getDay())
+          key = weekStart.toISOString().split('T')[0]
+          d.setDate(d.getDate() + 7)
+          break
+        case 'month':
+          key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+          d.setMonth(d.getMonth() + 1)
+          break
+        case 'quarter':
+          key = `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`
+          d.setMonth(d.getMonth() + 3)
+          break
+        case 'year':
+          key = `${d.getFullYear()}`
+          d.setFullYear(d.getFullYear() + 1)
+          break
+      }
+      
+      allPeriods.add(key)
+    }
+    
+    // Group data points by time period
+    const grouped = new Map<string, HistoricalDataPoint[]>()
+    
+    data.forEach(point => {
+      const date = new Date(point.date)
+      let key: string
+      
+      switch (groupBy) {
+        case 'day':
+          key = date.toISOString().split('T')[0]
+          break
+        case 'week':
+          const weekStart = new Date(date)
+          weekStart.setDate(date.getDate() - date.getDay())
+          key = weekStart.toISOString().split('T')[0]
+          break
+        case 'month':
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+          break
+        case 'quarter':
+          key = `${date.getFullYear()}-Q${Math.floor(date.getMonth() / 3) + 1}`
+          break
+        case 'year':
+          key = `${date.getFullYear()}`
+          break
+      }
+      
+      // Collect all points in each period
+      if (!grouped.has(key)) {
+        grouped.set(key, [])
+      }
+      grouped.get(key)!.push(point)
+    })
+    
+    // For each period, calculate the allocations or use the last known allocation
+    const aggregatedData: HistoricalDataPoint[] = []
+    let lastKnownAllocations: Record<string, number> | null = null
+    let lastKnownValues: Record<string, number> | null = null
+    let lastKnownValue = 0
+    
+    // Sort periods chronologically
+    const sortedPeriods = Array.from(allPeriods).sort()
+    
+    sortedPeriods.forEach(periodKey => {
+      const points = grouped.get(periodKey)
+      
+      if (points && points.length > 0) {
+        // We have data for this period
+        const lastPoint = points[points.length - 1]
+        
+        // Calculate average allocations and values across all points in the period
+        const avgAllocations: Record<string, number> = {}
+        const avgValues: Record<string, number> = {}
+        const assetTypes = ['stock', 'etf', 'crypto', 'real_estate', 'cash', 'currency', 'other']
+        
+        assetTypes.forEach(assetType => {
+          const totalAllocations = points.reduce((sum, p) => {
+            const allocation = p.assetTypeAllocations?.[assetType] || 0
+            return sum + allocation
+          }, 0)
+          const totalValues = points.reduce((sum, p) => {
+            const value = p.assetTypeValues?.[assetType] || 0
+            return sum + value
+          }, 0)
+          avgAllocations[assetType] = totalAllocations / points.length
+          avgValues[assetType] = totalValues / points.length
+        })
+        
+        // Ensure allocations sum to 100%
+        const totalAllocation = Object.values(avgAllocations).reduce((sum, val) => sum + val, 0)
+        if (totalAllocation > 0 && Math.abs(totalAllocation - 100) > 0.01) {
+          // Normalize allocations to sum to 100%
+          Object.keys(avgAllocations).forEach(key => {
+            avgAllocations[key] = (avgAllocations[key] / totalAllocation) * 100
+          })
+        }
+        
+        lastKnownAllocations = avgAllocations
+        lastKnownValues = avgValues
+        lastKnownValue = lastPoint.totalValue
+        
+        aggregatedData.push({
+          ...lastPoint,
+          assetTypeAllocations: avgAllocations,
+          assetTypeValues: avgValues
+        })
+      } else if (lastKnownAllocations && lastKnownValues) {
+        // No data for this period, use last known allocation and values
+        // Create a synthetic data point with the last known data
+        let syntheticDate: string
+        
+        // Parse the period key to get a representative date
+        if (periodKey.includes('-Q')) {
+          // Quarter format: YYYY-Q#
+          const [year, quarter] = periodKey.split('-Q')
+          const month = (parseInt(quarter) - 1) * 3
+          syntheticDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
+        } else if (periodKey.includes('-')) {
+          // Month format: YYYY-MM
+          syntheticDate = `${periodKey}-01`
+        } else {
+          // Year format: YYYY
+          syntheticDate = `${periodKey}-01-01`
+        }
+        
+        aggregatedData.push({
+          date: syntheticDate,
+          totalValue: lastKnownValue,
+          assetTypeAllocations: { ...lastKnownAllocations },
+          assetTypeValues: { ...lastKnownValues },
+          costBasis: 0
+        })
+      }
+    })
+    
+    return aggregatedData.sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    )
   }
 
 }

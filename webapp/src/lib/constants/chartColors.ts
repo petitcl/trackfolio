@@ -15,6 +15,7 @@ export const CHART_COLORS = {
   crypto: '#F59E0B',           // Amber/Orange
   real_estate: '#10B981',      // Green
   cash: '#6B7280',             // Gray
+  currency: '#06B6D4',         // Cyan
   other: '#EC4899',            // Pink
   
   // Chart background and UI colors (dark theme)
@@ -53,6 +54,7 @@ export const CHART_PALETTES = {
     CHART_COLORS.crypto,        // Orange
     CHART_COLORS.real_estate,   // Green
     CHART_COLORS.cash,          // Gray
+    CHART_COLORS.currency,      // Cyan
     CHART_COLORS.other          // Pink
   ],
   

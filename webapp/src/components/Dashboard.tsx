@@ -8,7 +8,7 @@ import { portfolioService, type PortfolioData } from '@/lib/services/portfolio.s
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import TimeRangeSelector, { type TimeRange } from '@/components/TimeRangeSelector'
 import PortfolioRepartitionChart from '@/components/charts/PortfolioRepartitionChart'
-import PortfolioHistoryChart from '@/components/charts/PortfolioHistoryChart'
+import PortfolioRepartitionHistoryChart from '@/components/charts/PortfolioRepartitionHistoryChart'
 import PortfolioValueEvolutionChart from '@/components/charts/PortfolioValueEvolutionChart'
 import QuickActions from '@/components/QuickActions'
 import DemoModeBanner from '@/components/DemoModeBanner'
@@ -24,6 +24,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null)
   const [symbols, setSymbols] = useState<Symbol[]>([])
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
+  const [repartitionData, setRepartitionData] = useState<Array<{ assetType: string; value: number; percentage: number }>>([])
   const router = useRouter()
 
   // Load portfolio data on mount and when user changes
@@ -33,15 +34,17 @@ export default function Dashboard({ user }: DashboardProps) {
         setDataLoading(true)
         console.log('📊 Loading portfolio data for user:', user.email)
         
-        const [portfolio, symbolsData, historical] = await Promise.all([
+        const [portfolio, symbolsData, historical, repartition] = await Promise.all([
           portfolioService.getPortfolioData(user),
           portfolioService.getSymbols(user),
-          portfolioService.getHistoricalData(user)
+          portfolioService.getPortfolioHistoricalData(user),
+          portfolioService.getPortfolioRepartitionData(user)
         ])
-        
+
         setPortfolioData(portfolio)
         setSymbols(symbolsData)
         setHistoricalData(historical)
+        setRepartitionData(repartition)
         
         console.log('✅ Portfolio data loaded successfully')
       } catch (error) {
@@ -56,6 +59,7 @@ export default function Dashboard({ user }: DashboardProps) {
         })
         setSymbols([])
         setHistoricalData([])
+        setRepartitionData([])
       } finally {
         setDataLoading(false)
       }
@@ -88,39 +92,6 @@ export default function Dashboard({ user }: DashboardProps) {
     return (unrealizedPnL / totalCost) * 100
   }
 
-  // Prepare chart data
-  const getPortfolioRepartitionData = () => {
-    if (!portfolioData) return []
-    
-    const positionsByType = portfolioData.positions.reduce((groups, position) => {
-      const symbol = symbols.find(s => s.symbol === position.symbol)
-      const assetType = symbol?.asset_type || 'other'
-      if (!groups[assetType]) {
-        groups[assetType] = { value: 0, percentage: 0 }
-      }
-      groups[assetType].value += position.value
-      return groups
-    }, {} as Record<string, { value: number; percentage: number }>)
-
-    // Add cash
-    if (portfolioData.cashBalance > 0) {
-      positionsByType['cash'] = { value: portfolioData.cashBalance, percentage: 0 }
-    }
-
-    // Calculate percentages
-    const totalValue = Object.values(positionsByType).reduce((sum, group) => sum + group.value, 0)
-    if (totalValue > 0) {
-      Object.keys(positionsByType).forEach(assetType => {
-        positionsByType[assetType].percentage = (positionsByType[assetType].value / totalValue) * 100
-      })
-    }
-
-    return Object.entries(positionsByType).map(([assetType, data]) => ({
-      assetType,
-      value: data.value,
-      percentage: data.percentage
-    }))
-  }
 
   const getAssetTypeIcon = (assetType: string) => {
     const icons: Record<string, string> = {
@@ -128,6 +99,7 @@ export default function Dashboard({ user }: DashboardProps) {
       etf: '📊',
       crypto: '₿',
       cash: '💵',
+      currency: '💱',
       real_estate: '🏠',
       other: '💎'
     }
@@ -140,6 +112,7 @@ export default function Dashboard({ user }: DashboardProps) {
       etf: 'ETFs',
       crypto: 'Crypto',
       cash: 'Cash',
+      currency: 'Currency',
       real_estate: 'Real Estate',
       other: 'Other Assets'
     }
@@ -281,11 +254,11 @@ export default function Dashboard({ user }: DashboardProps) {
           {/* Top Row - Pie Chart and Portfolio History */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <PortfolioRepartitionChart
-              data={getPortfolioRepartitionData()}
+              data={repartitionData}
               timeRange={selectedTimeRange}
             />
-            <PortfolioHistoryChart
-              data={historicalData}
+            <PortfolioRepartitionHistoryChart
+              user={user}
               timeRange={selectedTimeRange}
             />
           </div>

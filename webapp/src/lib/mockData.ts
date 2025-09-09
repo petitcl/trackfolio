@@ -413,9 +413,12 @@ export const mockTransactions: Transaction[] = [
 export interface HistoricalDataPoint {
   date: string
   totalValue: number
-  assetTypeAllocations: Record<string, number> // percentage allocation by asset type
-  assetTypeReturns: Record<string, number> // returns by asset type
-  costBasis?: number // cumulative invested amount (optional for backward compatibility)
+  // percentage allocation by asset type
+  assetTypeAllocations: Record<string, number>
+  // absolute dollar values by asset type
+  assetTypeValues: Record<string, number>
+  // cumulative invested amount (optional for backward compatibility)
+  costBasis?: number
 }
 
 // Mock symbol price history data that mirrors the supabase symbol_price_history table

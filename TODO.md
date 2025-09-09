@@ -28,7 +28,8 @@
 - ✅ P&L calculations (realized vs unrealized)
 - ✅ Portfolio weight calculations
 - ✅ Currency formatting and percentage displays
-- [ ] Portfolio history can switch betwen % and absolute value
+- [ ] Portfolio repartition history is displayed as stacked bars
+- [ ] Portfolio repartition history can switch betwen % and absolute value
 
 ## 🐛 Bug Fixes
 - ✅ Fix the light mode (it still doesn't work)
