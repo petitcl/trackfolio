@@ -84,6 +84,14 @@ export default function TransactionHistory({ transactions, symbol, symbolName, u
     }).format(amount)
   }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
   const getTransactionTypeColor = (type: string) => {
     const colors: Record<string, string> = {
       buy: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20',
@@ -175,7 +183,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, u
               return (
                 <tr key={transaction.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                    {new Date(transaction.date).toLocaleDateString()}
+                    {formatDate(transaction.date)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTransactionTypeColor(transaction.type)}`}>

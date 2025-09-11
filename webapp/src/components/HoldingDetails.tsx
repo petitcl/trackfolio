@@ -301,7 +301,11 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
                 <p className="text-sm text-gray-500 dark:text-gray-400">Performance and value evolution over time</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                   Last Updated: {symbolData?.last_updated ? 
-                    new Date(symbolData.last_updated).toLocaleDateString() : 
+                    new Date(symbolData.last_updated).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    }) : 
                     'Never'
                   }
                 </p>
