@@ -433,12 +433,6 @@ export default function Dashboard({ user }: DashboardProps) {
               icon: '📈',
               label: 'Add Holding',
               onClick: () => router.push('/add-holding')
-            },
-            {
-              id: 'update-prices',
-              icon: '💰',
-              label: 'Update Prices',
-              onClick: () => console.log('Update prices')
             }
           ]}
           columns={3}
