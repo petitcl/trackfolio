@@ -29,10 +29,10 @@
 - ✅ Portfolio weight calculations
 - ✅ Currency formatting and percentage displays
 - ✅ Portfolio repartition history is displayed as stacked bars
-- [ ] Split Portfolio Service in different services
-- [ ] Unify buildPortfolioHistoricalData & buildHoldingHistoricalData in Portfolio Service
-- [ ] Remove maxTemporalGapDays in Portfolio Service
-- [ ] Make all charts (homepage, holding page) take into account custom prices (TODO check)
+- ✅ Split Portfolio Service in different services
+- ✅ Unify buildPortfolioHistoricalData & buildHoldingHistoricalData in Portfolio Service
+- ✅ Remove maxTemporalGapDays in Portfolio Service
+- ✅ Make all charts (homepage, holding page) take into account custom prices
 - [ ] Show Annualized yearly return 
 - [ ] Portfolio repartition history can switch betwen % and absolute value
 
@@ -40,7 +40,7 @@
 - ✅ Fix the light mode (it still doesn't work)
 - ✅ Delete all traces of light theme (incl login page)
 - ✅ Fix demo mode outside of development env
-- [ ] Revisit all charts styles + logic
+- ✅ Revisit all charts styles + logic
 - [ ] Add cursor: pointer; hover on all buttons
 
 ## 🎯 Priority Features
@@ -75,6 +75,7 @@
 ### 🎨 UI/UX Enhancements
 - [ ] Hardcoded list of brokers to pick from
 - [ ] Creating a custom holding should redirect to holding detail page instead of homepage 
+- [ ] Adding or editing a custom price or transaction in the the holding page should refresh the page
 - [ ] Delete holding button should be red / danger
 - [ ] Edit custom holding price
 - [ ] Enhance fonts

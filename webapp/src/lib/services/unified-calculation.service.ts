@@ -188,8 +188,8 @@ export class UnifiedCalculationService {
         other: 0
       }
 
-      let hasAllPrices = true
       let totalCostBasis = 0
+      let validPriceCount = 0
 
       for (const position of positions) {
         const symbolPriceMap = priceMapCache.get(position.symbol)
@@ -201,23 +201,25 @@ export class UnifiedCalculationService {
           symbolPriceMap
         )
 
-        if (historicalPrice === null) {
-          hasAllPrices = false
-          break
-        }
-
-        const positionValue = position.quantity * historicalPrice
-        totalValue += positionValue
+        // Always include cost basis for positions that exist on this date
         totalCostBasis += position.totalCost
 
-        // Add to asset type allocation
-        const symbolData = symbols.find(s => s.symbol === position.symbol)
-        const assetType = symbolData?.asset_type || 'other'
-        assetTypeValues[assetType] += positionValue
+        if (historicalPrice !== null) {
+          validPriceCount++
+          const positionValue = position.quantity * historicalPrice
+          totalValue += positionValue
+
+          // Add to asset type allocation
+          const symbolData = symbols.find(s => s.symbol === position.symbol)
+          const assetType = symbolData?.asset_type || 'other'
+          assetTypeValues[assetType] += positionValue
+        }
+        // If no price found, the position still contributes to cost basis
+        // but contributes zero to market value - this shows realistic P&L
       }
 
-      // Skip this date if we don't have all required prices
-      if (!hasAllPrices) {
+      // Skip this date only if we have no valid prices at all
+      if (validPriceCount === 0) {
         continue
       }
 
