@@ -2,6 +2,7 @@
 
 
 ## TODO P1
+- [ ] Fix Vercel build errors
 - [ ] Multi currency support (EUR, USD)
 - [ ] Show Annualized yearly return 
 - [ ] Better Support for cash positions
