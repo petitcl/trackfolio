@@ -131,10 +131,20 @@ export class UnifiedCalculationService {
       return []
     }
 
-    // Pre-fetch price map for target symbol if doing single holding calculation
-    let priceMap: Map<string, number> | undefined
+    // Pre-fetch price maps for all relevant symbols to ensure consistent price coverage
+    const priceMapCache = new Map<string, Map<string, number>>()
+    
     if (targetSymbol) {
-      priceMap = await historicalPriceService.fetchHistoricalPrices(targetSymbol)
+      // For single holding, only fetch prices for that symbol
+      priceMapCache.set(targetSymbol, await historicalPriceService.fetchHistoricalPrices(targetSymbol))
+    } else {
+      // For portfolio, pre-fetch prices for all symbols to avoid missing data
+      const uniqueSymbols = [...new Set(transactions.map(t => t.symbol).filter(s => s !== 'CASH'))]
+      await Promise.all(
+        uniqueSymbols.map(async symbol => {
+          priceMapCache.set(symbol, await historicalPriceService.fetchHistoricalPrices(symbol))
+        })
+      )
     }
 
     // Get date range
@@ -172,12 +182,13 @@ export class UnifiedCalculationService {
       let totalCostBasis = 0
 
       for (const position of positions) {
+        const symbolPriceMap = priceMapCache.get(position.symbol)
         const historicalPrice = await this.getUnifiedHistoricalPrice(
           position.symbol,
           currentDate,
           user,
           symbols,
-          priceMap
+          symbolPriceMap
         )
 
         if (historicalPrice === null) {
