@@ -83,11 +83,21 @@ export class UnifiedCalculationService {
     symbols: Symbol[],
     priceMap?: Map<string, number>
   ): Promise<number | null> {
-    // Try simple map lookup first (for performance)
+    // Try price map lookup first (for performance) with latest-price-before-date logic
     if (priceMap) {
-      const mapPrice = priceMap.get(date)
-      if (mapPrice) {
-        return mapPrice
+      // Find the latest price <= the given date (same logic as historicalPriceService)
+      let latestPrice: number | null = null
+      let latestDate = ''
+      
+      for (const [priceDate, price] of priceMap.entries()) {
+        if (priceDate <= date && priceDate > latestDate) {
+          latestDate = priceDate
+          latestPrice = price
+        }
+      }
+      
+      if (latestPrice !== null) {
+        return latestPrice
       }
     }
 
