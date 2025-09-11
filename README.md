@@ -198,8 +198,7 @@ node scripts/backfill-symbol.js https://your-app.vercel.app SYMBOL
 
 ### Prerequisites
 - Symbol must exist in the database (add via UI first)
-- Alpha Vantage API key configured (`ALPHA_VANTAGE_API_KEY`)
-- CRON_SECRET environment variable set
+- Secrets are configured
 - Only works with non-custom symbols (market-traded assets)
 
 ## 🔐 Authentication
@@ -234,22 +233,6 @@ Configure in Supabase Dashboard > Authentication > Providers
 - `real_estate` - Real estate holdings
 - `cash` - Cash positions
 - `other` - Custom assets (collectibles, private equity, etc.)
-
-## 🎯 Next Steps
-
-### Phase 1 Enhancements
-- [ ] Transaction CRUD operations
-- [ ] Symbol search and autocomplete
-- [ ] Manual price update interface
-- [ ] Real Supabase integration
-- [ ] Mobile-optimized forms
-
-### Phase 2 Features
-- [ ] Charts and visualizations
-- [ ] Performance analytics (XIRR, drawdown)
-- [ ] Price refresh automation
-- [ ] Import/export functionality
-- [ ] Notification system
 
 ## 💡 Usage Tips
 

@@ -160,14 +160,14 @@ export const mockSymbols: Symbol[] = [
     created_at: new Date().toISOString()
   },
   {
-    symbol: 'CASH',
-    name: 'Cash USD',
+    symbol: 'USD_CASH',
+    name: 'USD Cash Account',
     asset_type: 'cash' as AssetType,
     currency: 'USD',
     last_price: 1.00,
     last_updated: new Date().toISOString(),
-    is_custom: false,
-    created_by_user_id: null,
+    is_custom: true,
+    created_by_user_id: MOCK_USER_ID,
     created_at: new Date().toISOString()
   }
 ]
@@ -178,7 +178,7 @@ export const mockTransactions: Transaction[] = [
     id: '1',
     user_id: MOCK_USER_ID,
     date: '2024-03-01',
-    symbol: 'CASH',
+    symbol: 'USD_CASH',
     type: 'deposit' as TransactionType,
     quantity: 10000.00,
     price_per_unit: 1.00,
@@ -350,7 +350,7 @@ export const mockTransactions: Transaction[] = [
     id: '12',
     user_id: MOCK_USER_ID,
     date: '2024-11-01',
-    symbol: 'CASH',
+    symbol: 'USD_CASH',
     type: 'deposit' as TransactionType,
     quantity: 2000.00,
     price_per_unit: 1.00,
@@ -365,7 +365,7 @@ export const mockTransactions: Transaction[] = [
     id: '13',
     user_id: MOCK_USER_ID,
     date: '2024-11-15',
-    symbol: 'CASH',
+    symbol: 'USD_CASH',
     type: 'withdrawal' as TransactionType,
     quantity: 1000.00,
     price_per_unit: 1.00,
@@ -528,11 +528,11 @@ export const mockSymbolPriceHistory: MockSymbolPriceHistory[] = [
   { symbol: 'ETH', date: '2024-12-01', close_price: 2800.00, data_source: 'manual' },
 
   // CASH always has price 1.00
-  { symbol: 'CASH', date: '2024-01-01', close_price: 1.00, data_source: 'manual' },
-  { symbol: 'CASH', date: '2024-03-01', close_price: 1.00, data_source: 'manual' },
-  { symbol: 'CASH', date: '2024-06-01', close_price: 1.00, data_source: 'manual' },
-  { symbol: 'CASH', date: '2024-09-01', close_price: 1.00, data_source: 'manual' },
-  { symbol: 'CASH', date: '2024-12-01', close_price: 1.00, data_source: 'manual' },
-  { symbol: 'CASH', date: '2024-12-20', close_price: 1.00, data_source: 'manual' },
-  { symbol: 'CASH', date: '2024-12-22', close_price: 1.00, data_source: 'manual' }
+  { symbol: 'USD_CASH', date: '2024-01-01', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'USD_CASH', date: '2024-03-01', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'USD_CASH', date: '2024-06-01', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'USD_CASH', date: '2024-09-01', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'USD_CASH', date: '2024-12-01', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'USD_CASH', date: '2024-12-20', close_price: 1.00, data_source: 'manual' },
+  { symbol: 'USD_CASH', date: '2024-12-22', close_price: 1.00, data_source: 'manual' }
 ]

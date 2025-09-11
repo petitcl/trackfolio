@@ -52,7 +52,6 @@ export default function Dashboard({ user }: DashboardProps) {
         // Fallback to empty data
         setPortfolioData({
           totalValue: 0,
-          cashBalance: 0,
           positions: [],
           dailyChange: { value: 0, percentage: 0 },
           totalPnL: { realized: 0, unrealized: 0, total: 0 }
@@ -400,25 +399,6 @@ export default function Dashboard({ user }: DashboardProps) {
                   
                   return rows
                 })()}
-                {/* Cash row - not clickable */}
-                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700 bg-gray-25 dark:bg-gray-800">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 text-lg">{getAssetTypeIcon('cash')}</div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">CASH</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">Available Cash</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">$1.00</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">$1.00</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(portfolioData.cashBalance)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-300">-</td>
-                </tr>
               </tbody>
             </table>
           </div>

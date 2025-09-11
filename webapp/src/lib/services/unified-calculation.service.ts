@@ -31,7 +31,6 @@ export class UnifiedCalculationService {
     // Filter transactions up to date and optionally by symbol
     const relevantTransactions = transactions
       .filter(t => t.date <= date)
-      .filter(t => t.symbol !== 'CASH') // Exclude cash
       .filter(t => !targetSymbol || t.symbol === targetSymbol)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
@@ -46,11 +45,11 @@ export class UnifiedCalculationService {
         avgCost: 0
       }
 
-      if (transaction.type === 'buy') {
+      if (transaction.type === 'buy' || transaction.type === 'deposit') {
         existing.quantity += transaction.quantity
         existing.totalCost += transaction.quantity * transaction.price_per_unit
         existing.avgCost = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
-      } else if (transaction.type === 'sell') {
+      } else if (transaction.type === 'sell' || transaction.type === 'withdrawal') {
         existing.quantity -= transaction.quantity
         if (existing.quantity <= 0) {
           positionMap.delete(symbol)
@@ -58,9 +57,9 @@ export class UnifiedCalculationService {
         }
         // Maintain cost basis proportionally
         existing.totalCost = existing.quantity * existing.avgCost
-      } else if (transaction.type === 'bonus') {
+      } else if (transaction.type === 'bonus' || transaction.type === 'dividend') {
         existing.quantity += transaction.quantity
-        // No cost change for bonus shares
+        // No cost change for bonus shares or dividends
         existing.avgCost = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
       }
 
@@ -111,16 +110,6 @@ export class UnifiedCalculationService {
     )
   }
 
-  /**
-   * Calculate cash balance up to a specific date
-   */
-  private calculateCashBalance(transactions: Transaction[], date: string): number {
-    const cashTransactions = transactions.filter(t => t.symbol === 'CASH' && t.date <= date)
-    return cashTransactions.reduce((sum, t) => {
-      const sign = ['deposit', 'dividend', 'bonus'].includes(t.type) ? 1 : -1
-      return sum + (t.quantity * t.price_per_unit * sign)
-    }, 0)
-  }
 
   /**
    * Unified historical data calculation for both portfolio and individual holdings
@@ -149,7 +138,7 @@ export class UnifiedCalculationService {
       priceMapCache.set(targetSymbol, await historicalPriceService.fetchHistoricalPrices(targetSymbol))
     } else {
       // For portfolio, pre-fetch prices for all symbols to avoid missing data
-      const uniqueSymbols = [...new Set(transactions.map(t => t.symbol).filter(s => s !== 'CASH'))]
+      const uniqueSymbols = [...new Set(transactions.map(t => t.symbol))]
       await Promise.all(
         uniqueSymbols.map(async symbol => {
           priceMapCache.set(symbol, await historicalPriceService.fetchHistoricalPrices(symbol))
@@ -178,6 +167,7 @@ export class UnifiedCalculationService {
 
       // Calculate total value and asset allocations
       let totalValue = 0
+      let targetSymbolValue = 0 // Track individual holding value separately
       const assetTypeValues: Record<string, number> = {
         stock: 0,
         etf: 0,
@@ -209,6 +199,11 @@ export class UnifiedCalculationService {
           const positionValue = position.quantity * historicalPrice
           totalValue += positionValue
 
+          // Track target symbol value separately
+          if (targetSymbol && position.symbol === targetSymbol) {
+            targetSymbolValue = positionValue
+          }
+
           // Add to asset type allocation
           const symbolData = symbols.find(s => s.symbol === position.symbol)
           const assetType = symbolData?.asset_type || 'other'
@@ -223,13 +218,6 @@ export class UnifiedCalculationService {
         continue
       }
 
-      // Add cash balance for portfolio calculations
-      let cashBalance = 0
-      if (!targetSymbol) {
-        cashBalance = this.calculateCashBalance(transactions, currentDate)
-        assetTypeValues.cash = cashBalance
-        totalValue += cashBalance
-      }
 
       // Apply currency conversion if requested
       const conversionRate = applyCurrencyConversion ? USD_TO_EUR_RATE : 1
@@ -261,16 +249,20 @@ export class UnifiedCalculationService {
         })
         assetTypeAllocations[assetType] = 100
 
-        // Reset values to only this asset type
+        // Reset values to only this asset type using the individual holding value
+        const convertedTargetValue = targetSymbolValue * conversionRate
         Object.keys(convertedAssetTypeValues).forEach(key => {
           convertedAssetTypeValues[key] = 0
         })
-        convertedAssetTypeValues[assetType] = convertedTotalValue
+        convertedAssetTypeValues[assetType] = convertedTargetValue
       }
 
+      // For single holdings, use the individual holding value instead of total portfolio value
+      const finalTotalValue = targetSymbol ? targetSymbolValue * conversionRate : convertedTotalValue
+      
       historicalData.push({
         date: currentDate,
-        totalValue: convertedTotalValue,
+        totalValue: finalTotalValue,
         assetTypeAllocations,
         assetTypeValues: convertedAssetTypeValues,
         costBasis: convertedCostBasis

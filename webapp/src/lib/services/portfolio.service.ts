@@ -11,7 +11,6 @@ export type { PortfolioPosition }
 
 export interface PortfolioData {
   totalValue: number
-  cashBalance: number
   positions: PortfolioPosition[]
   dailyChange: {
     value: number
@@ -63,13 +62,9 @@ export class PortfolioService {
       // Calculate totals
       const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
       const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
-      
-      // Get cash balance using calculation service
-      const cashBalance = portfolioCalculationService.calculateCashBalanceForDate(transactions, new Date().toISOString().split('T')[0])
 
       return {
-        totalValue: totalValue + cashBalance,
-        cashBalance,
+        totalValue,
         positions,
         dailyChange: {
           value: 0, // TODO: Calculate from historical data
@@ -169,7 +164,6 @@ export class PortfolioService {
   private getEmptyPortfolio(): PortfolioData {
     return {
       totalValue: 0,
-      cashBalance: 0,
       positions: [],
       dailyChange: { value: 0, percentage: 0 },
       totalPnL: { realized: 0, unrealized: 0, total: 0 }
