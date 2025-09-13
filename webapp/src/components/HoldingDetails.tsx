@@ -14,10 +14,12 @@ import DemoModeBanner from './DemoModeBanner'
 import ConfirmDialog from './ConfirmDialog'
 import PriceManagement from './PriceManagement'
 import TransactionManagement from './TransactionManagement'
+import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 
 interface HoldingDetailsProps {
   user: AuthUser
   symbol: string
+  selectedCurrency?: SupportedCurrency
 }
 
 interface HoldingData {
@@ -28,7 +30,7 @@ interface HoldingData {
   portfolioData: PortfolioData
 }
 
-export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
+export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' }: HoldingDetailsProps) {
   const [loading, setLoading] = useState(true)
   const [holdingData, setHoldingData] = useState<HoldingData | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -45,10 +47,10 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
 
         // Get all portfolio data and filter for this symbol
         const [portfolioData, symbols, transactions, historicalData] = await Promise.all([
-          portfolioService.getPortfolioData(user),
+          portfolioService.getPortfolioData(user, selectedCurrency),
           portfolioService.getSymbols(user),
           portfolioService.getTransactions(user),
-          portfolioService.getHoldingHistoricalData(user, symbol)
+          portfolioService.getHoldingHistoricalData(user, symbol, selectedCurrency)
         ])
 
         const symbolData = symbols.find(s => s.symbol === symbol)
@@ -78,14 +80,10 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
     }
 
     loadHoldingData()
-  }, [user, symbol])
+  }, [user, symbol, selectedCurrency])
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount)
+    return currencyService.formatCurrency(amount, selectedCurrency)
   }
 
   const formatPercent = (percent: number) => {
@@ -308,6 +306,9 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
                     }) : 
                     'Never'
                   }
+                  {symbolData?.currency && (
+                    <span> • Base Currency: {symbolData.currency}</span>
+                  )}
                 </p>
               </div>
               <TimeRangeSelector
@@ -317,6 +318,20 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
             </div>
           </div>
         </div>
+
+        {/* Currency Conversion Notice */}
+        {symbolData?.currency && symbolData.currency !== selectedCurrency && (
+          <div className="mb-6">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+              <div className="flex items-center">
+                <span className="text-lg mr-2">💰</span>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Values converted from {symbolData.currency} to {selectedCurrency}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -421,10 +436,10 @@ export default function HoldingDetails({ user, symbol }: HoldingDetailsProps) {
               data={holdingData.historicalData}
               timeRange={timeRange}
               title={`${symbol} Value Evolution`}
-              description={`Holding value vs. cost basis in EUR (${timeRange.toUpperCase()})`}
+              description={`Holding value vs. cost basis in ${selectedCurrency} (${timeRange.toUpperCase()})`}
               valueLabel={`${symbol} Value`}
               investedLabel="Cost Basis"
-              currency="EUR"
+              currency={selectedCurrency}
               showInvested={true}
             />
           </div>

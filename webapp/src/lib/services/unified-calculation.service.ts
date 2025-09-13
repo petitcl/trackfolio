@@ -2,9 +2,7 @@ import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/types'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import { historicalPriceService } from './historical-price.service'
-
-// Currency conversion rate (mocked for now - in production would come from API)
-const USD_TO_EUR_RATE = 0.85
+import { currencyService, type SupportedCurrency } from './currency.service'
 
 interface UnifiedPosition {
   symbol: string
@@ -121,10 +119,10 @@ export class UnifiedCalculationService {
     symbols: Symbol[],
     options?: {
       targetSymbol?: string // If provided, calculates for single holding only
-      applyCurrencyConversion?: boolean // Whether to apply USD_TO_EUR conversion
+      targetCurrency?: SupportedCurrency // Target currency for conversion (defaults to USD)
     }
   ): Promise<HistoricalDataPoint[]> {
-    const { targetSymbol, applyCurrencyConversion = true } = options || {}
+    const { targetSymbol, targetCurrency = 'USD' } = options || {}
     
     if (transactions.length === 0) {
       return []
@@ -220,7 +218,16 @@ export class UnifiedCalculationService {
 
 
       // Apply currency conversion if requested
-      const conversionRate = applyCurrencyConversion ? USD_TO_EUR_RATE : 1
+      let conversionRate = 1
+      if (targetCurrency !== 'USD') {
+        try {
+          conversionRate = await currencyService.getExchangeRate('USD', targetCurrency, user, symbols, currentDate)
+        } catch (error) {
+          console.warn(`Failed to get exchange rate for ${targetCurrency} on ${currentDate}, using rate 1:`, error)
+          conversionRate = 1
+        }
+      }
+      
       const convertedTotalValue = totalValue * conversionRate
       const convertedCostBasis = totalCostBasis * conversionRate
 

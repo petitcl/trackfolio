@@ -17,6 +17,7 @@ import type { HistoricalDataPoint } from '../../lib/mockData'
 import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
 import { portfolioService } from '../../lib/services/portfolio.service'
 import type { AuthUser } from '../../lib/auth/client.auth.service'
+import { currencyService, type SupportedCurrency, CURRENCY_SYMBOLS } from '../../lib/services/currency.service'
 
 ChartJS.register(
   CategoryScale,
@@ -30,6 +31,7 @@ ChartJS.register(
 interface PortfolioRepartitionHistoryChartProps {
   user: AuthUser
   timeRange: TimeRange
+  selectedCurrency: SupportedCurrency
   className?: string
 }
 
@@ -50,7 +52,8 @@ const assetTypeLabels: Record<string, string> = {
 
 export default function PortfolioRepartitionHistoryChart({ 
   user, 
-  timeRange, 
+  timeRange,
+  selectedCurrency,
   className = '' 
 }: PortfolioRepartitionHistoryChartProps) {
   const [data, setData] = useState<HistoricalDataPoint[]>([])
@@ -62,7 +65,7 @@ export default function PortfolioRepartitionHistoryChart({
       try {
         setIsLoading(true)
         console.log('📊 Fetching historical data for timeRange:', timeRange)
-        const historicalData = await portfolioService.getPortfolioHistoricalDataByTimeRange(user, timeRange)
+        const historicalData = await portfolioService.getPortfolioHistoricalDataByTimeRange(user, timeRange, selectedCurrency)
         setData(historicalData)
       } catch (error) {
         console.error('❌ Error fetching historical data:', error)
@@ -73,7 +76,7 @@ export default function PortfolioRepartitionHistoryChart({
     }
 
     fetchData()
-  }, [user, timeRange])
+  }, [user, timeRange, selectedCurrency])
 
   // Loading state
   if (isLoading) {
@@ -176,14 +179,14 @@ export default function PortfolioRepartitionHistoryChart({
         stacked: true,
         title: {
           display: true,
-          text: 'Portfolio Value ($)',
+          text: `Portfolio Value (${CURRENCY_SYMBOLS[selectedCurrency]})`,
           ...CHART_CONFIGS.scales.y.title,
         },
         min: 0,
         ticks: {
           ...CHART_CONFIGS.scales.y.ticks,
           callback: function(value) {
-            return `$${Number(value).toLocaleString()}`
+            return currencyService.formatCurrency(Number(value), selectedCurrency)
           }
         },
         grid: {
@@ -208,12 +211,12 @@ export default function PortfolioRepartitionHistoryChart({
         borderWidth: 1,
         callbacks: {
           label: function(context) {
-            const value = Number(context.parsed.y).toLocaleString()
-            return `${context.dataset.label}: $${value}`
+            const value = currencyService.formatCurrency(Number(context.parsed.y), selectedCurrency)
+            return `${context.dataset.label}: ${value}`
           },
           footer: function(tooltipItems) {
             const total = tooltipItems.reduce((sum, item) => sum + Number(item.parsed.y), 0)
-            return `Total: $${total.toLocaleString()}`
+            return `Total: ${currencyService.formatCurrency(total, selectedCurrency)}`
           }
         }
       }

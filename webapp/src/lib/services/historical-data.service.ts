@@ -3,6 +3,7 @@ import type { Transaction, Symbol } from '@/lib/supabase/types'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import type { TimeRange } from '@/components/TimeRangeSelector'
 import { unifiedCalculationService } from './unified-calculation.service'
+import type { SupportedCurrency } from './currency.service'
 
 /**
  * Service responsible for generating historical data time series
@@ -26,6 +27,7 @@ export class HistoricalDataService {
     user: AuthUser,
     transactions: Transaction[],
     symbols: Symbol[],
+    targetCurrency: SupportedCurrency = 'USD',
     options?: {
       symbol?: string // If provided, calculates for single holding only
       useSimplePriceLookup?: boolean // Legacy option, now ignored (unified approach)
@@ -43,7 +45,7 @@ export class HistoricalDataService {
         symbols,
         {
           targetSymbol,
-          applyCurrencyConversion: true // Always apply currency conversion for consistency
+          targetCurrency // Pass the target currency
         }
       )
       
@@ -281,13 +283,14 @@ export class HistoricalDataService {
     transactions: Transaction[],
     symbols: Symbol[],
     timeRange: TimeRange,
+    targetCurrency: SupportedCurrency = 'USD',
     options?: { symbol?: string; useSimplePriceLookup?: boolean }
   ): Promise<HistoricalDataPoint[]> {
     try {
       console.log('📊 Getting historical data for time range:', timeRange)
       
       // Get full historical data
-      const fullHistoricalData = await this.buildHistoricalData(user, transactions, symbols, options)
+      const fullHistoricalData = await this.buildHistoricalData(user, transactions, symbols, targetCurrency, options)
       
       if (fullHistoricalData.length === 0) {
         console.log('📊 No historical data available')

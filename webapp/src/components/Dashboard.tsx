@@ -12,6 +12,8 @@ import PortfolioRepartitionHistoryChart from '@/components/charts/PortfolioRepar
 import PortfolioValueEvolutionChart from '@/components/charts/PortfolioValueEvolutionChart'
 import QuickActions from '@/components/QuickActions'
 import DemoModeBanner from '@/components/DemoModeBanner'
+import CurrencySelector from '@/components/CurrencySelector'
+import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 
 interface DashboardProps {
   user: AuthUser
@@ -25,7 +27,14 @@ export default function Dashboard({ user }: DashboardProps) {
   const [symbols, setSymbols] = useState<Symbol[]>([])
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
   const [repartitionData, setRepartitionData] = useState<Array<{ assetType: string; value: number; percentage: number }>>([])
+  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('USD')
   const router = useRouter()
+
+  // Initialize currency preference on mount
+  useEffect(() => {
+    const preferredCurrency = currencyService.getPreferredCurrency()
+    setSelectedCurrency(preferredCurrency)
+  }, [])
 
   // Load portfolio data on mount and when user changes
   useEffect(() => {
@@ -35,10 +44,10 @@ export default function Dashboard({ user }: DashboardProps) {
         console.log('📊 Loading portfolio data for user:', user.email)
         
         const [portfolio, symbolsData, historical, repartition] = await Promise.all([
-          portfolioService.getPortfolioData(user),
+          portfolioService.getPortfolioData(user, selectedCurrency),
           portfolioService.getSymbols(user),
-          portfolioService.getPortfolioHistoricalData(user),
-          portfolioService.getPortfolioRepartitionData(user)
+          portfolioService.getPortfolioHistoricalData(user, selectedCurrency),
+          portfolioService.getPortfolioRepartitionData(user, selectedCurrency)
         ])
 
         setPortfolioData(portfolio)
@@ -67,6 +76,7 @@ export default function Dashboard({ user }: DashboardProps) {
     loadPortfolioData()
   }, [user])
 
+
   const handleSignOut = async () => {
     setIsLoading(true)
     await clientAuthService.signOut()
@@ -74,11 +84,8 @@ export default function Dashboard({ user }: DashboardProps) {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount)
+    // Data is already pre-converted to the selected currency by the services
+    return currencyService.formatCurrency(amount, selectedCurrency)
   }
 
   const formatPercent = (percent: number) => {
@@ -116,6 +123,32 @@ export default function Dashboard({ user }: DashboardProps) {
       other: 'Other Assets'
     }
     return labels[assetType] || 'Unknown'
+  }
+
+  const handleCurrencyChange = async (newCurrency: SupportedCurrency) => {
+    setSelectedCurrency(newCurrency)
+    
+    // Reload all portfolio data with the new currency
+    try {
+      setDataLoading(true)
+      console.log('💱 Reloading portfolio data for currency:', newCurrency)
+      
+      const [portfolio, historical, repartition] = await Promise.all([
+        portfolioService.getPortfolioData(user, newCurrency),
+        portfolioService.getPortfolioHistoricalData(user, newCurrency),
+        portfolioService.getPortfolioRepartitionData(user, newCurrency)
+      ])
+
+      setPortfolioData(portfolio)
+      setHistoricalData(historical)
+      setRepartitionData(repartition)
+      
+      console.log('✅ Portfolio data reloaded for currency:', newCurrency)
+    } catch (error) {
+      console.error('Failed to reload portfolio data for new currency:', error)
+    } finally {
+      setDataLoading(false)
+    }
   }
 
   const getPnLColor = (pnl: number) => {
@@ -156,7 +189,12 @@ export default function Dashboard({ user }: DashboardProps) {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Trackfolio</h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back, {user.email}</p>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-4">
+              <CurrencySelector
+                selectedCurrency={selectedCurrency}
+                onCurrencyChange={handleCurrencyChange}
+                className="hidden sm:flex"
+              />
               <button
                 onClick={handleSignOut}
                 disabled={isLoading}
@@ -259,6 +297,7 @@ export default function Dashboard({ user }: DashboardProps) {
             <PortfolioRepartitionHistoryChart
               user={user}
               timeRange={selectedTimeRange}
+              selectedCurrency={selectedCurrency}
             />
           </div>
           
@@ -267,6 +306,7 @@ export default function Dashboard({ user }: DashboardProps) {
             <PortfolioValueEvolutionChart
               data={historicalData}
               timeRange={selectedTimeRange}
+              selectedCurrency={selectedCurrency}
             />
           </div>
         </div>

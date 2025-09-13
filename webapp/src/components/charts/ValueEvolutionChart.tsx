@@ -16,6 +16,7 @@ import { Line } from 'react-chartjs-2'
 import type { TimeRange } from '../TimeRangeSelector'
 import type { HistoricalDataPoint } from '../../lib/mockData'
 import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
+import { type SupportedCurrency, CURRENCY_SYMBOLS } from '../../lib/services/currency.service'
 
 ChartJS.register(
   CategoryScale,
@@ -35,12 +36,10 @@ interface ValueEvolutionChartProps {
   className?: string
   valueLabel?: string
   investedLabel?: string
-  currency?: string
+  currency?: SupportedCurrency
   showInvested?: boolean
 }
 
-// EUR/USD exchange rate - in production this would come from a currency API
-const USD_TO_EUR_RATE = 0.85
 
 export default function ValueEvolutionChart({ 
   data, 
@@ -50,7 +49,7 @@ export default function ValueEvolutionChart({
   className = '',
   valueLabel = 'Value',
   investedLabel = 'Cumulative Invested',
-  currency = 'EUR',
+  currency = 'USD',
   showInvested = true
 }: ValueEvolutionChartProps) {
   
@@ -96,17 +95,17 @@ export default function ValueEvolutionChart({
       // Use the cost basis data from the service (works for both portfolio and holdings)
       return filteredData.map(point => {
         const extendedPoint = point as HistoricalDataPoint & { costBasis?: number }
-        return (extendedPoint.costBasis || 0) * USD_TO_EUR_RATE
+        return extendedPoint.costBasis || 0
       })
     }
 
     // Fallback for legacy data without cost basis
     console.warn('No cost basis data found in historical data, using fallback calculation')
-    const initialInvested = filteredData[0]?.totalValue * USD_TO_EUR_RATE || 0
+    const initialInvested = filteredData[0]?.totalValue || 0
     return filteredData.map(() => initialInvested)
   }
 
-  const values = filteredData.map(point => point.totalValue * USD_TO_EUR_RATE)
+  const values = filteredData.map(point => point.totalValue)
   const cumulativeInvested = showInvested ? calculateCumulativeInvested(filteredData) : []
 
   const datasets: any[] = [
@@ -188,7 +187,7 @@ export default function ValueEvolutionChart({
         display: true,
         title: {
           display: true,
-          text: `Value (${currency})`,
+          text: `Value (${CURRENCY_SYMBOLS[currency]})`,
           ...CHART_CONFIGS.scales.y.title,
         },
         ticks: {

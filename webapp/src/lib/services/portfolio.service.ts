@@ -5,6 +5,7 @@ import { historicalPriceService } from './historical-price.service'
 import { portfolioCalculationService, type PortfolioPosition } from './portfolio-calculation.service'
 import { historicalDataService } from './historical-data.service'
 import { transactionService } from './transaction.service'
+import { currencyService, type SupportedCurrency } from './currency.service'
 
 // Re-export types for external components
 export type { PortfolioPosition }
@@ -43,7 +44,7 @@ export class PortfolioService {
     historicalPriceService.clearCache()
   }
 
-  async getPortfolioData(user: AuthUser): Promise<PortfolioData> {
+  async getPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD'): Promise<PortfolioData> {
     console.log('🔄 Fetching portfolio data for user:', user.email)
     
     try {
@@ -59,13 +60,32 @@ export class PortfolioService {
       // Calculate positions using calculation service
       const positions = portfolioCalculationService.calculatePositionsFromTransactions(transactions, symbols)
       
-      // Calculate totals
-      const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
-      const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
+      // Convert position values to target currency if needed
+      let convertedPositions = positions
+      if (targetCurrency !== 'USD') {
+        convertedPositions = await Promise.all(positions.map(async (position) => {
+          const convertedValue = await currencyService.convertAmount(position.value, 'USD', targetCurrency, user, symbols)
+          const convertedAvgCost = await currencyService.convertAmount(position.avgCost, 'USD', targetCurrency, user, symbols)
+          const convertedCurrentPrice = await currencyService.convertAmount(position.currentPrice, 'USD', targetCurrency, user, symbols)
+          const convertedUnrealizedPnL = await currencyService.convertAmount(position.unrealizedPnL, 'USD', targetCurrency, user, symbols)
+          
+          return {
+            ...position,
+            value: convertedValue,
+            avgCost: convertedAvgCost,
+            currentPrice: convertedCurrentPrice,
+            unrealizedPnL: convertedUnrealizedPnL
+          }
+        }))
+      }
+      
+      // Calculate totals in target currency
+      const totalValue = convertedPositions.reduce((sum, pos) => sum + pos.value, 0)
+      const totalUnrealizedPnL = convertedPositions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
 
       return {
         totalValue,
-        positions,
+        positions: convertedPositions,
         dailyChange: {
           value: 0, // TODO: Calculate from historical data
           percentage: 0
@@ -90,24 +110,24 @@ export class PortfolioService {
     return transactionService.getTransactions(user)
   }
 
-  async getPortfolioHistoricalData(user: AuthUser): Promise<HistoricalDataPoint[]> {
+  async getPortfolioHistoricalData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD'): Promise<HistoricalDataPoint[]> {
     console.log('📊 Building portfolio historical data for user')
     const transactions = await transactionService.getTransactions(user)
     const symbols = await transactionService.getSymbols(user)
-    return await historicalDataService.buildHistoricalData(user, transactions, symbols)
+    return await historicalDataService.buildHistoricalData(user, transactions, symbols, targetCurrency)
   }
 
-  async getPortfolioHistoricalDataByTimeRange(user: AuthUser, timeRange: TimeRange): Promise<HistoricalDataPoint[]> {
+  async getPortfolioHistoricalDataByTimeRange(user: AuthUser, timeRange: TimeRange, targetCurrency: SupportedCurrency = 'USD'): Promise<HistoricalDataPoint[]> {
     const transactions = await transactionService.getTransactions(user)
     const symbols = await transactionService.getSymbols(user)
-    return await historicalDataService.getHistoricalDataByTimeRange(user, transactions, symbols, timeRange)
+    return await historicalDataService.getHistoricalDataByTimeRange(user, transactions, symbols, timeRange, targetCurrency)
   }
 
-  async getHoldingHistoricalData(user: AuthUser, symbol: string): Promise<HistoricalDataPoint[]> {
+  async getHoldingHistoricalData(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD'): Promise<HistoricalDataPoint[]> {
     console.log('📊 Building holding historical data for:', symbol)
     const transactions = await transactionService.getTransactions(user)
     const symbols = await transactionService.getSymbols(user)
-    return await historicalDataService.buildHistoricalData(user, transactions, symbols, {
+    return await historicalDataService.buildHistoricalData(user, transactions, symbols, targetCurrency, {
       symbol,
       useSimplePriceLookup: true
     })
@@ -117,7 +137,7 @@ export class PortfolioService {
     return transactionService.getHoldingTransactions(user, symbol)
   }
 
-  async getPortfolioRepartitionData(user: AuthUser, date?: string): Promise<Array<{ 
+  async getPortfolioRepartitionData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', date?: string): Promise<Array<{ 
     assetType: string; 
     value: number; 
     percentage: number 
@@ -126,7 +146,7 @@ export class PortfolioService {
       console.log('📊 Getting portfolio repartition data for user:', user.email, 'date:', date || 'current')
       
       // Get historical data (which includes both allocations and values)
-      const historicalData = await this.getPortfolioHistoricalData(user)
+      const historicalData = await this.getPortfolioHistoricalData(user, targetCurrency)
       
       if (historicalData.length === 0) {
         console.log('📊 No historical data available')

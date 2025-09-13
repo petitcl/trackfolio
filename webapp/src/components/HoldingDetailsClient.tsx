@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { clientAuthService, type AuthUser } from '@/lib/auth/client.auth.service'
 import HoldingDetails from '@/components/HoldingDetails'
+import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 
 interface HoldingDetailsClientProps {
   symbol: string
@@ -13,6 +14,7 @@ export default function HoldingDetailsClient({ symbol }: HoldingDetailsClientPro
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('USD')
   const router = useRouter()
 
   useEffect(() => {
@@ -44,6 +46,12 @@ export default function HoldingDetailsClient({ symbol }: HoldingDetailsClientPro
     checkAuth()
   }, [router])
 
+  // Initialize currency preference on mount
+  useEffect(() => {
+    const preferredCurrency = currencyService.getPreferredCurrency()
+    setSelectedCurrency(preferredCurrency)
+  }, [])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -65,5 +73,5 @@ export default function HoldingDetailsClient({ symbol }: HoldingDetailsClientPro
     )
   }
 
-  return <HoldingDetails user={user} symbol={symbol} />
+  return <HoldingDetails user={user} symbol={symbol} selectedCurrency={selectedCurrency} />
 }
