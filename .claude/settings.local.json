@@ -20,7 +20,9 @@
       "WebFetch(domain:www.alphavantage.co)",
       "WebSearch",
       "Bash(npm run backfill-symbol:local:*)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(convert:*)",
+      "Bash(sips:*)"
     ],
     "deny": [],
     "ask": [],

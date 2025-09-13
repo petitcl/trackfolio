@@ -183,9 +183,16 @@ export default function Dashboard({ user }: DashboardProps) {
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Trackfolio</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back, {user.email}</p>
+            <div className="flex items-center">
+              <img 
+                src="/icon-192x192.png" 
+                alt="Trackfolio Logo" 
+                className="w-10 h-10 mr-3 rounded-lg"
+              />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Trackfolio</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back, {user.email}</p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <CurrencySelector
