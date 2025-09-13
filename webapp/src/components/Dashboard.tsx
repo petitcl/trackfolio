@@ -74,7 +74,7 @@ export default function Dashboard({ user }: DashboardProps) {
     }
 
     loadPortfolioData()
-  }, [user])
+  }, [user, selectedCurrency])
 
 
   const handleSignOut = async () => {

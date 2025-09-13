@@ -5,7 +5,7 @@
 - ✅ Fix Vercel build errors
 - ✅ Remove unconditional cash position
 - ✅ Multi currency support (EUR, USD)
-- [ ] Show Annualized yearly return 
+- ✅ Show Annualized yearly return 
 - [ ] Delete ETF asset_type
 - [ ] Configure logo
 

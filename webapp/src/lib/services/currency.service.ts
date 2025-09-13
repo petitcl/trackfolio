@@ -133,14 +133,14 @@ export class CurrencyService {
           CurrencyService.CURRENCY_PAIR_SYMBOLS.EURUSD,
           date,
           user,
-          eurusdSymbol
+          eurusdSymbol || null
         ) || 1.0856 // fallback
         
         gbpusdRate = await historicalPriceService.getHistoricalPriceForDate(
           CurrencyService.CURRENCY_PAIR_SYMBOLS.GBPUSD,
           date,
           user,
-          gbpusdSymbol
+          gbpusdSymbol || null
         ) || 1.2845 // fallback
       } else {
         // Use current prices from symbols
