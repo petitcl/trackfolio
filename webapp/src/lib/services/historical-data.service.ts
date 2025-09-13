@@ -208,7 +208,7 @@ export class HistoricalDataService {
         // Calculate average allocations and values across all points in the period
         const avgAllocations: Record<string, number> = {}
         const avgValues: Record<string, number> = {}
-        const assetTypes = ['stock', 'etf', 'crypto', 'real_estate', 'cash', 'currency', 'other']
+        const assetTypes = ['stock', 'crypto', 'real_estate', 'cash', 'currency', 'other']
         
         assetTypes.forEach(assetType => {
           const totalAllocations = points.reduce((sum, p) => {

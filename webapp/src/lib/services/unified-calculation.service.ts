@@ -168,7 +168,6 @@ export class UnifiedCalculationService {
       let targetSymbolValue = 0 // Track individual holding value separately
       const assetTypeValues: Record<string, number> = {
         stock: 0,
-        etf: 0,
         crypto: 0,
         real_estate: 0,
         cash: 0,

@@ -90,8 +90,6 @@ export function mapAssetTypeToSymbolType(assetType: string): SymbolType {
   switch (assetType) {
     case 'stock':
       return 'stock'
-    case 'etf':
-      return 'etf'
     case 'crypto':
       return 'crypto'
     case 'currency':

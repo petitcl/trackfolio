@@ -2,7 +2,7 @@
  * Types and interfaces for modular price data providers
  */
 
-export type SymbolType = 'stock' | 'crypto' | 'etf' | 'currency'
+export type SymbolType = 'stock' | 'crypto' | 'currency'
 export type BaseCurrency = 'USD' | 'EUR'
 
 export interface PriceData {

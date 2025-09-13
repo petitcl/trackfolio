@@ -102,7 +102,6 @@ export default function Dashboard({ user }: DashboardProps) {
   const getAssetTypeIcon = (assetType: string) => {
     const icons: Record<string, string> = {
       stock: '📈',
-      etf: '📊',
       crypto: '₿',
       cash: '💵',
       currency: '💱',
@@ -115,7 +114,6 @@ export default function Dashboard({ user }: DashboardProps) {
   const getAssetTypeLabel = (assetType: string) => {
     const labels: Record<string, string> = {
       stock: 'Stocks',
-      etf: 'ETFs',
       crypto: 'Crypto',
       cash: 'Cash',
       currency: 'Currency',
@@ -393,7 +391,7 @@ export default function Dashboard({ user }: DashboardProps) {
                   const rows: React.ReactElement[] = []
                   
                   // Define order for asset types
-                  const typeOrder: AssetType[] = ['stock', 'etf', 'crypto', 'real_estate', 'other']
+                  const typeOrder: AssetType[] = ['stock', 'crypto', 'real_estate', 'other']
                   
                   typeOrder.forEach(assetType => {
                     const positions = positionsByType[assetType]

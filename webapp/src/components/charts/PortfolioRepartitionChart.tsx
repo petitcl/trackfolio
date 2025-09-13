@@ -22,7 +22,6 @@ interface PortfolioRepartitionChartProps {
 
 const assetTypeLabels: Record<string, string> = {
   stock: 'Stocks',
-  etf: 'ETFs',
   crypto: 'Crypto',
   real_estate: 'Real Estate',
   other: 'Other Assets',
@@ -41,13 +40,25 @@ export default function PortfolioRepartitionChart({
     return (typeof color === 'string' ? color : CHART_COLORS.other) as string
   }
   
+  // Define all possible asset types to ensure consistent legend
+  const allAssetTypes = ['stock', 'crypto', 'real_estate', 'cash', 'currency', 'other']
+  
+  // Create a map of existing data for quick lookup
+  const dataMap = new Map(data.map(item => [item.assetType, item]))
+  
+  // Build complete dataset with all asset types (zero values for missing ones)
+  const completeData = allAssetTypes.map(assetType => {
+    const existingData = dataMap.get(assetType)
+    return existingData || { assetType, value: 0, percentage: 0 }
+  })
+  
   const chartData = {
-    labels: data.map(item => assetTypeLabels[item.assetType] || item.assetType),
+    labels: completeData.map(item => assetTypeLabels[item.assetType] || item.assetType),
     datasets: [
       {
-        data: data.map(item => item.percentage),
-        backgroundColor: data.map(item => getAssetTypeColor(item.assetType)),
-        borderColor: data.map(item => getAssetTypeColor(item.assetType)),
+        data: completeData.map(item => item.percentage),
+        backgroundColor: completeData.map(item => getAssetTypeColor(item.assetType)),
+        borderColor: completeData.map(item => getAssetTypeColor(item.assetType)),
         borderWidth: 2,
       },
     ],
@@ -75,7 +86,7 @@ export default function PortfolioRepartitionChart({
           label: function(context) {
             const label = context.label || ''
             const value = context.parsed
-            const dataPoint = data[context.dataIndex]
+            const dataPoint = completeData[context.dataIndex]
             return `${label}: ${value.toFixed(1)}% ($${dataPoint.value.toLocaleString()})`
           }
         }

@@ -61,7 +61,7 @@ export const mockSymbols: Symbol[] = [
   {
     symbol: 'VTI',
     name: 'Vanguard Total Stock Market ETF',
-    asset_type: 'etf' as AssetType,
+    asset_type: 'stock' as AssetType,
     currency: 'USD',
     last_price: 245.60,
     last_updated: new Date().toISOString(),

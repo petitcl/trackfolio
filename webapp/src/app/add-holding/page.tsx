@@ -155,7 +155,6 @@ export default function AddHoldingPage() {
   const getAssetTypes = (): { value: AssetType; label: string }[] => {
     return [
       { value: 'stock', label: 'Stock' },
-      { value: 'etf', label: 'ETF' },
       { value: 'crypto', label: 'Cryptocurrency' },
       { value: 'real_estate', label: 'Real Estate' },
       { value: 'other', label: 'Other (Collectibles, Private Equity, etc.)' },

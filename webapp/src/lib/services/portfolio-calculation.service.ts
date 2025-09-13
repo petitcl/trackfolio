@@ -127,7 +127,6 @@ export class PortfolioCalculationService {
   ): Promise<{ allocations: Record<string, number>; values: Record<string, number> } | null> {
     const assetTypeValues: Record<string, number> = {
       stock: 0,
-      etf: 0,
       crypto: 0,
       real_estate: 0,
       cash: 0,

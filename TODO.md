@@ -6,11 +6,12 @@
 - ✅ Remove unconditional cash position
 - ✅ Multi currency support (EUR, USD)
 - ✅ Show Annualized yearly return 
-- [ ] Delete ETF asset_type
+- ✅ Delete ETF asset_type
 - [ ] Configure logo
 
 ## TODO P2
 - ✅ Edit custom holding price
+- ✅ Uniformize legend of Portfolio Repartition & Portfolio Repartition History charts
 - [ ] Cost Basis takes into account currency conversion
 - [ ] Delete holding button should be red / danger
 - [ ] Hardcoded list of brokers to pick from
@@ -27,7 +28,6 @@
 - [ ] Portfolio export to CSV
 - [ ] Portfolio backup
 - [ ] Live price Updates using Yahoo Finance API
-- [ ] Uniformize legend of Portfolio Repartition & Portfolio Repartition History charts
 
 ## TODO P3
 - [ ] Automatic Database Backups

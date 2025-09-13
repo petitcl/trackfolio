@@ -115,10 +115,8 @@ export async function POST(request: NextRequest) {
           searchProvider = bestMatch.provider
           
           // Detect asset type based on provider type
-          if (bestMatch.type.toLowerCase().includes('etf')) {
-            detectedAssetType = 'etf'
-          } else if (bestMatch.type.toLowerCase().includes('mutual fund')) {
-            detectedAssetType = 'etf' // Treat mutual funds as ETFs for our purposes
+          if (bestMatch.type.toLowerCase().includes('etf') || bestMatch.type.toLowerCase().includes('mutual fund')) {
+            detectedAssetType = 'stock' // Treat ETFs and mutual funds as stocks
           } else {
             detectedAssetType = 'stock'
           }
@@ -156,7 +154,7 @@ export async function POST(request: NextRequest) {
     // Try to get current price to verify symbol exists (only for market-tradeable assets)
     let currentPrice: number | undefined
     let priceProvider: string | undefined
-    const marketTypes = ['stock', 'etf', 'crypto', 'currency'] as const
+    const marketTypes = ['stock', 'crypto', 'currency'] as const
     
     if (marketTypes.includes(detectedAssetType as any)) {
       try {

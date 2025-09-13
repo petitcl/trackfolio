@@ -165,7 +165,7 @@ class ClientMockDataStore {
       const newSymbol: Symbol = {
         symbol: holding.symbol.toUpperCase(),
         name: holding.name,
-        asset_type: holding.assetType as 'stock' | 'etf' | 'crypto' | 'cash' | 'real_estate' | 'other',
+        asset_type: holding.assetType as 'stock' | 'crypto' | 'cash' | 'real_estate' | 'other',
         is_custom: holding.isCustom,
         created_by_user_id: holding.isCustom ? MOCK_USER_ID : null,
         last_price: holding.purchasePrice,

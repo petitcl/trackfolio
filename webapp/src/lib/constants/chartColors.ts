@@ -11,7 +11,6 @@ export const CHART_COLORS = {
   
   // Asset type colors for allocations
   stock: '#3B82F6',            // Blue
-  etf: '#8B5CF6',              // Purple  
   crypto: '#F59E0B',           // Amber/Orange
   real_estate: '#10B981',      // Green
   cash: '#6B7280',             // Gray
@@ -50,7 +49,6 @@ export const CHART_PALETTES = {
   // Asset allocation pie chart
   assetAllocation: [
     CHART_COLORS.stock,         // Blue
-    CHART_COLORS.etf,           // Purple
     CHART_COLORS.crypto,        // Orange
     CHART_COLORS.real_estate,   // Green
     CHART_COLORS.cash,          // Gray

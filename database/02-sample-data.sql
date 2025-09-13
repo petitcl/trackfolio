@@ -8,7 +8,7 @@ INSERT INTO symbols (symbol, name, asset_type, currency, last_price, last_update
     ('MSFT', 'Microsoft Corporation', 'stock', 'USD', 420.30, NOW(), FALSE, NULL),
     ('GOOGL', 'Alphabet Inc.', 'stock', 'USD', 142.80, NOW(), FALSE, NULL),
     ('TSLA', 'Tesla Inc.', 'stock', 'USD', 248.90, NOW(), FALSE, NULL),
-    ('VTI', 'Vanguard Total Stock Market ETF', 'etf', 'USD', 245.60, NOW(), FALSE, NULL),
+    ('VTI', 'Vanguard Total Stock Market ETF', 'stock', 'USD', 245.60, NOW(), FALSE, NULL),
     ('BTC', 'Bitcoin', 'crypto', 'USD', 43500.00, NOW(), FALSE, NULL),
     ('ETH', 'Ethereum', 'crypto', 'USD', 2650.00, NOW(), FALSE, NULL),
     -- Major currency pairs

@@ -174,7 +174,6 @@ export class YahooFinanceProvider implements IPriceProvider {
         return symbol
       
       case 'stock':
-      case 'etf':
       default:
         // Most stocks work as-is, but some international ones might need suffixes
         return symbol
@@ -188,8 +187,6 @@ export class YahooFinanceProvider implements IPriceProvider {
     switch (yahooType.toLowerCase()) {
       case 'equity':
         return 'Stock'
-      case 'etf':
-        return 'ETF'
       case 'cryptocurrency':
         return 'Cryptocurrency'
       case 'currency':
