@@ -61,9 +61,9 @@ export default function Dashboard({ user }: DashboardProps) {
         // Fallback to empty data
         setPortfolioData({
           totalValue: 0,
+          totalCostBasis: 0,
           positions: [],
-          dailyChange: { value: 0, percentage: 0 },
-          totalPnL: { realized: 0, unrealized: 0, total: 0 }
+          totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
         })
         setSymbols([])
         setHistoricalData([])
@@ -227,7 +227,7 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
         </div>
         {/* Portfolio Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Portfolio Value */}
           <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
             <div className="p-5">
@@ -247,18 +247,18 @@ export default function Dashboard({ user }: DashboardProps) {
             </div>
           </div>
 
-          {/* Daily Change */}
+          {/* Total Cost Basis */}
           <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="text-2xl">📊</div>
+                  <div className="text-2xl">💵</div>
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Daily Change</dt>
-                    <dd className={`text-lg font-medium ${getPnLColor(portfolioData.dailyChange.value)}`}>
-                      {formatCurrency(portfolioData.dailyChange.value)} ({formatPercent(portfolioData.dailyChange.percentage)})
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Cost Basis</dt>
+                    <dd className="text-lg font-medium text-gray-900 dark:text-white">
+                      {formatCurrency(portfolioData.totalCostBasis)}
                     </dd>
                   </dl>
                 </div>
@@ -279,6 +279,39 @@ export default function Dashboard({ user }: DashboardProps) {
                     <dd className={`text-lg font-medium ${getPnLColor(portfolioData.totalPnL.total)}`}>
                       {formatCurrency(portfolioData.totalPnL.total)}
                     </dd>
+                    <dd className={`text-xs ${getPnLColor(portfolioData.totalPnL.totalPercentage)} mt-1`}>
+                      {formatPercent(portfolioData.totalPnL.totalPercentage)}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Annualized Return */}
+          <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="text-2xl">📈</div>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
+                    <dd className={`text-lg font-medium ${portfolioData.annualizedReturns ? getPnLColor(portfolioData.annualizedReturns.timeWeightedReturn) : 'text-gray-600 dark:text-gray-400'}`}>
+                      {portfolioData.annualizedReturns ? 
+                        `${formatPercent(portfolioData.annualizedReturns.timeWeightedReturn)}` :
+                        'Calculating...'
+                      }
+                    </dd>
+                    {portfolioData.annualizedReturns && portfolioData.annualizedReturns.periodYears > 0 && (
+                      <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {portfolioData.annualizedReturns.periodYears < 1 ? 
+                          `${Math.round(portfolioData.annualizedReturns.periodYears * 365)} days` :
+                          `${portfolioData.annualizedReturns.periodYears.toFixed(1)} years`
+                        }
+                      </dd>
+                    )}
                   </dl>
                 </div>
               </div>

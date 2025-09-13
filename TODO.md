@@ -4,12 +4,14 @@
 ## TODO P1
 - ✅ Fix Vercel build errors
 - ✅ Remove unconditional cash position
-- [ ] Multi currency support (EUR, USD)
+- ✅ Multi currency support (EUR, USD)
 - [ ] Show Annualized yearly return 
 - [ ] Delete ETF asset_type
+- [ ] Configure logo
 
 ## TODO P2
 - ✅ Edit custom holding price
+- [ ] Cost Basis takes into account currency conversion
 - [ ] Delete holding button should be red / danger
 - [ ] Hardcoded list of brokers to pick from
 - [ ] Use existing symbols instead of symbol search when adding symbol

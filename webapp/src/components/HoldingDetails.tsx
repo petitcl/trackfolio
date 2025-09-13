@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/types'
-import { portfolioService, type PortfolioPosition, type PortfolioData } from '@/lib/services/portfolio.service'
+import { portfolioService, type PortfolioPosition, type PortfolioData, type AnnualizedReturnMetrics } from '@/lib/services/portfolio.service'
 import ValueEvolutionChart from './charts/ValueEvolutionChart'
 import TimeRangeSelector, { type TimeRange } from './TimeRangeSelector'
 import type { HistoricalDataPoint } from '@/lib/mockData'
@@ -28,6 +28,7 @@ interface HoldingData {
   transactions: Transaction[]
   historicalData: HistoricalDataPoint[]
   portfolioData: PortfolioData
+  annualizedReturns: AnnualizedReturnMetrics | null
 }
 
 export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' }: HoldingDetailsProps) {
@@ -46,11 +47,12 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
         console.log(`🔍 Loading holding data for symbol: ${symbol}`)
 
         // Get all portfolio data and filter for this symbol
-        const [portfolioData, symbols, transactions, historicalData] = await Promise.all([
+        const [portfolioData, symbols, transactions, historicalData, annualizedReturns] = await Promise.all([
           portfolioService.getPortfolioData(user, selectedCurrency),
           portfolioService.getSymbols(user),
           portfolioService.getTransactions(user),
-          portfolioService.getHoldingHistoricalData(user, symbol, selectedCurrency)
+          portfolioService.getHoldingHistoricalData(user, symbol, selectedCurrency),
+          portfolioService.getHoldingAnnualizedReturns(user, symbol, selectedCurrency)
         ])
 
         const symbolData = symbols.find(s => s.symbol === symbol)
@@ -67,7 +69,8 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
           symbol: symbolData || null,
           transactions: symbolTransactions,
           historicalData,
-          portfolioData
+          portfolioData,
+          annualizedReturns
         })
 
         console.log(`✅ Loaded ${symbolTransactions.length} transactions for ${symbol}`)
@@ -334,35 +337,24 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
         )}
 
         {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Current Position */}
           <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
             <div className="p-5">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Current Position</h3>
-              <div className="space-y-3">
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Current Price</dt>
-                  <dd className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {formatCurrency(symbolData?.last_price || 0)}
-                  </dd>
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="text-2xl">💰</div>
                 </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Quantity</dt>
-                  <dd className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {position?.quantity.toLocaleString() || '0'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Market Value</dt>
-                  <dd className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {formatCurrency(position?.value || 0)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Portfolio Weight</dt>
-                  <dd className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {formatPercentageOnly(portfolioWeight)}
-                  </dd>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Current Position</dt>
+                    <dd className="text-lg font-medium text-gray-900 dark:text-white">
+                      {formatCurrency(position?.value || 0)}
+                    </dd>
+                    <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {position?.quantity.toLocaleString() || '0'} × {formatCurrency(symbolData?.last_price || 0)}
+                    </dd>
+                  </dl>
                 </div>
               </div>
             </div>
@@ -371,19 +363,20 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
           {/* Cost Basis */}
           <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
             <div className="p-5">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Cost Basis</h3>
-              <div className="space-y-3">
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Average Cost</dt>
-                  <dd className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {formatCurrency(position?.avgCost || 0)}
-                  </dd>
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="text-2xl">💵</div>
                 </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Invested</dt>
-                  <dd className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {formatCurrency((position?.avgCost || 0) * (position?.quantity || 0))}
-                  </dd>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Cost Basis</dt>
+                    <dd className="text-lg font-medium text-gray-900 dark:text-white">
+                      {formatCurrency((position?.avgCost || 0) * (position?.quantity || 0))}
+                    </dd>
+                    <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Avg: {formatCurrency(position?.avgCost || 0)}
+                    </dd>
+                  </dl>
                 </div>
               </div>
             </div>
@@ -392,37 +385,55 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
           {/* Performance */}
           <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
             <div className="p-5">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Performance</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                {timeRange === 'all' ? 'All-time performance' : `Performance over ${timeRange.toUpperCase()}`}
-              </p>
-              <div className="space-y-3">
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {timeRange === 'all' ? 'Unrealized P&L' : 'Value Change'}
-                  </dt>
-                  <dd className={`text-lg font-semibold ${timeRangeMetrics.unrealizedPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {formatCurrency(timeRangeMetrics.unrealizedPnL)}
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="text-2xl">🎯</div>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Performance</dt>
+                    <dd className={`text-lg font-medium ${timeRangeMetrics.totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {formatCurrency(timeRangeMetrics.totalReturn)}
+                    </dd>
                     {position && timeRange === 'all' && (
-                      <span className="text-sm ml-2">
-                        ({formatPercent((position.unrealizedPnL / (position.avgCost * position.quantity)) * 100)})
-                      </span>
+                      <dd className={`text-xs ${timeRangeMetrics.totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mt-1`}>
+                        {formatPercent((position.unrealizedPnL / (position.avgCost * position.quantity)) * 100)}
+                      </dd>
                     )}
-                  </dd>
+                  </dl>
                 </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {timeRange === 'all' ? 'Realized P&L' : 'Realized P&L (Period)'}
-                  </dt>
-                  <dd className={`text-lg font-semibold ${timeRangeMetrics.realizedPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {formatCurrency(timeRangeMetrics.realizedPnL)}
-                  </dd>
+              </div>
+            </div>
+          </div>
+
+          {/* Annualized Returns */}
+          <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="text-2xl">📈</div>
                 </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Return</dt>
-                  <dd className={`text-lg font-semibold ${timeRangeMetrics.totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                    {formatCurrency(timeRangeMetrics.totalReturn)}
-                  </dd>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
+                    <dd className={`text-lg font-medium ${holdingData.annualizedReturns ? 
+                      (holdingData.annualizedReturns.timeWeightedReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400') :
+                      'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      {holdingData.annualizedReturns ? 
+                        formatPercent(holdingData.annualizedReturns.timeWeightedReturn) :
+                        'Calculating...'
+                      }
+                    </dd>
+                    {holdingData.annualizedReturns && holdingData.annualizedReturns.periodYears > 0 && (
+                      <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {holdingData.annualizedReturns.periodYears < 1 ? 
+                          `${Math.round(holdingData.annualizedReturns.periodYears * 365)} days` :
+                          `${holdingData.annualizedReturns.periodYears.toFixed(1)} years`
+                        }
+                      </dd>
+                    )}
+                  </dl>
                 </div>
               </div>
             </div>
