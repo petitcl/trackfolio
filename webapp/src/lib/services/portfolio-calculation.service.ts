@@ -19,7 +19,91 @@ export interface PortfolioPosition {
 export class PortfolioCalculationService {
 
   /**
-   * Calculate positions from a list of transactions
+   * Calculate positions from a list of transactions with current prices
+   * This async version properly fetches current prices for custom symbols
+   */
+  async calculatePositionsFromTransactionsAsync(
+    transactions: Transaction[],
+    symbols: Symbol[],
+    user: AuthUser
+  ): Promise<PortfolioPosition[]> {
+    const positionMap = new Map<string, PortfolioPosition>()
+
+    // Process transactions to build positions (same logic as sync version)
+    transactions.forEach(transaction => {
+      const symbol = transaction.symbol
+      const existing = positionMap.get(symbol)
+      const symbolData = symbols.find(s => s.symbol === symbol)
+
+      if (transaction.type === 'buy' || transaction.type === 'deposit') {
+        if (existing) {
+          // Add to existing position
+          const totalCost = (existing.avgCost * existing.quantity) + (transaction.quantity * transaction.price_per_unit)
+          const totalQuantity = existing.quantity + transaction.quantity
+
+          existing.quantity = totalQuantity
+          existing.avgCost = totalCost / totalQuantity
+        } else {
+          // Create new position (we'll update current price below)
+          positionMap.set(symbol, {
+            symbol,
+            quantity: transaction.quantity,
+            avgCost: transaction.price_per_unit,
+            currentPrice: 0, // Will be set below
+            value: 0, // Will be calculated below
+            unrealizedPnL: 0, // Will be calculated below
+            isCustom: symbolData?.is_custom || false
+          })
+        }
+      } else if ((transaction.type === 'sell' || transaction.type === 'withdrawal') && existing) {
+        // Reduce position
+        existing.quantity -= transaction.quantity
+        if (existing.quantity <= 0) {
+          positionMap.delete(symbol)
+        }
+      } else if ((transaction.type === 'bonus' || transaction.type === 'dividend') && existing) {
+        // Add bonus shares or dividend quantity without changing cost basis
+        existing.quantity += transaction.quantity
+      } else if ((transaction.type === 'bonus' || transaction.type === 'dividend') && !existing) {
+        // Create new position for bonus shares or dividends
+        positionMap.set(symbol, {
+          symbol,
+          quantity: transaction.quantity,
+          avgCost: 0, // No cost for bonus shares or dividends
+          currentPrice: 0, // Will be set below
+          value: 0, // Will be calculated below
+          unrealizedPnL: 0, // Will be calculated below
+          isCustom: symbolData?.is_custom || false
+        })
+      }
+    })
+
+    // Now get current prices for all positions
+    const positions = Array.from(positionMap.values())
+    const currentDate = new Date().toISOString().split('T')[0]
+
+    for (const position of positions) {
+      const symbolData = symbols.find(s => s.symbol === position.symbol)
+
+      // Get current price using historical price service (handles custom symbols correctly)
+      const currentPrice = await historicalPriceService.getHistoricalPriceForDate(
+        position.symbol,
+        currentDate,
+        user,
+        symbolData || null
+      )
+
+      // Fallback to symbol's last_price or transaction price if historical service fails
+      position.currentPrice = currentPrice || symbolData?.last_price || position.avgCost
+      position.value = position.quantity * position.currentPrice
+      position.unrealizedPnL = position.value - (position.quantity * position.avgCost)
+    }
+
+    return positions
+  }
+
+  /**
+   * Calculate positions from a list of transactions (legacy sync version)
    */
   calculatePositionsFromTransactions(transactions: Transaction[], symbols: Symbol[]): PortfolioPosition[] {
     const positionMap = new Map<string, PortfolioPosition>()

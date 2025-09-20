@@ -167,6 +167,26 @@ NODE_ENV=development  # Shows demo login button
 - **Sample transactions** cover all edge cases
 - **Realistic portfolio** demonstrates all features
 
+#### Portfolio Logic Testing
+**IMPORTANT**: When adding tests for portfolio calculations, currency conversion, or position logic, always use these test files:
+
+1. **Primary test file**: `/webapp/src/lib/services/__tests__/portfolio-calculation.service.test.ts`
+   - Contains comprehensive tests for all portfolio calculation logic
+   - Includes specialized section: "Currency Conversion and Current Price Bug Fixes"
+   - Tests for multi-currency support, custom assets, and edge cases
+
+2. **Integration tests**: `/webapp/src/lib/services/__tests__/portfolio-integration.test.ts`
+   - Full end-to-end portfolio service testing
+   - Cross-service integration validation
+
+**Test Guidelines**:
+- Add new portfolio calculation tests to `portfolio-calculation.service.test.ts`
+- Use anonymized test data (no real financial information)
+- Test both sync and async calculation methods
+- Always test currency conversion edge cases
+- Include tests for custom assets with manual pricing
+- Verify current price fetching from user symbol prices
+
 ## Common Tasks
 
 ### Adding New Transaction Types

@@ -57,18 +57,33 @@ export class PortfolioService {
         return this.getEmptyPortfolio()
       }
 
-      // Calculate positions using calculation service
-      const positions = portfolioCalculationService.calculatePositionsFromTransactions(transactions, symbols)
+      // Calculate positions using calculation service (with current prices)
+      const positions = await portfolioCalculationService.calculatePositionsFromTransactionsAsync(transactions, symbols, user)
       
       // Convert position values to target currency if needed
       let convertedPositions = positions
-      if (targetCurrency !== 'USD') {
+      // Only convert if we have positions that need conversion
+      const needsConversion = positions.some(position => {
+        const symbolData = symbols.find(s => s.symbol === position.symbol)
+        const symbolCurrency = symbolData?.currency || 'USD'
+        return symbolCurrency !== targetCurrency
+      })
+
+      if (needsConversion) {
         convertedPositions = await Promise.all(positions.map(async (position) => {
-          const convertedValue = await currencyService.convertAmount(position.value, 'USD', targetCurrency, user, symbols)
-          const convertedAvgCost = await currencyService.convertAmount(position.avgCost, 'USD', targetCurrency, user, symbols)
-          const convertedCurrentPrice = await currencyService.convertAmount(position.currentPrice, 'USD', targetCurrency, user, symbols)
-          const convertedUnrealizedPnL = await currencyService.convertAmount(position.unrealizedPnL, 'USD', targetCurrency, user, symbols)
-          
+          const symbolData = symbols.find(s => s.symbol === position.symbol)
+          const symbolCurrency = (symbolData?.currency || 'USD') as SupportedCurrency
+
+          // Only convert if the symbol currency differs from target currency
+          if (symbolCurrency === targetCurrency) {
+            return position // No conversion needed
+          }
+
+          const convertedValue = await currencyService.convertAmount(position.value, symbolCurrency, targetCurrency, user, symbols)
+          const convertedAvgCost = await currencyService.convertAmount(position.avgCost, symbolCurrency, targetCurrency, user, symbols)
+          const convertedCurrentPrice = await currencyService.convertAmount(position.currentPrice, symbolCurrency, targetCurrency, user, symbols)
+          const convertedUnrealizedPnL = await currencyService.convertAmount(position.unrealizedPnL, symbolCurrency, targetCurrency, user, symbols)
+
           return {
             ...position,
             value: convertedValue,
