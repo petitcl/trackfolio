@@ -3,6 +3,7 @@ import type { Transaction, Symbol } from '@/lib/supabase/types'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import { historicalPriceService } from './historical-price.service'
 import { currencyService, type SupportedCurrency } from './currency.service'
+import type { PortfolioPosition } from './portfolio-calculation.service'
 
 interface UnifiedPosition {
   symbol: string
@@ -58,15 +59,22 @@ export class UnifiedCalculationService {
         // Maintain cost basis proportionally
         existing.totalCost = existing.quantity * existing.avgCost
       } else if (transaction.type === 'dividend') {
-        // Cash dividend - no change to quantity, just track income
-        // Handle two formats: 
-        // 1. quantity > 0: dividend per share (quantity * price_per_unit)
-        // 2. quantity = 0: total dividend amount is in price_per_unit
-        const dividendAmount = transaction.quantity > 0 
-          ? transaction.quantity * transaction.price_per_unit 
-          : transaction.price_per_unit
-        existing.dividendIncome += dividendAmount
-        // Cost basis and quantity unchanged
+        // Handle dividend transactions - distinguish between stock and cash dividends
+        if (transaction.quantity > 0 && transaction.price_per_unit === 0) {
+          // Stock dividend (reinvested) - add shares with cost
+          existing.quantity += transaction.quantity
+          existing.totalCost += transaction.quantity * transaction.price_per_unit
+          existing.avgCost = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
+        } else {
+          // Cash dividend - track income but don't change shares
+          // Handle two formats:
+          // 1. quantity > 0: dividend per share (quantity * price_per_unit)
+          // 2. quantity = 0: total dividend amount is in price_per_unit
+          const dividendAmount = transaction.quantity > 0
+            ? transaction.quantity * transaction.price_per_unit
+            : transaction.price_per_unit
+          existing.dividendIncome += dividendAmount
+        }
       } else if (transaction.type === 'bonus') {
         // Reinvested dividend or bonus shares - add to position
         existing.quantity += transaction.quantity
@@ -362,6 +370,82 @@ export class UnifiedCalculationService {
     }
 
     return historicalData
+  }
+
+  /**
+   * Calculate current positions using unified logic
+   * Returns PortfolioPosition format for compatibility
+   */
+  async calculateCurrentPositions(
+    transactions: Transaction[],
+    symbols: Symbol[],
+    user: AuthUser,
+    targetCurrency: SupportedCurrency = 'USD'
+  ): Promise<PortfolioPosition[]> {
+    const currentDate = new Date().toISOString().split('T')[0]
+
+    // Calculate positions as of current date
+    const unifiedPositions = this.calculatePositionsUpToDate(transactions, currentDate)
+
+    if (unifiedPositions.length === 0) {
+      return []
+    }
+
+    // Convert to PortfolioPosition format with current prices
+    const portfolioPositions: PortfolioPosition[] = []
+
+    for (const position of unifiedPositions) {
+      const symbolData = symbols.find(s => s.symbol === position.symbol)
+
+      // Get current price using historical price service
+      const currentPrice = await this.getUnifiedHistoricalPrice(
+        position.symbol,
+        currentDate,
+        user,
+        symbols
+      )
+
+      // Fallback to symbol's last_price or avg cost if no current price
+      const finalCurrentPrice = currentPrice || symbolData?.last_price || position.avgCost
+
+      // Convert to target currency if needed
+      const symbolCurrency = (symbolData?.currency || 'USD') as SupportedCurrency
+      let convertedCurrentPrice = finalCurrentPrice
+      let convertedDividendIncome = position.dividendIncome
+
+      if (symbolCurrency !== targetCurrency) {
+        try {
+          const conversionRate = await currencyService.getExchangeRate(
+            symbolCurrency,
+            targetCurrency,
+            user,
+            symbols,
+            currentDate
+          )
+          convertedCurrentPrice = finalCurrentPrice * conversionRate
+          convertedDividendIncome = position.dividendIncome * conversionRate
+        } catch (error) {
+          console.warn(`Failed to convert ${position.symbol} from ${symbolCurrency} to ${targetCurrency}:`, error)
+        }
+      }
+
+      // Calculate value WITHOUT dividend income (as per user's requirement)
+      const value = position.quantity * convertedCurrentPrice
+      const unrealizedPnL = value - (position.quantity * position.avgCost)
+
+      portfolioPositions.push({
+        symbol: position.symbol,
+        quantity: position.quantity,
+        avgCost: position.avgCost,
+        currentPrice: convertedCurrentPrice,
+        value: value, // Dividend income NOT included here
+        unrealizedPnL: unrealizedPnL,
+        isCustom: symbolData?.is_custom || false,
+        dividendIncome: convertedDividendIncome // Tracked separately
+      })
+    }
+
+    return portfolioPositions
   }
 }
 

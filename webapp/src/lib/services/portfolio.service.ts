@@ -57,47 +57,13 @@ export class PortfolioService {
         return this.getEmptyPortfolio()
       }
 
-      // Calculate positions using calculation service (with current prices)
-      const positions = await portfolioCalculationService.calculatePositionsFromTransactionsAsync(transactions, symbols, user)
-      
-      // Convert position values to target currency if needed
-      let convertedPositions = positions
-      // Only convert if we have positions that need conversion
-      const needsConversion = positions.some(position => {
-        const symbolData = symbols.find(s => s.symbol === position.symbol)
-        const symbolCurrency = symbolData?.currency || 'USD'
-        return symbolCurrency !== targetCurrency
-      })
+      // Calculate positions using unified calculation service (already in target currency)
+      const positions = await portfolioCalculationService.calculatePositionsFromTransactionsAsync(transactions, symbols, user, targetCurrency)
 
-      if (needsConversion) {
-        convertedPositions = await Promise.all(positions.map(async (position) => {
-          const symbolData = symbols.find(s => s.symbol === position.symbol)
-          const symbolCurrency = (symbolData?.currency || 'USD') as SupportedCurrency
-
-          // Only convert if the symbol currency differs from target currency
-          if (symbolCurrency === targetCurrency) {
-            return position // No conversion needed
-          }
-
-          const convertedValue = await currencyService.convertAmount(position.value, symbolCurrency, targetCurrency, user, symbols)
-          const convertedAvgCost = await currencyService.convertAmount(position.avgCost, symbolCurrency, targetCurrency, user, symbols)
-          const convertedCurrentPrice = await currencyService.convertAmount(position.currentPrice, symbolCurrency, targetCurrency, user, symbols)
-          const convertedUnrealizedPnL = await currencyService.convertAmount(position.unrealizedPnL, symbolCurrency, targetCurrency, user, symbols)
-
-          return {
-            ...position,
-            value: convertedValue,
-            avgCost: convertedAvgCost,
-            currentPrice: convertedCurrentPrice,
-            unrealizedPnL: convertedUnrealizedPnL
-          }
-        }))
-      }
-      
-      // Calculate totals in target currency
-      const totalValue = convertedPositions.reduce((sum, pos) => sum + pos.value, 0)
-      const totalCostBasis = convertedPositions.reduce((sum, pos) => sum + (pos.quantity * pos.avgCost), 0)
-      const totalUnrealizedPnL = convertedPositions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
+      // Calculate totals in target currency (no additional conversion needed)
+      const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
+      const totalCostBasis = positions.reduce((sum, pos) => sum + (pos.quantity * pos.avgCost), 0)
+      const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
       
       // Calculate total percentage P&L
       const totalPercentage = totalCostBasis > 0 ? (totalUnrealizedPnL / totalCostBasis) * 100 : 0
@@ -120,7 +86,7 @@ export class PortfolioService {
       return {
         totalValue,
         totalCostBasis,
-        positions: convertedPositions,
+        positions: positions,
         totalPnL: {
           realized: 0, // TODO: Calculate from sell transactions
           unrealized: totalUnrealizedPnL,

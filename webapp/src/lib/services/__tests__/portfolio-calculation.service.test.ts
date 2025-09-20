@@ -97,7 +97,8 @@ describe('PortfolioCalculationService', () => {
         currentPrice: 150.00,
         value: 1500.00,
         unrealizedPnL: 500.00, // (10 * 150) - (10 * 100)
-        isCustom: false
+        isCustom: false,
+        dividendIncome: 0
       });
     });
 
@@ -989,11 +990,12 @@ describe('PortfolioCalculationService', () => {
       historicalPriceService.getHistoricalPriceForDate = jest.fn().mockResolvedValue(1024.885)
 
       try {
-        // Test the new async method
+        // Test the new async method with EUR target currency to match symbol currency
         const positions = await service.calculatePositionsFromTransactionsAsync(
           transactions,
           symbols,
-          mockUser
+          mockUser,
+          'EUR'
         )
 
         const position = positions.find(p => p.symbol === 'CUSTOM_EUR_ASSET')
@@ -1030,10 +1032,155 @@ describe('PortfolioCalculationService', () => {
       }
     })
 
-    // Note: The fix has been implemented in portfolio.service.ts and portfolio-calculation.service.ts
-    // Issue 1: The service assumed all positions were in USD and converted them incorrectly.
-    //          Fixed by checking actual symbol currency before conversion.
-    // Issue 2: Current prices weren't using user symbol prices for custom symbols.
-    //          Fixed by adding async method that uses historicalPriceService for current prices.
+    it('should reproduce dividend handling discrepancy between position value and historical chart value', async () => {
+      // BUG REPRODUCTION: Position value differs from chart value due to dividend handling
+      // This test reproduces the scenario where position calculation and
+      // historical data calculation produce different values for the same holding
+
+      const mockUser: AuthUser = {
+        id: 'test-user-dividend-bug',
+        email: 'test@trackfolio.com',
+        created_at: '2022-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const symbols: Symbol[] = [
+        {
+          symbol: 'TEST_ETF',
+          name: 'Test Global ETF',
+          asset_type: 'etf',
+          currency: 'USD',
+          last_price: 85.00, // Current price
+          last_updated: '2025-09-19T00:00:00Z',
+          is_custom: false,
+          created_by_user_id: null,
+          created_at: '2022-01-01T00:00:00Z'
+        }
+      ]
+
+      // Test transactions with dividend payments (1,000 shares total)
+      const transactions: Transaction[] = [
+        {
+          id: 'etf-1',
+          user_id: 'test-user-dividend-bug',
+          date: '2022-01-18',
+          symbol: 'TEST_ETF',
+          type: 'buy',
+          quantity: 500, // Half the total quantity
+          price_per_unit: 70.00,
+          currency: 'USD',
+          fees: 1.00,
+          notes: 'Initial purchase',
+          broker: null,
+          created_at: '2022-01-18T00:00:00Z',
+          updated_at: '2022-01-18T00:00:00Z'
+        },
+        {
+          id: 'etf-2',
+          user_id: 'test-user-dividend-bug',
+          date: '2023-06-15',
+          symbol: 'TEST_ETF',
+          type: 'buy',
+          quantity: 500, // Other half
+          price_per_unit: 90.00,
+          currency: 'USD',
+          fees: 1.00,
+          notes: 'Second purchase',
+          broker: null,
+          created_at: '2023-06-15T00:00:00Z',
+          updated_at: '2023-06-15T00:00:00Z'
+        },
+        {
+          id: 'etf-dividend-1',
+          user_id: 'test-user-dividend-bug',
+          date: '2024-03-15',
+          symbol: 'TEST_ETF',
+          type: 'dividend',
+          quantity: 0, // Cash dividend (no shares)
+          price_per_unit: 5000.00, // $5000 total dividend
+          currency: 'USD',
+          fees: 0,
+          notes: 'Annual dividend payment',
+          broker: null,
+          created_at: '2024-03-15T00:00:00Z',
+          updated_at: '2024-03-15T00:00:00Z'
+        },
+        {
+          id: 'etf-dividend-2',
+          user_id: 'test-user-dividend-bug',
+          date: '2025-03-15',
+          symbol: 'TEST_ETF',
+          type: 'dividend',
+          quantity: 0, // Cash dividend (no shares)
+          price_per_unit: 7500.00, // $7500 total dividend
+          currency: 'USD',
+          fees: 0,
+          notes: 'Annual dividend payment',
+          broker: null,
+          created_at: '2025-03-15T00:00:00Z',
+          updated_at: '2025-03-15T00:00:00Z'
+        }
+      ]
+
+      // Mock the historical price service to return current price
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockResolvedValue(85.00)
+
+      try {
+        // Calculate position using portfolio calculation service (what feeds "Current Position" card)
+        const positions = await service.calculatePositionsFromTransactionsAsync(
+          transactions,
+          symbols,
+          mockUser
+        )
+
+        const position = positions.find(p => p.symbol === 'TEST_ETF')
+        expect(position).toBeDefined()
+
+        if (position) {
+          // AFTER FIX: Position value should NOT include dividends (tracked separately)
+          const expectedShares = 1000
+          const expectedCurrentPrice = 85.00
+          const expectedSharesValue = expectedShares * expectedCurrentPrice // $85,000
+          const expectedDividendIncome = 5000 + 7500 // $12,500 total dividends
+          const expectedAvgCost = ((500 * 70.00) + (500 * 90.00)) / 1000 // $80.00 avg
+
+          expect(position.quantity).toBe(expectedShares)
+          expect(position.currentPrice).toBe(expectedCurrentPrice)
+          expect(position.dividendIncome).toBe(expectedDividendIncome)
+          expect(position.value).toBeCloseTo(expectedSharesValue, 2) // $85,000 (shares only)
+
+          console.log('Portfolio calculation result (AFTER FIX):', {
+            quantity: position.quantity,
+            currentPrice: position.currentPrice,
+            sharesValue: position.quantity * position.currentPrice,
+            dividendIncome: position.dividendIncome,
+            totalValue: position.value,
+            avgCost: position.avgCost
+          })
+
+          // BUG FIX VERIFICATION:
+          // Both position calculation and historical data should now match
+
+          console.log('Fix verification:', {
+            positionValue: position.value,
+            dividendIncome: position.dividendIncome,
+            totalValue: position.value + position.dividendIncome,
+            expectedSharesValue: 85000,
+            expectedDividendIncome: 12500,
+            expectedTotalValue: 97500
+          })
+
+          // After fix: Current position shows shares value only, dividends tracked separately
+          // Historical chart includes dividends in total value
+          const totalValueWithDividends = position.value + position.dividendIncome
+          expect(totalValueWithDividends).toBeCloseTo(97500, 0)
+        }
+      } finally {
+        // Restore original method
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
   })
 });
