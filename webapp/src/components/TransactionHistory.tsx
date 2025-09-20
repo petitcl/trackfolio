@@ -6,6 +6,7 @@ import type { AuthUser } from '@/lib/auth/client.auth.service'
 import AddTransactionForm, { type TransactionFormData } from './AddTransactionForm'
 import { portfolioService } from '@/lib/services/portfolio.service'
 import ConfirmDialog from './ConfirmDialog'
+import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 
 interface TransactionHistoryProps {
   transactions: Transaction[]
@@ -13,9 +14,10 @@ interface TransactionHistoryProps {
   symbolName: string
   user: AuthUser
   onTransactionUpdated?: () => void
+  selectedCurrency?: SupportedCurrency
 }
 
-export default function TransactionHistory({ transactions, symbol, symbolName, user, onTransactionUpdated }: TransactionHistoryProps) {
+export default function TransactionHistory({ transactions, symbol, symbolName, user, onTransactionUpdated, selectedCurrency = 'USD' }: TransactionHistoryProps) {
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -77,11 +79,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, u
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount)
+    return currencyService.formatCurrency(amount, selectedCurrency)
   }
 
   const formatDate = (dateString: string) => {

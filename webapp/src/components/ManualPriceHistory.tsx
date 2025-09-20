@@ -6,14 +6,16 @@ import type { UserSymbolPrice } from '@/lib/supabase/types'
 import { portfolioService } from '@/lib/services/portfolio.service'
 import AddPriceForm, { type PriceFormData } from './AddPriceForm'
 import ConfirmDialog from './ConfirmDialog'
+import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 
 interface ManualPriceHistoryProps {
   user: AuthUser
   symbol: string
   onPriceUpdated?: () => void
+  selectedCurrency?: SupportedCurrency
 }
 
-export default function ManualPriceHistory({ user, symbol, onPriceUpdated }: ManualPriceHistoryProps) {
+export default function ManualPriceHistory({ user, symbol, onPriceUpdated, selectedCurrency = 'USD' }: ManualPriceHistoryProps) {
   const [prices, setPrices] = useState<UserSymbolPrice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -97,11 +99,7 @@ export default function ManualPriceHistory({ user, symbol, onPriceUpdated }: Man
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount)
+    return currencyService.formatCurrency(amount, selectedCurrency)
   }
 
   const formatDate = (dateString: string) => {

@@ -352,7 +352,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
                       {formatCurrency(position?.value || 0)}
                     </dd>
                     <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {position?.quantity.toLocaleString() || '0'} × {formatCurrency(symbolData?.last_price || 0)}
+                      {position?.quantity.toLocaleString() || '0'} × {formatCurrency(position?.currentPrice || 0)}
                     </dd>
                   </dl>
                 </div>
@@ -463,6 +463,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
             symbol={symbol}
             symbolName={symbolData?.name || 'Unknown Asset'}
             transactions={transactions}
+            selectedCurrency={selectedCurrency}
             onTransactionUpdated={() => {
               // Reload the holding data when transactions are updated
               window.location.reload() // Temporary solution - in production this should be more elegant
@@ -473,7 +474,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
         {/* Price Management (for custom assets only) */}
         {symbolData?.is_custom && (
           <div className="mb-8">
-            <PriceManagement user={user} symbol={symbol} />
+            <PriceManagement user={user} symbol={symbol} selectedCurrency={selectedCurrency} />
           </div>
         )}
 

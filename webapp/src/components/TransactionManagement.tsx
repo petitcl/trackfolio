@@ -7,6 +7,7 @@ import TransactionHistory from './TransactionHistory'
 import AddTransactionForm, { type TransactionFormData } from './AddTransactionForm'
 import { portfolioService } from '@/lib/services/portfolio.service'
 import BulkTransactionImport from './BulkTransactionImport'
+import type { SupportedCurrency } from '@/lib/services/currency.service'
 
 interface TransactionManagementProps {
   user: AuthUser
@@ -14,6 +15,7 @@ interface TransactionManagementProps {
   symbolName: string
   transactions: Transaction[]
   onTransactionUpdated?: () => void
+  selectedCurrency?: SupportedCurrency
 }
 
 type ViewMode = 'history' | 'addTransaction' | 'bulkImport'
@@ -23,7 +25,8 @@ export default function TransactionManagement({
   symbol, 
   symbolName, 
   transactions, 
-  onTransactionUpdated 
+  onTransactionUpdated,
+  selectedCurrency = 'USD'
 }: TransactionManagementProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('history')
   const [refreshKey, setRefreshKey] = useState(0)
@@ -152,6 +155,7 @@ export default function TransactionManagement({
             symbolName={symbolName}
             user={user}
             onTransactionUpdated={handleTransactionUpdated}
+            selectedCurrency={selectedCurrency}
           />
         )
     }

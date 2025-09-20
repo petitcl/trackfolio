@@ -2,12 +2,16 @@
 
 
 ## TODO P1
+- ✅ Multi transaction CSV import functionality from home page
+- ✅ Multi custom price CSV import functionality from home page
+- [ ] Multi custom holding CSV import functionality from home page
+- [ ] Delete holding / price / tx buttons should be red / danger
+- [ ] Portfolio P&L and Annualized Returns should show value depending on selected timeframe
+- [ ] Hardcoded list of brokers to pick from
 
 ## TODO P2
-- [ ] Portfolio P&L and Annualized Returns should show value depending on selected timeframe
 - [ ] Allow Bonus with price 0
-- [ ] Hardcoded list of brokers to pick from
-- [ ] Delete holding / price / tx buttons should be red / danger
+- [ ] Remove need for transaction with price = 0, simplify custom holding creation
 - [ ] Use existing symbols instead of symbol search when adding symbol
 - [ ] Portfolio repartition history can switch betwen % and absolute value
 - [ ] Cost Basis takes into account currency conversion
@@ -26,7 +30,6 @@
 ## TODO P3
 - [ ] Automatic Database Backups
 - [ ] Add unit tests to Portfolio Services logic
-- [ ] Multi holding CSV import functionality from home page
 - [ ] Enhance fonts
 - [ ] Admin Stuffs
 - [ ] Re-enable turbopack (currently clashes with monorepo setup)

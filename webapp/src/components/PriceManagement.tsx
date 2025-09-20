@@ -5,15 +5,17 @@ import type { AuthUser } from '@/lib/auth/client.auth.service'
 import ManualPriceHistory from './ManualPriceHistory'
 import AddPriceForm from './AddPriceForm'
 import BulkPriceImport from './BulkPriceImport'
+import type { SupportedCurrency } from '@/lib/services/currency.service'
 
 interface PriceManagementProps {
   user: AuthUser
   symbol: string
+  selectedCurrency?: SupportedCurrency
 }
 
 type ViewMode = 'history' | 'addPrice' | 'bulkImport'
 
-export default function PriceManagement({ user, symbol }: PriceManagementProps) {
+export default function PriceManagement({ user, symbol, selectedCurrency = 'USD' }: PriceManagementProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('history')
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -107,6 +109,7 @@ export default function PriceManagement({ user, symbol }: PriceManagementProps) 
             user={user}
             symbol={symbol}
             onPriceUpdated={handlePriceUpdated}
+            selectedCurrency={selectedCurrency}
           />
         )
     }
