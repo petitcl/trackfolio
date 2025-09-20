@@ -292,3 +292,97 @@ BTC,Bitcoin,buy,2024-01-25,0.5,25.00,42000.00,USD,Coinbase,Crypto allocation`,
     return { success: successCount, errors }
   }
 }
+
+// Multi-Symbol Price Import Configuration
+export interface ParsedMultiPrice {
+  symbol: string
+  price: number
+  date: string
+  notes: string | null
+}
+
+export const multiBulkPriceImportConfig: CsvImportConfig<ParsedMultiPrice> = {
+  title: 'Bulk Import Prices',
+  description: 'Import prices for multiple symbols from CSV',
+  columns: [
+    { key: 'symbol', label: 'Symbol', required: true },
+    { key: 'name', label: 'Name', required: false, description: 'Human readable name (ignored)' },
+    { key: 'date', label: 'Date', required: true, description: 'YYYY-MM-DD format' },
+    { key: 'price', label: 'Price', required: true },
+    { key: 'notes', label: 'Notes', required: false }
+  ],
+  sampleData: `symbol,name,date,price,notes
+MY_HOUSE,My House,2024-01-15,465000.00,Recent appraisal
+VINTAGE_WATCH,Vintage Watch,2024-01-15,13200.00,Professional valuation
+BTC,Bitcoin,2024-01-15,45000.00,Personal price target
+STARTUP_XYZ,Startup XYZ,2024-01-15,60.00,Series B valuation`,
+  parseRow: (values: string[], header: string[]): ParsedMultiPrice | null => {
+    try {
+      // Handle price with potential comma formatting (e.g., "465,000.00")
+      const priceValue = values[header.indexOf('price')] || '0'
+      const cleanedPrice = priceValue.replace(/"/g, '').replace(/,/g, '')
+      
+      return {
+        symbol: values[header.indexOf('symbol')],
+        date: values[header.indexOf('date')],
+        price: parseFloat(cleanedPrice),
+        notes: values[header.indexOf('notes')] || null
+      }
+    } catch {
+      return null
+    }
+  },
+  validateRow: (row: ParsedMultiPrice, index: number): string | null => {
+    if (!row.symbol) {
+      return `Row ${index}: Symbol is required`
+    }
+    if (!row.date || isNaN(new Date(row.date).getTime())) {
+      return `Row ${index}: Invalid date format (use YYYY-MM-DD)`
+    }
+    if (isNaN(row.price) || row.price <= 0) {
+      return `Row ${index}: Price must be a positive number`
+    }
+    return null
+  },
+  importRows: async (user: AuthUser, rows: ParsedMultiPrice[]) => {
+    const errors: string[] = []
+    let successCount = 0
+
+    // First validate all symbols exist
+    const uniqueSymbols = [...new Set(rows.map(row => row.symbol))]
+    
+    // Get all existing symbols
+    let existingSymbols: string[] = []
+    try {
+      const symbols = await portfolioService.getSymbols(user)
+      existingSymbols = symbols.map(s => s.symbol)
+    } catch (err) {
+      errors.push(`Failed to fetch existing symbols: ${err}`)
+      return { success: 0, errors }
+    }
+
+    // Check which symbols don't exist
+    const missingSymbols = uniqueSymbols.filter(symbol => !existingSymbols.includes(symbol))
+    if (missingSymbols.length > 0) {
+      errors.push(`The following symbols don't exist in your portfolio: ${missingSymbols.join(', ')}. Please add them first.`)
+      return { success: 0, errors }
+    }
+
+    // Import all rows
+    for (const [rowIndex, row] of rows.entries()) {
+      try {
+        await portfolioService.addUserSymbolPrice(user, {
+          symbol: row.symbol,
+          manual_price: row.price,
+          price_date: row.date,
+          notes: row.notes
+        })
+        successCount++
+      } catch (err) {
+        errors.push(`Row ${rowIndex + 2}: Error importing price for ${row.symbol} - ${err}`)
+      }
+    }
+
+    return { success: successCount, errors }
+  }
+}

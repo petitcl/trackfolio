@@ -13,7 +13,7 @@ import PortfolioValueEvolutionChart from '@/components/charts/PortfolioValueEvol
 import QuickActions from '@/components/QuickActions'
 import DemoModeBanner from '@/components/DemoModeBanner'
 import CurrencySelector from '@/components/CurrencySelector'
-import MultiBulkTransactionImport from '@/components/MultiBulkTransactionImport'
+import MultiBulkImportModal from '@/components/MultiBulkImportModal'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 
 interface DashboardProps {
@@ -530,9 +530,9 @@ export default function Dashboard({ user }: DashboardProps) {
             
             {/* Modal Content */}
             <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <MultiBulkTransactionImport
+              <MultiBulkImportModal
                 user={user}
-                onTransactionsImported={handleBulkImportComplete}
+                onImportComplete={handleBulkImportComplete}
                 onCancel={handleBulkImportCancel}
               />
             </div>
