@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { PortfolioCalculationService } from '../portfolio-calculation.service';
+import { unifiedCalculationService, type PortfolioPosition } from '../unified-calculation.service';
 import { historicalPriceService } from '../historical-price.service';
 import type { Transaction, Symbol } from '@/lib/supabase/types';
 import type { AuthUser } from '@/lib/auth/client.auth.service';
 
 describe('PortfolioCalculationService', () => {
-  let service: PortfolioCalculationService;
+  // Using unified calculation service directly (PortfolioCalculationService migrated)
+  const service = unifiedCalculationService;
 
   // Test data scenarios
   const mockSymbols: Symbol[] = [
@@ -67,7 +68,7 @@ describe('PortfolioCalculationService', () => {
   ];
 
   beforeEach(() => {
-    service = new PortfolioCalculationService();
+    // Service is now the singleton unifiedCalculationService
   });
 
   describe('calculatePositionsFromTransactions', () => {
@@ -95,7 +96,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0]).toEqual({
@@ -146,7 +147,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(30);
@@ -193,7 +194,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(15);
@@ -238,7 +239,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(0);
     });
@@ -279,7 +280,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(12);
@@ -327,7 +328,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(15);
@@ -360,7 +361,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(5);
@@ -393,7 +394,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(1000);
@@ -438,7 +439,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(700);
@@ -474,7 +475,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].symbol).toBe('HOUSE_123');
@@ -537,7 +538,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(3);
 
@@ -621,7 +622,7 @@ describe('PortfolioCalculationService', () => {
         role: 'authenticated'
       }
 
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
+      const positions = await service.calculateCurrentPositions(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       const position = positions[0];
@@ -890,7 +891,7 @@ describe('PortfolioCalculationService', () => {
         aud: 'authenticated',
         role: 'authenticated'
       }
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, symbols, mockUser, 'EUR')
+      const positions = await service.calculateCurrentPositions(transactions, symbols, mockUser, 'EUR')
       const position = positions.find(p => p.symbol === 'CUSTOM_EUR_ASSET')
 
       expect(position).toBeDefined()
@@ -966,7 +967,7 @@ describe('PortfolioCalculationService', () => {
         aud: 'authenticated',
         role: 'authenticated'
       }
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, symbols, mockUser, 'EUR')
+      const positions = await service.calculateCurrentPositions(transactions, symbols, mockUser, 'EUR')
       const position = positions.find(p => p.symbol === 'CUSTOM_EUR_ASSET')
 
       expect(position).toBeDefined()
@@ -1060,7 +1061,7 @@ describe('PortfolioCalculationService', () => {
         aud: 'authenticated',
         role: 'authenticated'
       }
-      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, symbols, mockUser, 'EUR')
+      const positions = await service.calculateCurrentPositions(transactions, symbols, mockUser, 'EUR')
       const position = positions.find(p => p.symbol === 'CUSTOM_EUR_ASSET')
 
       expect(position).toBeDefined()
@@ -1132,7 +1133,7 @@ describe('PortfolioCalculationService', () => {
 
       try {
         // Test the new async method with EUR target currency to match symbol currency
-        const positions = await service.calculatePositionsFromTransactionsAsync(
+        const positions = await service.calculateCurrentPositions(
           transactions,
           symbols,
           mockUser,
@@ -1273,7 +1274,7 @@ describe('PortfolioCalculationService', () => {
 
       try {
         // Calculate position using portfolio calculation service (what feeds "Current Position" card)
-        const positions = await service.calculatePositionsFromTransactionsAsync(
+        const positions = await service.calculateCurrentPositions(
           transactions,
           symbols,
           mockUser
@@ -1378,7 +1379,7 @@ describe('PortfolioCalculationService', () => {
       historicalPriceService.getHistoricalPriceForDate = jest.fn().mockResolvedValue(121.54) // Outdated price
 
       try {
-        const positions = await service.calculatePositionsFromTransactionsAsync(
+        const positions = await service.calculateCurrentPositions(
           transactions,
           symbols,
           mockUser,
@@ -1459,7 +1460,7 @@ describe('PortfolioCalculationService', () => {
       historicalPriceService.getHistoricalPriceForDate = jest.fn().mockResolvedValue(10248.85) // Current manual price
 
       try {
-        const positions = await service.calculatePositionsFromTransactionsAsync(
+        const positions = await service.calculateCurrentPositions(
           transactions,
           symbols,
           mockUser,
@@ -1583,7 +1584,7 @@ describe('PortfolioCalculationService', () => {
       })
 
       try {
-        const positions = await service.calculatePositionsFromTransactionsAsync(
+        const positions = await service.calculateCurrentPositions(
           transactions,
           symbols,
           mockUser,
@@ -1714,7 +1715,7 @@ describe('PortfolioCalculationService', () => {
       })
 
       try {
-        const positions = await service.calculatePositionsFromTransactionsAsync(
+        const positions = await service.calculateCurrentPositions(
           transactions,
           symbols,
           mockUser,
@@ -1752,6 +1753,422 @@ describe('PortfolioCalculationService', () => {
             value: customPosition?.value
           }
         })
+      } finally {
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+  })
+
+  describe('calculatePortfolioValueForDate', () => {
+    const mockUser: AuthUser = {
+      id: 'test-user',
+      email: 'test@example.com',
+      created_at: '2021-01-01T00:00:00Z',
+      aud: 'authenticated',
+      role: 'authenticated'
+    }
+
+    beforeEach(() => {
+      jest.clearAllMocks()
+    })
+
+    it('should calculate total portfolio value for a specific date', async () => {
+      const positions = [
+        {
+          symbol: 'AAPL',
+          quantity: 100,
+          avgCost: 140.00,
+          currentPrice: 150.00,
+          value: 15000,
+          unrealizedPnL: 1000,
+          isCustom: false,
+          dividendIncome: 0
+        },
+        {
+          symbol: 'TSLA',
+          quantity: 50,
+          avgCost: 180.00,
+          currentPrice: 200.00,
+          value: 10000,
+          unrealizedPnL: 1000,
+          isCustom: false,
+          dividendIncome: 0
+        }
+      ]
+
+      // Mock historical price service
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockImplementation((symbol) => {
+        if (symbol === 'AAPL') return Promise.resolve(145.00)
+        if (symbol === 'TSLA') return Promise.resolve(195.00)
+        return Promise.resolve(null)
+      })
+
+      try {
+        const totalValue = await service.calculatePortfolioValueForDate(
+          positions,
+          '2024-01-15',
+          mockUser,
+          mockSymbols
+        )
+
+        expect(totalValue).toBe(24250) // (100 * 145) + (50 * 195)
+        expect(historicalPriceService.getHistoricalPriceForDate).toHaveBeenCalledTimes(2)
+        expect(historicalPriceService.getHistoricalPriceForDate).toHaveBeenCalledWith(
+          'AAPL',
+          '2024-01-15',
+          mockUser,
+          expect.any(Object)
+        )
+      } finally {
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+
+    it('should return null if any symbol lacks historical data', async () => {
+      const positions = [
+        {
+          symbol: 'AAPL',
+          quantity: 100,
+          avgCost: 140.00,
+          currentPrice: 150.00,
+          value: 15000,
+          unrealizedPnL: 1000,
+          isCustom: false,
+          dividendIncome: 0
+        },
+        {
+          symbol: 'MISSING_SYMBOL',
+          quantity: 50,
+          avgCost: 180.00,
+          currentPrice: 200.00,
+          value: 10000,
+          unrealizedPnL: 1000,
+          isCustom: false,
+          dividendIncome: 0
+        }
+      ]
+
+      // Mock historical price service - AAPL has data, MISSING_SYMBOL doesn't
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockImplementation((symbol) => {
+        if (symbol === 'AAPL') return Promise.resolve(145.00)
+        if (symbol === 'MISSING_SYMBOL') return Promise.resolve(null)
+        return Promise.resolve(null)
+      })
+
+      try {
+        const totalValue = await service.calculatePortfolioValueForDate(
+          positions,
+          '2024-01-15',
+          mockUser,
+          mockSymbols
+        )
+
+        expect(totalValue).toBeNull()
+        expect(historicalPriceService.getHistoricalPriceForDate).toHaveBeenCalledTimes(2)
+      } finally {
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+
+    it('should handle custom symbols correctly', async () => {
+      const positions = [
+        {
+          symbol: 'HOUSE_123',
+          quantity: 1,
+          avgCost: 450000.00,
+          currentPrice: 500000.00,
+          value: 500000,
+          unrealizedPnL: 50000,
+          isCustom: true,
+          dividendIncome: 0
+        }
+      ]
+
+      // Mock historical price service for custom symbol
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockResolvedValue(480000.00)
+
+      try {
+        const totalValue = await service.calculatePortfolioValueForDate(
+          positions,
+          '2024-01-15',
+          mockUser,
+          mockSymbols
+        )
+
+        expect(totalValue).toBe(480000) // 1 * 480000
+        expect(historicalPriceService.getHistoricalPriceForDate).toHaveBeenCalledWith(
+          'HOUSE_123',
+          '2024-01-15',
+          mockUser,
+          expect.objectContaining({ symbol: 'HOUSE_123', is_custom: true })
+        )
+      } finally {
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+
+    it('should handle empty positions array', async () => {
+      const totalValue = await service.calculatePortfolioValueForDate(
+        [],
+        '2024-01-15',
+        mockUser,
+        mockSymbols
+      )
+
+      expect(totalValue).toBe(0)
+    })
+  })
+
+  describe('calculateAssetTypeAllocations', () => {
+    const mockUser: AuthUser = {
+      id: 'test-user',
+      email: 'test@example.com',
+      created_at: '2021-01-01T00:00:00Z',
+      aud: 'authenticated',
+      role: 'authenticated'
+    }
+
+    beforeEach(() => {
+      jest.clearAllMocks()
+    })
+
+    it('should calculate asset type allocations correctly', async () => {
+      const positions = [
+        {
+          symbol: 'AAPL',
+          quantity: 100,
+          avgCost: 140.00,
+          currentPrice: 150.00,
+          value: 15000,
+          unrealizedPnL: 1000,
+          isCustom: false,
+          dividendIncome: 0
+        },
+        {
+          symbol: 'BTC',
+          quantity: 0.5,
+          avgCost: 40000.00,
+          currentPrice: 50000.00,
+          value: 25000,
+          unrealizedPnL: 5000,
+          isCustom: false,
+          dividendIncome: 0
+        },
+        {
+          symbol: 'HOUSE_123',
+          quantity: 1,
+          avgCost: 450000.00,
+          currentPrice: 500000.00,
+          value: 500000,
+          unrealizedPnL: 50000,
+          isCustom: true,
+          dividendIncome: 0
+        }
+      ]
+
+      // Mock historical price service
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockImplementation((symbol) => {
+        if (symbol === 'AAPL') return Promise.resolve(145.00)     // Stock: 14,500
+        if (symbol === 'BTC') return Promise.resolve(48000.00)    // Crypto: 24,000
+        if (symbol === 'HOUSE_123') return Promise.resolve(480000.00) // Real Estate: 480,000
+        return Promise.resolve(null)
+      })
+
+      try {
+        const result = await service.calculateAssetTypeAllocations(
+          positions,
+          mockSymbols,
+          '2024-01-15',
+          mockUser
+        )
+
+        expect(result).not.toBeNull()
+        if (result) {
+          const { allocations, values } = result
+
+          // Total: 14,500 + 24,000 + 480,000 = 518,500
+          expect(values.stock).toBe(14500)
+          expect(values.crypto).toBe(24000)
+          expect(values.real_estate).toBe(480000)
+          expect(values.cash).toBe(0)
+          expect(values.currency).toBe(0)
+          expect(values.other).toBe(0)
+
+          // Check allocations (percentages)
+          expect(allocations.stock).toBeCloseTo(2.8, 1) // 14,500 / 518,500 * 100
+          expect(allocations.crypto).toBeCloseTo(4.6, 1) // 24,000 / 518,500 * 100
+          expect(allocations.real_estate).toBeCloseTo(92.6, 1) // 480,000 / 518,500 * 100
+          expect(allocations.cash).toBe(0)
+          expect(allocations.currency).toBe(0)
+          expect(allocations.other).toBe(0)
+        }
+      } finally {
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+
+    it('should return null if any symbol lacks historical data', async () => {
+      const positions = [
+        {
+          symbol: 'AAPL',
+          quantity: 100,
+          avgCost: 140.00,
+          currentPrice: 150.00,
+          value: 15000,
+          unrealizedPnL: 1000,
+          isCustom: false,
+          dividendIncome: 0
+        },
+        {
+          symbol: 'MISSING_SYMBOL',
+          quantity: 50,
+          avgCost: 180.00,
+          currentPrice: 200.00,
+          value: 10000,
+          unrealizedPnL: 1000,
+          isCustom: false,
+          dividendIncome: 0
+        }
+      ]
+
+      // Mock historical price service - AAPL has data, MISSING_SYMBOL doesn't
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockImplementation((symbol) => {
+        if (symbol === 'AAPL') return Promise.resolve(145.00)
+        if (symbol === 'MISSING_SYMBOL') return Promise.resolve(null)
+        return Promise.resolve(null)
+      })
+
+      try {
+        const result = await service.calculateAssetTypeAllocations(
+          positions,
+          mockSymbols,
+          '2024-01-15',
+          mockUser
+        )
+
+        expect(result).toBeNull()
+      } finally {
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+
+    it('should handle positions with unknown asset types', async () => {
+      const positions = [
+        {
+          symbol: 'UNKNOWN_ASSET',
+          quantity: 10,
+          avgCost: 100.00,
+          currentPrice: 120.00,
+          value: 1200,
+          unrealizedPnL: 200,
+          isCustom: true,
+          dividendIncome: 0
+        }
+      ]
+
+      // Don't pass the symbol at all - this will test the fallback to 'other'
+      const mockSymbolsForTest: Symbol[] = []
+
+      // Mock historical price service
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockResolvedValue(115.00)
+
+      try {
+        const result = await service.calculateAssetTypeAllocations(
+          positions,
+          mockSymbolsForTest,
+          '2024-01-15',
+          mockUser
+        )
+
+        expect(result).not.toBeNull()
+        if (result) {
+          const { allocations, values } = result
+
+          // Should categorize missing symbol as 'other'
+          expect(values.other).toBe(1150) // 10 * 115.00
+          expect(allocations.other).toBe(100) // 100% other
+
+          // All other categories should be 0
+          expect(values.stock).toBe(0)
+          expect(values.crypto).toBe(0)
+          expect(values.real_estate).toBe(0)
+          expect(allocations.stock).toBe(0)
+          expect(allocations.crypto).toBe(0)
+          expect(allocations.real_estate).toBe(0)
+        }
+      } finally {
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+
+    it('should handle empty positions array', async () => {
+      const result = await service.calculateAssetTypeAllocations(
+        [],
+        mockSymbols,
+        '2024-01-15',
+        mockUser
+      )
+
+      expect(result).not.toBeNull()
+      if (result) {
+        const { allocations, values } = result
+
+        // All values should be 0
+        Object.values(values).forEach(value => {
+          expect(value).toBe(0)
+        })
+
+        // All allocations should be 0 (or NaN converted to 0)
+        Object.values(allocations).forEach(allocation => {
+          expect(allocation).toBe(0)
+        })
+      }
+    })
+
+    it('should handle zero total portfolio value', async () => {
+      const positions = [
+        {
+          symbol: 'ZERO_VALUE',
+          quantity: 100,
+          avgCost: 140.00,
+          currentPrice: 150.00,
+          value: 15000,
+          unrealizedPnL: 1000,
+          isCustom: false,
+          dividendIncome: 0
+        }
+      ]
+
+      // Mock historical price service to return 0
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockResolvedValue(0)
+
+      try {
+        const result = await service.calculateAssetTypeAllocations(
+          positions,
+          mockSymbols,
+          '2024-01-15',
+          mockUser
+        )
+
+        expect(result).not.toBeNull()
+        if (result) {
+          const { allocations, values } = result
+
+          // Values should reflect the 0 price
+          expect(values.stock).toBe(0) // 100 * 0
+
+          // Allocations should be 0 when total value is 0
+          Object.values(allocations).forEach(allocation => {
+            expect(allocation).toBe(0)
+          })
+        }
       } finally {
         historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
       }

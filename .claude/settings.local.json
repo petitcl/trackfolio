@@ -22,7 +22,8 @@
       "Bash(npm run backfill-symbol:local:*)",
       "Bash(npm ls:*)",
       "Bash(convert:*)",
-      "Bash(sips:*)"
+      "Bash(sips:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": [],

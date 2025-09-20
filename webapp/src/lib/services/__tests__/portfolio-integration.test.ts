@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/types'
-import { portfolioCalculationService } from '../portfolio-calculation.service'
+import { unifiedCalculationService } from '../unified-calculation.service'
 import { portfolioService } from '../portfolio.service'
 import { transactionService } from '../transaction.service'
 import { historicalDataService } from '../historical-data.service'
@@ -347,7 +347,7 @@ describe('Portfolio Integration Tests', () => {
         role: 'authenticated'
       }
 
-      const positions = await portfolioCalculationService.calculatePositionsFromTransactionsAsync(
+      const positions = await unifiedCalculationService.calculateCurrentPositions(
         scenario.transactions,
         scenario.symbols,
         mockUser
@@ -415,7 +415,7 @@ describe('Portfolio Integration Tests', () => {
       const latestDate = Math.max(...scenario.transactions.map(t => new Date(t.date).getTime()))
       const latestDateStr = new Date(latestDate).toISOString().split('T')[0]
 
-      const cumulativeInvested = portfolioCalculationService.calculateCumulativeInvestedForDate(
+      const cumulativeInvested = unifiedCalculationService.calculateCumulativeInvestedForDate(
         scenario.transactions,
         latestDateStr
       )

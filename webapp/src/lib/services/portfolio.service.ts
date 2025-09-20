@@ -2,7 +2,7 @@ import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import type { TimeRange } from '@/components/TimeRangeSelector'
 import { historicalPriceService } from './historical-price.service'
-import { portfolioCalculationService, type PortfolioPosition } from './portfolio-calculation.service'
+import { unifiedCalculationService, type PortfolioPosition } from './unified-calculation.service'
 import { historicalDataService } from './historical-data.service'
 import { transactionService } from './transaction.service'
 import { currencyService, type SupportedCurrency } from './currency.service'
@@ -58,7 +58,7 @@ export class PortfolioService {
       }
 
       // Calculate positions using unified calculation service (already in target currency)
-      const positions = await portfolioCalculationService.calculatePositionsFromTransactionsAsync(transactions, symbols, user, targetCurrency)
+      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency)
 
       // Calculate totals in target currency (no additional conversion needed)
       const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
