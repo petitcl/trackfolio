@@ -5,6 +5,7 @@ Mark done item with ✅
 - ✅ Multi transaction CSV import functionality from home page
 - ✅ Multi custom price CSV import functionality from home page
 - [ ] Multi custom holding CSV import functionality from home page
+- ✅ Value Evolution charts takes into account dividends
 - [ ] Delete holding / price / tx buttons should be red / danger
 - [ ] Portfolio P&L and Annualized Returns should show value depending on selected timeframe
 - [ ] Hardcoded list of brokers to pick from

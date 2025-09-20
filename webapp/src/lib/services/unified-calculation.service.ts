@@ -9,6 +9,7 @@ interface UnifiedPosition {
   quantity: number
   totalCost: number
   avgCost: number
+  dividendIncome: number  // Track total dividend income received as cash
 }
 
 /**
@@ -40,7 +41,8 @@ export class UnifiedCalculationService {
         symbol,
         quantity: 0,
         totalCost: 0,
-        avgCost: 0
+        avgCost: 0,
+        dividendIncome: 0
       }
 
       if (transaction.type === 'buy' || transaction.type === 'deposit') {
@@ -55,9 +57,20 @@ export class UnifiedCalculationService {
         }
         // Maintain cost basis proportionally
         existing.totalCost = existing.quantity * existing.avgCost
-      } else if (transaction.type === 'bonus' || transaction.type === 'dividend') {
+      } else if (transaction.type === 'dividend') {
+        // Cash dividend - no change to quantity, just track income
+        // Handle two formats: 
+        // 1. quantity > 0: dividend per share (quantity * price_per_unit)
+        // 2. quantity = 0: total dividend amount is in price_per_unit
+        const dividendAmount = transaction.quantity > 0 
+          ? transaction.quantity * transaction.price_per_unit 
+          : transaction.price_per_unit
+        existing.dividendIncome += dividendAmount
+        // Cost basis and quantity unchanged
+      } else if (transaction.type === 'bonus') {
+        // Reinvested dividend or bonus shares - add to position
         existing.quantity += transaction.quantity
-        // No cost change for bonus shares or dividends
+        existing.totalCost += transaction.quantity * transaction.price_per_unit
         existing.avgCost = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
       }
 
@@ -176,11 +189,13 @@ export class UnifiedCalculationService {
       }
 
       let totalCostBasis = 0
+      let totalDividendIncome = 0
       let validPriceCount = 0
 
       // Track converted values per position to handle multi-currency portfolios correctly
       let convertedTotalValue = 0
       let convertedTargetSymbolValue = 0
+      let convertedTotalDividendIncome = 0
       const convertedAssetTypeValues: Record<string, number> = {
         stock: 0,
         crypto: 0,
@@ -200,8 +215,9 @@ export class UnifiedCalculationService {
           symbolPriceMap
         )
 
-        // Always include cost basis for positions that exist on this date
+        // Always include cost basis and dividend income for positions that exist on this date
         totalCostBasis += position.totalCost
+        totalDividendIncome += position.dividendIncome
 
         if (historicalPrice !== null) {
           validPriceCount++
@@ -243,6 +259,27 @@ export class UnifiedCalculationService {
           assetTypeValues[assetType] += positionValue // For allocation % calculation
           convertedAssetTypeValues[assetType] += convertedPositionValue
         }
+        
+        // Convert dividend income to target currency
+        if (position.dividendIncome > 0) {
+          const symbolData = symbols.find(s => s.symbol === position.symbol)
+          const symbolCurrency = symbolData?.currency
+          const fromCurrency = (symbolCurrency || 'USD') as SupportedCurrency
+          
+          let convertedDividendIncome = position.dividendIncome
+          if (fromCurrency !== targetCurrency) {
+            try {
+              const conversionRate = await currencyService.getExchangeRate(fromCurrency, targetCurrency, user, symbols, currentDate)
+              convertedDividendIncome = position.dividendIncome * conversionRate
+            } catch (error) {
+              console.warn(`Failed to convert dividend income from ${fromCurrency} to ${targetCurrency} for ${position.symbol} on ${currentDate}, using rate 1:`, error)
+              convertedDividendIncome = position.dividendIncome
+            }
+          }
+          
+          convertedTotalDividendIncome += convertedDividendIncome
+        }
+        
         // If no price found, the position still contributes to cost basis
         // but contributes zero to market value - this shows realistic P&L
       }
@@ -310,7 +347,10 @@ export class UnifiedCalculationService {
       }
 
       // For single holdings, use the individual holding value instead of total portfolio value
-      const finalTotalValue = targetSymbol ? convertedTargetSymbolValue : convertedTotalValue
+      // Add dividend income to the total value (this represents cash dividends received)
+      const finalTotalValue = targetSymbol 
+        ? convertedTargetSymbolValue + convertedTotalDividendIncome 
+        : convertedTotalValue + convertedTotalDividendIncome
       
       historicalData.push({
         date: currentDate,

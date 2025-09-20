@@ -67,7 +67,7 @@ export default function AddTransactionForm({
     e.preventDefault()
     
     // For bonus transactions with amount field, calculate price_per_unit
-    let submitData = { ...formData }
+    const submitData = { ...formData }
     if (formData.type === 'bonus' && formData.amount && formData.quantity > 0) {
       submitData.pricePerUnit = formData.amount / formData.quantity
     }
@@ -169,7 +169,7 @@ export default function AddTransactionForm({
                 type="number"
                 step="0.00001"
                 value={formData.amount || ''}
-                onChange={(e) => handleChange('amount', parseFloat(e.target.value) || undefined)}
+                onChange={(e) => handleChange('amount', e.target.value ? parseFloat(e.target.value) : '')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 min="0"
                 placeholder={formData.type === 'bonus' ? 'Total bonus amount' : 'Optional'}
