@@ -185,6 +185,7 @@ export default function ValueEvolutionChart({
       },
       y: {
         display: true,
+        min: 0,
         title: {
           display: true,
           text: `Value (${CURRENCY_SYMBOLS[currency]})`,
