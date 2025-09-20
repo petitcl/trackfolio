@@ -11,10 +11,48 @@ export interface AnnualizedReturnMetrics {
   periodYears: number
 }
 
+export interface DetailedReturnMetrics extends AnnualizedReturnMetrics {
+  // Capital gains breakdown
+  capitalGains: {
+    realized: number // Actual gains from completed sales (absolute value)
+    unrealized: number // Paper gains on current holdings (absolute value)
+    realizedPercentage: number // Realized gains as % of total invested
+    unrealizedPercentage: number // Unrealized gains as % of current cost basis
+    annualizedRate: number // Capital appreciation rate (annualized %)
+  }
+
+  // Dividend income breakdown
+  dividendIncome: {
+    total: number // Total dividends received (absolute value)
+    percentage: number // Dividends as % of total invested
+    annualizedYield: number // Dividend yield (annualized %)
+  }
+
+  // Realized vs Unrealized summary
+  realizedVsUnrealized: {
+    totalRealized: number // All realized gains + dividends (absolute value)
+    totalUnrealized: number // All unrealized gains (absolute value)
+    realizedPercentage: number // Realized as % of total return
+    unrealizedPercentage: number // Unrealized as % of total return
+  }
+
+  // Investment summary for context
+  investmentSummary: {
+    totalInvested: number // Total money put in
+    currentValue: number // Current portfolio value
+    totalWithdrawn: number // Total money taken out (from sales)
+  }
+}
+
 export interface ReturnCalculationOptions {
   startDate?: string
   endDate?: string
   includeVolatility?: boolean
+}
+
+export interface DetailedReturnCalculationOptions extends ReturnCalculationOptions {
+  includeDetailed?: boolean // Whether to calculate detailed breakdowns
+  fifoMethod?: boolean // Use FIFO for realized gains calculation (default: true)
 }
 
 /**
@@ -37,15 +75,15 @@ export class ReturnCalculationService {
       return this.getEmptyMetrics()
     }
 
-    const { startDate, endDate, includeVolatility = false } = options
-    
+    const { startDate: optionsStartDate, endDate: optionsEndDate, includeVolatility = false } = options
+
     // Filter historical data by date range if specified
     let filteredData = historicalData
-    if (startDate || endDate) {
+    if (optionsStartDate || optionsEndDate) {
       filteredData = historicalData.filter(point => {
         const pointDate = point.date
-        if (startDate && pointDate < startDate) return false
-        if (endDate && pointDate > endDate) return false
+        if (optionsStartDate && pointDate < optionsStartDate) return false
+        if (optionsEndDate && pointDate > optionsEndDate) return false
         return true
       })
     }
@@ -58,29 +96,82 @@ export class ReturnCalculationService {
     const lastPoint = filteredData[filteredData.length - 1]
     const periodYears = this.calculateYearsDifference(firstPoint.date, lastPoint.date)
 
+    // Use actual data range for transaction filtering
+    const actualStartDate = optionsStartDate || firstPoint.date
+    const actualEndDate = optionsEndDate || lastPoint.date
+
     if (periodYears <= 0) {
       return this.getEmptyMetrics()
     }
 
-    // Calculate Time-Weighted Return (TWR)
-    const twr = this.calculateTimeWeightedReturn(
-      firstPoint.totalValue || 0,
-      lastPoint.totalValue || 0,
-      periodYears
-    )
+    // Calculate investment summary first to check if position is closed
+    const investmentSummary = this.calculateInvestmentSummary(transactions, lastPoint, actualStartDate, actualEndDate)
+
+    // Check if this is a closed position - handle rounding errors
+    // A position is closed if net quantity is effectively 0 (within rounding tolerance) AND we have withdrawals
+    const netQuantity = transactions
+      .filter(t => t.date >= actualStartDate && t.date <= actualEndDate)
+      .reduce((qty, t) => {
+        switch (t.type) {
+          case 'buy':
+          case 'deposit':
+            return qty + t.quantity
+          case 'sell':
+          case 'withdrawal':
+            return qty - t.quantity
+          default:
+            return qty
+        }
+      }, 0)
+
+    // Consider position closed if:
+    // 1. Net quantity is very small (< 0.001 shares) - handles rounding errors
+    // 2. We have meaningful withdrawals (> $1)
+    // 3. Current value is very small (< $1) - additional check
+    const isClosedPosition = Math.abs(netQuantity) < 0.001 &&
+                             investmentSummary.totalWithdrawn > 1 &&
+                             investmentSummary.currentValue < 1
+
+    // Calculate Time-Weighted Return (TWR) - handle closed positions properly
+    let twr = 0
+    if (isClosedPosition) {
+      // For closed positions, use the simple return based on cash flows
+      twr = investmentSummary.totalInvested > 0
+        ? (investmentSummary.totalWithdrawn - investmentSummary.totalInvested) / investmentSummary.totalInvested
+        : 0
+      // If it's an annualized calculation and period > 1 year, annualize it
+      if (periodYears > 1) {
+        twr = Math.pow(1 + twr, 1 / periodYears) - 1
+      }
+    } else {
+      // For open positions, use the sophisticated method
+      twr = this.calculateTimeWeightedReturnFromData(
+        filteredData,
+        transactions,
+        actualStartDate,
+        actualEndDate
+      )
+    }
 
     // Calculate Money-Weighted Return (XIRR)
     const mwr = this.calculateMoneyWeightedReturn(
       transactions,
       filteredData,
-      firstPoint.date,
-      lastPoint.date
+      actualStartDate,
+      actualEndDate
     )
 
-    // Calculate total return percentage
-    const totalReturn = firstPoint.totalValue > 0 
-      ? ((lastPoint.totalValue - firstPoint.totalValue) / firstPoint.totalValue) * 100
-      : 0
+    let totalReturn = 0
+    if (investmentSummary.totalInvested > 0) {
+      if (isClosedPosition) {
+        // For closed positions: return = (total withdrawn - total invested) / total invested
+        totalReturn = ((investmentSummary.totalWithdrawn - investmentSummary.totalInvested) / investmentSummary.totalInvested) * 100
+      } else {
+        // For open positions: return = (current value + total withdrawn - total invested) / total invested
+        totalReturn = ((investmentSummary.currentValue + investmentSummary.totalWithdrawn - investmentSummary.totalInvested) / investmentSummary.totalInvested) * 100
+      }
+    }
+
 
     // Calculate annualized volatility if requested
     let annualizedVolatility: number | undefined
@@ -100,7 +191,191 @@ export class ReturnCalculationService {
   }
 
   /**
-   * Calculate Time-Weighted Return (TWR) - measures pure investment performance
+   * Calculate detailed return metrics with capital gains, dividends, and realized/unrealized breakdown
+   */
+  calculateDetailedReturns(
+    transactions: Transaction[],
+    historicalData: HistoricalDataPoint[],
+    symbols: Symbol[],
+    options: DetailedReturnCalculationOptions = {}
+  ): DetailedReturnMetrics {
+
+    // First get the basic metrics
+    const basicMetrics = this.calculateAnnualizedReturns(transactions, historicalData, symbols, options)
+
+    if (historicalData.length === 0) {
+      return this.getEmptyDetailedMetrics()
+    }
+
+    const { startDate: optionsStartDate, endDate: optionsEndDate, fifoMethod = true } = options
+
+    // Filter historical data by date range if specified
+    let filteredData = historicalData
+    if (optionsStartDate || optionsEndDate) {
+      filteredData = historicalData.filter(point => {
+        const pointDate = point.date
+        if (optionsStartDate && pointDate < optionsStartDate) return false
+        if (optionsEndDate && pointDate > optionsEndDate) return false
+        return true
+      })
+    }
+
+    if (filteredData.length < 2) {
+      return this.getEmptyDetailedMetrics()
+    }
+
+    const firstPoint = filteredData[0]
+    const lastPoint = filteredData[filteredData.length - 1]
+
+    // Use actual data range for transaction filtering
+    const actualStartDate = optionsStartDate || firstPoint.date
+    const actualEndDate = optionsEndDate || lastPoint.date
+
+    // Calculate detailed metrics
+    const fifoResults = this.calculateFIFORealizedGains(transactions, actualStartDate, actualEndDate)
+    const dividendResults = this.calculateDividendIncome(transactions, actualStartDate, actualEndDate)
+    const investmentSummary = this.calculateInvestmentSummary(transactions, lastPoint, actualStartDate, actualEndDate)
+
+    // Calculate capital gains (unrealized = current value - remaining cost basis)
+    // For closed positions, all gains are realized
+    // Handle rounding errors in position detection
+    const netQuantity = transactions
+      .filter(t => t.date >= actualStartDate && t.date <= actualEndDate)
+      .reduce((qty, t) => {
+        switch (t.type) {
+          case 'buy':
+          case 'deposit':
+            return qty + t.quantity
+          case 'sell':
+          case 'withdrawal':
+            return qty - t.quantity
+          default:
+            return qty
+        }
+      }, 0)
+
+    // Consider position closed if:
+    // 1. Net quantity is very small (< 0.001 shares) - handles rounding errors
+    // 2. We have meaningful withdrawals (> $1)
+    // 3. Current value is very small (< $1) - additional check
+    const isClosedPosition = Math.abs(netQuantity) < 0.001 &&
+                             investmentSummary.totalWithdrawn > 1 &&
+                             investmentSummary.currentValue < 1
+
+    let unrealizedCapitalGains = 0
+    let totalReturn = 0
+
+    if (isClosedPosition) {
+      // For closed positions: total return = total withdrawn - total invested
+      totalReturn = investmentSummary.totalWithdrawn - investmentSummary.totalInvested
+      unrealizedCapitalGains = 0 // All gains are realized for closed positions
+    } else {
+      // For open positions: use the original calculation
+      const totalChange = investmentSummary.currentValue - investmentSummary.totalInvested + investmentSummary.totalWithdrawn
+      unrealizedCapitalGains = Math.max(0, totalChange - fifoResults.totalRealizedGains - dividendResults.totalDividends)
+      totalReturn = investmentSummary.currentValue - investmentSummary.totalInvested + investmentSummary.totalWithdrawn
+    }
+
+    // Calculate percentages
+    const totalInvested = investmentSummary.totalInvested
+
+    return {
+      ...basicMetrics,
+      // Override start/end dates to use actual filtered dates
+      startDate: actualStartDate,
+      endDate: actualEndDate,
+      capitalGains: {
+        realized: fifoResults.totalRealizedGains,
+        unrealized: Math.max(0, unrealizedCapitalGains),
+        realizedPercentage: totalInvested > 0 ? (fifoResults.totalRealizedGains / totalInvested) * 100 : 0,
+        unrealizedPercentage: totalInvested > 0 ? (unrealizedCapitalGains / totalInvested) * 100 : 0,
+        annualizedRate: basicMetrics.timeWeightedReturn // Use TWR as capital appreciation rate
+      },
+      dividendIncome: {
+        total: dividendResults.totalDividends,
+        percentage: totalInvested > 0 ? (dividendResults.totalDividends / totalInvested) * 100 : 0,
+        annualizedYield: dividendResults.annualizedYield
+      },
+      realizedVsUnrealized: {
+        totalRealized: fifoResults.totalRealizedGains + dividendResults.totalDividends,
+        totalUnrealized: Math.max(0, unrealizedCapitalGains),
+        realizedPercentage: isClosedPosition ? 100.0 : (totalReturn > 0 ? ((fifoResults.totalRealizedGains + dividendResults.totalDividends) / Math.abs(totalReturn)) * 100 : 0),
+        unrealizedPercentage: isClosedPosition ? 0.0 : (totalReturn > 0 ? (unrealizedCapitalGains / Math.abs(totalReturn)) * 100 : 0)
+      },
+      investmentSummary
+    }
+  }
+
+  /**
+   * Calculate Time-Weighted Return (TWR) from historical data and transactions
+   * Uses a weighted average approach based on when money was actually invested
+   */
+  private calculateTimeWeightedReturnFromData(
+    historicalData: HistoricalDataPoint[],
+    transactions: Transaction[],
+    startDate: string,
+    endDate: string
+  ): number {
+    if (historicalData.length < 2) {
+      return 0
+    }
+
+    // Get relevant buy transactions within the period
+    const relevantTransactions = transactions.filter(t =>
+      t.date >= startDate && t.date <= endDate && (t.type === 'buy' || t.type === 'deposit')
+    ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+    if (relevantTransactions.length === 0) {
+      return 0
+    }
+
+    const firstPoint = historicalData[0]
+    const lastPoint = historicalData[historicalData.length - 1]
+    const currentValue = lastPoint.totalValue || 0
+
+    // For a single holding with regular investments, we can use a simplified TWR approach
+    // Calculate the weighted average time money was invested
+    const totalEndDate = new Date(endDate).getTime()
+    let weightedInvestment = 0
+    let totalInvested = 0
+
+    relevantTransactions.forEach(transaction => {
+      const investmentAmount = transaction.quantity * transaction.price_per_unit + (transaction.fees || 0)
+      const investmentDate = new Date(transaction.date).getTime()
+      const timeInvested = (totalEndDate - investmentDate) / (365.25 * 24 * 60 * 60 * 1000) // years
+
+      weightedInvestment += investmentAmount * Math.max(timeInvested, 0.001) // minimum 1 day
+      totalInvested += investmentAmount
+    })
+
+    if (totalInvested <= 0 || weightedInvestment <= 0) {
+      return 0
+    }
+
+    // Average time money was invested
+    const avgTimeInvested = weightedInvestment / totalInvested
+
+    if (avgTimeInvested <= 0) {
+      return 0
+    }
+
+    // Calculate total return
+    const totalReturn = (currentValue / totalInvested) - 1
+
+    // For periods less than 0.1 years, return simple return
+    if (avgTimeInvested < 0.1) {
+      return totalReturn
+    }
+
+    // Calculate annualized return based on average time invested
+    const annualizedReturn = Math.pow(1 + totalReturn, 1 / avgTimeInvested) - 1
+
+    // Reasonable bounds for annualized returns (-95% to +200%)
+    return Math.max(-0.95, Math.min(2.0, annualizedReturn))
+  }
+
+  /**
+   * Calculate Time-Weighted Return (TWR) - legacy method for simple cases
    * Formula: ((End Value / Begin Value) ^ (1 / Years)) - 1
    */
   private calculateTimeWeightedReturn(
@@ -112,13 +387,19 @@ export class ReturnCalculationService {
       return 0
     }
 
+    // Calculate simple total return
+    const totalReturn = (endValue / startValue) - 1
+
     // For periods less than 1 year, return simple return
     if (periodYears < 1) {
-      return (endValue / startValue) - 1
+      return totalReturn
     }
 
     // Annualized return
-    return Math.pow(endValue / startValue, 1 / periodYears) - 1
+    const annualizedReturn = Math.pow(1 + totalReturn, 1 / periodYears) - 1
+
+    // Cap extreme values to prevent unrealistic results
+    return Math.max(-0.95, Math.min(5.0, annualizedReturn))
   }
 
   /**
@@ -161,8 +442,14 @@ export class ReturnCalculationService {
           break
         case 'dividend':
         case 'bonus':
-          // Income (positive)
-          amount = transaction.quantity * transaction.price_per_unit
+          // Income (positive) - handle different data structures
+          if (transaction.quantity === 0 && transaction.price_per_unit > 0) {
+            // Dividend amount is stored in price_per_unit field
+            amount = transaction.price_per_unit
+          } else {
+            // Standard calculation
+            amount = transaction.quantity * transaction.price_per_unit
+          }
           break
       }
       
@@ -302,6 +589,214 @@ export class ReturnCalculationService {
     if (returnValue > 0) return 'text-green-600 dark:text-green-400'
     if (returnValue < 0) return 'text-red-600 dark:text-red-400'
     return 'text-gray-600 dark:text-gray-400'
+  }
+
+  /**
+   * Calculate FIFO realized gains from sell transactions
+   */
+  private calculateFIFORealizedGains(
+    transactions: Transaction[],
+    startDate: string,
+    endDate: string
+  ): { totalRealizedGains: number; salesCount: number } {
+
+    // Filter transactions within the date range
+    const relevantTransactions = transactions.filter(t =>
+      t.date >= startDate && t.date <= endDate
+    ).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+    // Track holdings using FIFO
+    const holdings: Array<{ quantity: number; costPerUnit: number; date: string }> = []
+    let totalRealizedGains = 0
+    let salesCount = 0
+
+    for (const transaction of relevantTransactions) {
+      const quantity = transaction.quantity
+      const pricePerUnit = transaction.price_per_unit
+      const fees = transaction.fees || 0
+
+      switch (transaction.type) {
+        case 'buy':
+        case 'deposit':
+          // Add to holdings (FIFO queue)
+          holdings.push({
+            quantity,
+            costPerUnit: pricePerUnit + (fees / quantity), // Include fees in cost basis
+            date: transaction.date
+          })
+          break
+
+        case 'sell':
+        case 'withdrawal':
+          // Sell using FIFO
+          let remainingToSell = quantity
+          const salePrice = pricePerUnit - (fees / quantity) // Deduct fees from sale price
+
+          while (remainingToSell > 0 && holdings.length > 0) {
+            const oldestHolding = holdings[0]
+            const sellFromThisLot = Math.min(remainingToSell, oldestHolding.quantity)
+
+            // Calculate realized gain/loss
+            const realizedGain = (salePrice - oldestHolding.costPerUnit) * sellFromThisLot
+            totalRealizedGains += realizedGain
+
+            // Update holdings
+            oldestHolding.quantity -= sellFromThisLot
+            remainingToSell -= sellFromThisLot
+
+            // Remove empty lots
+            if (oldestHolding.quantity <= 0) {
+              holdings.shift()
+            }
+          }
+          salesCount++
+          break
+
+        // Note: dividends and bonuses don't affect cost basis in FIFO calculation
+      }
+    }
+
+    return {
+      totalRealizedGains,
+      salesCount
+    }
+  }
+
+  /**
+   * Calculate dividend income within date range
+   */
+  private calculateDividendIncome(
+    transactions: Transaction[],
+    startDate: string,
+    endDate: string
+  ): { totalDividends: number; annualizedYield: number } {
+
+    // Get dividend transactions within the date range
+    const dividendTransactions = transactions.filter(t =>
+      t.date >= startDate &&
+      t.date <= endDate &&
+      (t.type === 'dividend' || t.type === 'bonus')
+    )
+
+    const totalDividends = dividendTransactions.reduce((sum, t) => {
+      // Handle different dividend data structures:
+      // Case 1: quantity=0, price_per_unit=dividend_amount (actual dividend amount in price field)
+      // Case 2: quantity=dividend_amount, price_per_unit=1 (dividend amount in quantity field)
+      // Case 3: quantity=shares, price_per_unit=dividend_per_share (standard structure)
+
+      if (t.quantity === 0 && t.price_per_unit > 0) {
+        // Dividend amount is stored in price_per_unit field
+        return sum + t.price_per_unit
+      } else {
+        // Standard calculation
+        return sum + (t.quantity * t.price_per_unit)
+      }
+    }, 0)
+
+    // Calculate annualized yield based on average invested amount
+    // Get all buy transactions to calculate average investment
+    const buyTransactions = transactions.filter(t =>
+      t.date >= startDate &&
+      t.date <= endDate &&
+      (t.type === 'buy' || t.type === 'deposit')
+    )
+
+    const totalInvested = buyTransactions.reduce((sum, t) => {
+      return sum + (t.quantity * t.price_per_unit + (t.fees || 0))
+    }, 0)
+
+    // Calculate period in years
+    const periodYears = this.calculateYearsDifference(startDate, endDate)
+
+    const annualizedYield = totalInvested > 0 && periodYears > 0
+      ? (totalDividends / totalInvested / periodYears) * 100
+      : 0
+
+    return {
+      totalDividends,
+      annualizedYield
+    }
+  }
+
+  /**
+   * Calculate investment summary
+   */
+  private calculateInvestmentSummary(
+    transactions: Transaction[],
+    lastDataPoint: HistoricalDataPoint,
+    startDate: string,
+    endDate: string
+  ): { totalInvested: number; currentValue: number; totalWithdrawn: number } {
+
+    const relevantTransactions = transactions.filter(t =>
+      t.date >= startDate && t.date <= endDate
+    )
+
+    let totalInvested = 0
+    let totalWithdrawn = 0
+    let currentQuantity = 0
+
+    for (const transaction of relevantTransactions) {
+      const amount = transaction.quantity * transaction.price_per_unit
+      const fees = transaction.fees || 0
+
+      switch (transaction.type) {
+        case 'buy':
+        case 'deposit':
+          totalInvested += amount + fees
+          currentQuantity += transaction.quantity
+          break
+        case 'sell':
+        case 'withdrawal':
+          totalWithdrawn += amount - fees
+          currentQuantity -= transaction.quantity
+          break
+        // Dividends and bonuses don't affect invested amount or quantity
+      }
+    }
+
+    // For closed positions (quantity <= 0), current value should be total withdrawn
+    // This ensures proper total return calculation: (currentValue + totalWithdrawn - totalInvested) / totalInvested
+    const currentValue = currentQuantity <= 0 ? 0 : (lastDataPoint.totalValue || 0)
+
+    return {
+      totalInvested,
+      currentValue,
+      totalWithdrawn
+    }
+  }
+
+  /**
+   * Return empty detailed metrics structure
+   */
+  private getEmptyDetailedMetrics(): DetailedReturnMetrics {
+    const emptyBasic = this.getEmptyMetrics()
+    return {
+      ...emptyBasic,
+      capitalGains: {
+        realized: 0,
+        unrealized: 0,
+        realizedPercentage: 0,
+        unrealizedPercentage: 0,
+        annualizedRate: 0
+      },
+      dividendIncome: {
+        total: 0,
+        percentage: 0,
+        annualizedYield: 0
+      },
+      realizedVsUnrealized: {
+        totalRealized: 0,
+        totalUnrealized: 0,
+        realizedPercentage: 0,
+        unrealizedPercentage: 0
+      },
+      investmentSummary: {
+        totalInvested: 0,
+        currentValue: 0,
+        totalWithdrawn: 0
+      }
+    }
   }
 
   /**

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { AssetType, Symbol } from '@/lib/supabase/types'
 import { clientAuthService, type AuthUser } from '@/lib/auth/client.auth.service'
-import { portfolioService, type PortfolioData } from '@/lib/services/portfolio.service'
+import { portfolioService, type PortfolioData, type EnhancedPortfolioData } from '@/lib/services/portfolio.service'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import TimeRangeSelector, { type TimeRange } from '@/components/TimeRangeSelector'
 import PortfolioRepartitionChart from '@/components/charts/PortfolioRepartitionChart'
@@ -15,6 +15,7 @@ import DemoModeBanner from '@/components/DemoModeBanner'
 import CurrencySelector from '@/components/CurrencySelector'
 import MultiBulkImportModal from '@/components/MultiBulkImportModal'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
+import EnhancedPortfolioOverview from '@/components/EnhancedPortfolioOverview'
 
 interface DashboardProps {
   user: AuthUser
@@ -25,6 +26,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [dataLoading, setDataLoading] = useState(true)
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('all')
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null)
+  const [enhancedPortfolioData, setEnhancedPortfolioData] = useState<EnhancedPortfolioData | null>(null)
   const [symbols, setSymbols] = useState<Symbol[]>([])
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
   const [repartitionData, setRepartitionData] = useState<Array<{ assetType: string; value: number; percentage: number }>>([])
@@ -45,14 +47,16 @@ export default function Dashboard({ user }: DashboardProps) {
         setDataLoading(true)
         console.log('📊 Loading portfolio data for user:', user.email)
         
-        const [portfolio, symbolsData, historical, repartition] = await Promise.all([
+        const [portfolio, enhancedPortfolio, symbolsData, historical, repartition] = await Promise.all([
           portfolioService.getPortfolioData(user, selectedCurrency),
+          portfolioService.getEnhancedPortfolioData(user, selectedCurrency),
           portfolioService.getSymbols(user),
           portfolioService.getPortfolioHistoricalData(user, selectedCurrency),
           portfolioService.getPortfolioRepartitionData(user, selectedCurrency)
         ])
 
         setPortfolioData(portfolio)
+        setEnhancedPortfolioData(enhancedPortfolio)
         setSymbols(symbolsData)
         setHistoricalData(historical)
         setRepartitionData(repartition)
@@ -62,6 +66,12 @@ export default function Dashboard({ user }: DashboardProps) {
         console.error('❌ Error loading portfolio data:', error)
         // Fallback to empty data
         setPortfolioData({
+          totalValue: 0,
+          totalCostBasis: 0,
+          positions: [],
+          totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
+        })
+        setEnhancedPortfolioData({
           totalValue: 0,
           totalCostBasis: 0,
           positions: [],
@@ -147,13 +157,15 @@ export default function Dashboard({ user }: DashboardProps) {
       setDataLoading(true)
       console.log('💱 Reloading portfolio data for currency:', newCurrency)
       
-      const [portfolio, historical, repartition] = await Promise.all([
+      const [portfolio, enhancedPortfolio, historical, repartition] = await Promise.all([
         portfolioService.getPortfolioData(user, newCurrency),
+        portfolioService.getEnhancedPortfolioData(user, newCurrency),
         portfolioService.getPortfolioHistoricalData(user, newCurrency),
         portfolioService.getPortfolioRepartitionData(user, newCurrency)
       ])
 
       setPortfolioData(portfolio)
+      setEnhancedPortfolioData(enhancedPortfolio)
       setHistoricalData(historical)
       setRepartitionData(repartition)
       
@@ -248,97 +260,109 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
         </div>
         {/* Portfolio Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Portfolio Value */}
-          <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="text-2xl">💰</div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Portfolio</dt>
-                    <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(portfolioData.totalValue)}
-                    </dd>
-                  </dl>
+        {enhancedPortfolioData?.detailedReturns ? (
+          <div className="mb-8">
+            <EnhancedPortfolioOverview
+              detailedReturns={enhancedPortfolioData.detailedReturns}
+              totalValue={enhancedPortfolioData.totalValue}
+              totalCostBasis={enhancedPortfolioData.totalCostBasis}
+              selectedCurrency={selectedCurrency}
+            />
+          </div>
+        ) : (
+          /* Fallback to basic overview if detailed returns not available */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Total Portfolio Value */}
+            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="text-2xl">💰</div>
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Portfolio</dt>
+                      <dd className="text-lg font-medium text-gray-900 dark:text-white">
+                        {formatCurrency(portfolioData.totalValue)}
+                      </dd>
+                    </dl>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Total Cost Basis */}
-          <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="text-2xl">💵</div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Cost Basis</dt>
-                    <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(portfolioData.totalCostBasis)}
-                    </dd>
-                  </dl>
+            {/* Total Cost Basis */}
+            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="text-2xl">💵</div>
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Cost Basis</dt>
+                      <dd className="text-lg font-medium text-gray-900 dark:text-white">
+                        {formatCurrency(portfolioData.totalCostBasis)}
+                      </dd>
+                    </dl>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Total P&L */}
-          <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="text-2xl">🎯</div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total P&L</dt>
-                    <dd className={`text-lg font-medium ${getPnLColor(portfolioData.totalPnL.total)}`}>
-                      {formatCurrency(portfolioData.totalPnL.total)}
-                    </dd>
-                    <dd className={`text-xs ${getPnLColor(portfolioData.totalPnL.totalPercentage)} mt-1`}>
-                      {formatPercent(portfolioData.totalPnL.totalPercentage)}
-                    </dd>
-                  </dl>
+            {/* Total P&L */}
+            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="text-2xl">🎯</div>
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total P&L</dt>
+                      <dd className={`text-lg font-medium ${getPnLColor(portfolioData.totalPnL.total)}`}>
+                        {formatCurrency(portfolioData.totalPnL.total)}
+                      </dd>
+                      <dd className={`text-xs ${getPnLColor(portfolioData.totalPnL.totalPercentage)} mt-1`}>
+                        {formatPercent(portfolioData.totalPnL.totalPercentage)}
+                      </dd>
+                    </dl>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Annualized Return */}
-          <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="text-2xl">📈</div>
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
-                    <dd className={`text-lg font-medium ${portfolioData.annualizedReturns ? getPnLColor(portfolioData.annualizedReturns.timeWeightedReturn) : 'text-gray-600 dark:text-gray-400'}`}>
-                      {portfolioData.annualizedReturns ? 
-                        `${formatPercent(portfolioData.annualizedReturns.timeWeightedReturn)}` :
-                        'Calculating...'
-                      }
-                    </dd>
-                    {portfolioData.annualizedReturns && portfolioData.annualizedReturns.periodYears > 0 && (
-                      <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {portfolioData.annualizedReturns.periodYears < 1 ? 
-                          `${Math.round(portfolioData.annualizedReturns.periodYears * 365)} days` :
-                          `${portfolioData.annualizedReturns.periodYears.toFixed(1)} years`
+            {/* Annualized Return */}
+            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
+              <div className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="text-2xl">📈</div>
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
+                      <dd className={`text-lg font-medium ${portfolioData.annualizedReturns ? getPnLColor(portfolioData.annualizedReturns.timeWeightedReturn) : 'text-gray-600 dark:text-gray-400'}`}>
+                        {portfolioData.annualizedReturns ?
+                          `${formatPercent(portfolioData.annualizedReturns.timeWeightedReturn)}` :
+                          'Calculating...'
                         }
                       </dd>
-                    )}
-                  </dl>
+                      {portfolioData.annualizedReturns && portfolioData.annualizedReturns.periodYears > 0 && (
+                        <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {portfolioData.annualizedReturns.periodYears < 1 ?
+                            `${Math.round(portfolioData.annualizedReturns.periodYears * 365)} days` :
+                            `${portfolioData.annualizedReturns.periodYears.toFixed(1)} years`
+                          }
+                        </dd>
+                      )}
+                    </dl>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Charts Section */}
         <div className="mb-8 space-y-8">

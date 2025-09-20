@@ -15,6 +15,7 @@ import ConfirmDialog from './ConfirmDialog'
 import PriceManagement from './PriceManagement'
 import TransactionManagement from './TransactionManagement'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
+import DetailedHoldingReturns from './DetailedHoldingReturns'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -445,6 +446,16 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Detailed Return Analysis */}
+        <div className="mb-8">
+          <DetailedHoldingReturns
+            user={user}
+            symbol={symbol}
+            selectedCurrency={selectedCurrency}
+            timeRange={timeRange}
+          />
         </div>
 
         {/* Value Evolution Chart */}

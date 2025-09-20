@@ -6,10 +6,10 @@ import { unifiedCalculationService, type PortfolioPosition } from './unified-cal
 import { historicalDataService } from './historical-data.service'
 import { transactionService } from './transaction.service'
 import { currencyService, type SupportedCurrency } from './currency.service'
-import { returnCalculationService, type AnnualizedReturnMetrics } from './return-calculation.service'
+import { returnCalculationService, type AnnualizedReturnMetrics, type DetailedReturnMetrics } from './return-calculation.service'
 
 // Re-export types for external components
-export type { PortfolioPosition, AnnualizedReturnMetrics }
+export type { PortfolioPosition, AnnualizedReturnMetrics, DetailedReturnMetrics }
 
 export interface PortfolioData {
   totalValue: number
@@ -22,6 +22,10 @@ export interface PortfolioData {
     totalPercentage: number
   }
   annualizedReturns?: AnnualizedReturnMetrics
+}
+
+export interface EnhancedPortfolioData extends Omit<PortfolioData, 'annualizedReturns'> {
+  detailedReturns?: DetailedReturnMetrics
 }
 
 /**
@@ -70,6 +74,7 @@ export class PortfolioService {
 
       // Calculate annualized returns if we have sufficient data
       let annualizedReturns: AnnualizedReturnMetrics | undefined
+      let realizedPnL = 0
       try {
         const historicalData = await historicalDataService.buildHistoricalData(user, transactions, symbols, targetCurrency)
         if (historicalData.length >= 2) {
@@ -78,6 +83,14 @@ export class PortfolioService {
             historicalData,
             symbols
           )
+
+          // Calculate realized P&L from detailed metrics for a quick extraction
+          const detailedMetrics = returnCalculationService.calculateDetailedReturns(
+            transactions,
+            historicalData,
+            symbols
+          )
+          realizedPnL = detailedMetrics.realizedVsUnrealized.totalRealized
         }
       } catch (error) {
         console.warn('Could not calculate annualized returns:', error)
@@ -88,15 +101,73 @@ export class PortfolioService {
         totalCostBasis,
         positions: positions,
         totalPnL: {
-          realized: 0, // TODO: Calculate from sell transactions
+          realized: realizedPnL,
           unrealized: totalUnrealizedPnL,
-          total: totalUnrealizedPnL,
+          total: totalUnrealizedPnL + realizedPnL,
           totalPercentage
         },
         annualizedReturns
       }
     } catch (error) {
       return this.handleError('fetching portfolio data', error, this.getEmptyPortfolio())
+    }
+  }
+
+  async getEnhancedPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD'): Promise<EnhancedPortfolioData> {
+    console.log('🔄 Fetching enhanced portfolio data with detailed returns for user:', user.email)
+
+    try {
+      // Fetch transactions and symbols using transaction service
+      const transactions = await transactionService.getTransactions(user)
+      const symbols = await transactionService.getSymbols(user)
+
+      if (transactions.length === 0) {
+        console.log('📈 No transactions found for user, returning empty portfolio')
+        return this.getEmptyEnhancedPortfolio()
+      }
+
+      // Calculate positions using unified calculation service (already in target currency)
+      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency)
+
+      // Calculate totals in target currency (no additional conversion needed)
+      const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
+      const totalCostBasis = positions.reduce((sum, pos) => sum + (pos.quantity * pos.avgCost), 0)
+      const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
+
+      // Calculate total percentage P&L
+      const totalPercentage = totalCostBasis > 0 ? (totalUnrealizedPnL / totalCostBasis) * 100 : 0
+
+      // Calculate detailed returns if we have sufficient data
+      let detailedReturns: DetailedReturnMetrics | undefined
+      try {
+        const historicalData = await historicalDataService.buildHistoricalData(user, transactions, symbols, targetCurrency)
+        if (historicalData.length >= 2) {
+          detailedReturns = returnCalculationService.calculateDetailedReturns(
+            transactions,
+            historicalData,
+            symbols
+          )
+        }
+      } catch (error) {
+        console.warn('Could not calculate detailed returns:', error)
+      }
+
+      const realizedPnL = detailedReturns?.realizedVsUnrealized.totalRealized || 0
+
+      return {
+        totalValue,
+        totalCostBasis,
+        positions: positions,
+        totalPnL: {
+          realized: realizedPnL,
+          unrealized: totalUnrealizedPnL,
+          total: totalUnrealizedPnL + realizedPnL,
+          totalPercentage
+        },
+        detailedReturns
+      }
+    } catch (error) {
+      return this.handleError('fetching enhanced portfolio data', error, this.getEmptyEnhancedPortfolio())
     }
   }
 
@@ -205,10 +276,84 @@ export class PortfolioService {
     }
   }
 
-  async getPortfolioRepartitionData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', date?: string): Promise<Array<{ 
-    assetType: string; 
-    value: number; 
-    percentage: number 
+  async getHoldingDetailedReturns(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<DetailedReturnMetrics | null> {
+    try {
+      console.log('📊 Calculating detailed returns for holding:', symbol)
+
+      // Get data specific to this holding
+      const [transactions, symbols, historicalData] = await Promise.all([
+        transactionService.getHoldingTransactions(user, symbol),
+        transactionService.getSymbols(user),
+        this.getHoldingHistoricalData(user, symbol, targetCurrency)
+      ])
+
+      if (transactions.length === 0 || historicalData.length < 2) {
+        console.log('📊 Insufficient data for detailed return calculation')
+        return null
+      }
+
+      // Apply time range filter if specified
+      let startDate: string | undefined
+      if (timeRange && timeRange !== 'all') {
+        const now = new Date()
+        let filterStartDate: Date
+
+        switch (timeRange) {
+          case '5d':
+            filterStartDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
+            break
+          case '1m':
+            filterStartDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            break
+          case '6m':
+            filterStartDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000)
+            break
+          case 'ytd':
+            filterStartDate = new Date(now.getFullYear(), 0, 1)
+            break
+          case '1y':
+            filterStartDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+            break
+          case '5y':
+            filterStartDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000)
+            break
+          default:
+            filterStartDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000)
+        }
+
+        startDate = filterStartDate.toISOString().split('T')[0]
+      }
+
+      const options = {
+        startDate,
+        includeDetailed: true
+      }
+
+      const detailedReturns = returnCalculationService.calculateDetailedReturns(
+        transactions,
+        historicalData,
+        symbols,
+        options
+      )
+
+      console.log('📊 Calculated detailed returns for', symbol, ':', {
+        capitalGains: detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized,
+        dividends: detailedReturns.dividendIncome.total,
+        realized: detailedReturns.realizedVsUnrealized.totalRealized,
+        unrealized: detailedReturns.realizedVsUnrealized.totalUnrealized
+      })
+
+      return detailedReturns
+    } catch (error) {
+      console.error('❌ Error calculating holding detailed returns:', error)
+      return null
+    }
+  }
+
+  async getPortfolioRepartitionData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', date?: string): Promise<Array<{
+    assetType: string;
+    value: number;
+    percentage: number
   }>> {
     try {
       console.log('📊 Getting portfolio repartition data for user:', user.email, 'date:', date || 'current')
@@ -250,6 +395,15 @@ export class PortfolioService {
   }
 
   private getEmptyPortfolio(): PortfolioData {
+    return {
+      totalValue: 0,
+      totalCostBasis: 0,
+      positions: [],
+      totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
+    }
+  }
+
+  private getEmptyEnhancedPortfolio(): EnhancedPortfolioData {
     return {
       totalValue: 0,
       totalCostBasis: 0,

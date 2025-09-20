@@ -9,6 +9,7 @@ Mark done item with ✅
 - [ ] Delete holding / price / tx buttons should be red / danger
 - [ ] Portfolio P&L and Annualized Returns should show value depending on selected timeframe
 - [ ] Hardcoded list of brokers to pick from
+- [ ] Portfolio export / backup
 
 ## TODO P2
 - [ ] Allow Bonus with price 0
@@ -22,8 +23,6 @@ Mark done item with ✅
 - [ ] Add cursor: pointer; hover on all buttons
 - [ ] Allow to right click -> open in a new tab holding detail pages on homepage
 - [ ] Toggle / switch component 
-- [ ] Portfolio export to CSV
-- [ ] Portfolio backup
 - [ ] Live price Updates using Yahoo Finance API
 - [ ] Some way to see performance per period bucket (eg: ALL shows perf of 2024, 2025, etc..)
 - [ ] Better Support for cash positions
