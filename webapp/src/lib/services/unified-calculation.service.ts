@@ -178,6 +178,18 @@ export class UnifiedCalculationService {
       let totalCostBasis = 0
       let validPriceCount = 0
 
+      // Track converted values per position to handle multi-currency portfolios correctly
+      let convertedTotalValue = 0
+      let convertedTargetSymbolValue = 0
+      const convertedAssetTypeValues: Record<string, number> = {
+        stock: 0,
+        crypto: 0,
+        real_estate: 0,
+        cash: 0,
+        currency: 0,
+        other: 0
+      }
+
       for (const position of positions) {
         const symbolPriceMap = priceMapCache.get(position.symbol)
         const historicalPrice = await this.getUnifiedHistoricalPrice(
@@ -194,17 +206,42 @@ export class UnifiedCalculationService {
         if (historicalPrice !== null) {
           validPriceCount++
           const positionValue = position.quantity * historicalPrice
-          totalValue += positionValue
+          
+          // Get symbol currency and convert to target currency
+          const symbolData = symbols.find(s => s.symbol === position.symbol)
+          const symbolCurrency = symbolData?.currency
+          
+          // Add console warning for implicit USD fallback
+          if (!symbolCurrency) {
+            console.warn(`⚠️  Symbol ${position.symbol} has no currency specified, implicitly treating as USD`)
+          }
+          
+          const fromCurrency = (symbolCurrency || 'USD') as SupportedCurrency
+          
+          let convertedPositionValue = positionValue
+          if (fromCurrency !== targetCurrency) {
+            try {
+              const conversionRate = await currencyService.getExchangeRate(fromCurrency, targetCurrency, user, symbols, currentDate)
+              convertedPositionValue = positionValue * conversionRate
+            } catch (error) {
+              console.warn(`Failed to get exchange rate from ${fromCurrency} to ${targetCurrency} on ${currentDate}, using rate 1:`, error)
+              convertedPositionValue = positionValue
+            }
+          }
+
+          totalValue += positionValue  // Keep for allocation calculations (in original currencies)
+          convertedTotalValue += convertedPositionValue
 
           // Track target symbol value separately
           if (targetSymbol && position.symbol === targetSymbol) {
-            targetSymbolValue = positionValue
+            targetSymbolValue = positionValue // Original currency for allocation calculation
+            convertedTargetSymbolValue = convertedPositionValue
           }
 
-          // Add to asset type allocation
-          const symbolData = symbols.find(s => s.symbol === position.symbol)
+          // Add to asset type allocation (use converted values)
           const assetType = symbolData?.asset_type || 'other'
-          assetTypeValues[assetType] += positionValue
+          assetTypeValues[assetType] += positionValue // For allocation % calculation
+          convertedAssetTypeValues[assetType] += convertedPositionValue
         }
         // If no price found, the position still contributes to cost basis
         // but contributes zero to market value - this shows realistic P&L
@@ -215,25 +252,35 @@ export class UnifiedCalculationService {
         continue
       }
 
-
-      // Apply currency conversion if requested
-      let conversionRate = 1
-      if (targetCurrency !== 'USD') {
-        try {
-          conversionRate = await currencyService.getExchangeRate('USD', targetCurrency, user, symbols, currentDate)
-        } catch (error) {
-          console.warn(`Failed to get exchange rate for ${targetCurrency} on ${currentDate}, using rate 1:`, error)
-          conversionRate = 1
-        }
-      }
+      // Convert cost basis using symbol currency (not transaction currency)
+      // Note: We use symbol.currency instead of transaction.currency for simplicity.
+      // This assumes all transactions for a symbol are in the symbol's base currency,
+      // which is the most common case and avoids complex per-transaction currency tracking.
+      let convertedCostBasis = 0
       
-      const convertedTotalValue = totalValue * conversionRate
-      const convertedCostBasis = totalCostBasis * conversionRate
-
-      // Convert asset type values
-      const convertedAssetTypeValues: Record<string, number> = {}
-      for (const [assetType, value] of Object.entries(assetTypeValues)) {
-        convertedAssetTypeValues[assetType] = value * conversionRate
+      for (const position of positions) {
+        const symbolData = symbols.find(s => s.symbol === position.symbol)
+        const symbolCurrency = symbolData?.currency
+        
+        // Add console warning for implicit USD fallback on cost basis
+        if (!symbolCurrency) {
+          console.warn(`⚠️  Cost basis for symbol ${position.symbol} has no currency specified, implicitly treating as USD`)
+        }
+        
+        const fromCurrency = (symbolCurrency || 'USD') as SupportedCurrency
+        
+        let convertedPositionCostBasis = position.totalCost
+        if (fromCurrency !== targetCurrency) {
+          try {
+            const costBasisConversionRate = await currencyService.getExchangeRate(fromCurrency, targetCurrency, user, symbols, currentDate)
+            convertedPositionCostBasis = position.totalCost * costBasisConversionRate
+          } catch (error) {
+            console.warn(`Failed to convert cost basis from ${fromCurrency} to ${targetCurrency} for ${position.symbol} on ${currentDate}, using rate 1:`, error)
+            convertedPositionCostBasis = position.totalCost
+          }
+        }
+        
+        convertedCostBasis += convertedPositionCostBasis
       }
 
       // Calculate allocations
@@ -255,16 +302,15 @@ export class UnifiedCalculationService {
         })
         assetTypeAllocations[assetType] = 100
 
-        // Reset values to only this asset type using the individual holding value
-        const convertedTargetValue = targetSymbolValue * conversionRate
+        // Reset values to only this asset type using the converted holding value
         Object.keys(convertedAssetTypeValues).forEach(key => {
           convertedAssetTypeValues[key] = 0
         })
-        convertedAssetTypeValues[assetType] = convertedTargetValue
+        convertedAssetTypeValues[assetType] = convertedTargetSymbolValue
       }
 
       // For single holdings, use the individual holding value instead of total portfolio value
-      const finalTotalValue = targetSymbol ? targetSymbolValue * conversionRate : convertedTotalValue
+      const finalTotalValue = targetSymbol ? convertedTargetSymbolValue : convertedTotalValue
       
       historicalData.push({
         date: currentDate,

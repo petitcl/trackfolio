@@ -26,6 +26,9 @@
 - [ ] Live price Updates using Yahoo Finance API
 - [ ] Some way to see performance per period bucket (eg: ALL shows perf of 2024, 2025, etc..)
 - [ ] Better Support for cash positions
+- [ ] Allow to edit custom holding details
+- [ ] Responsive design improvements - don't show chart legend on mobile / small screens
+- [ ] Responsive design improvements - more
 
 ## TODO P3
 - [ ] Automatic Database Backups
