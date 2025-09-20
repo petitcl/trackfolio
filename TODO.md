@@ -1,5 +1,5 @@
 # Trackfolio Todo List
-
+Mark done item with ✅
 
 ## TODO P1
 - ✅ Multi transaction CSV import functionality from home page

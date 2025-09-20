@@ -14,6 +14,7 @@ export interface ParsedTransaction {
   currency: string
   broker: string | null
   notes: string | null
+  amount?: number // For bonus transactions
 }
 
 export const transactionImportConfig = (symbol: string): CsvImportConfig<ParsedTransaction> => ({
@@ -23,29 +24,35 @@ export const transactionImportConfig = (symbol: string): CsvImportConfig<ParsedT
     { key: 'symbol', label: 'Symbol', required: true },
     { key: 'type', label: 'Type', required: true, description: 'buy, sell, dividend, bonus, deposit, withdrawal' },
     { key: 'quantity', label: 'Quantity', required: true },
-    { key: 'price_per_unit', label: 'Price per Unit', required: true },
+    { key: 'price_per_unit', label: 'Price per Unit', required: false, description: 'Not needed for bonus transactions if amount is provided' },
+    { key: 'amount', label: 'Amount', required: false, description: 'Total amount for bonus transactions (replaces price_per_unit * quantity)' },
     { key: 'date', label: 'Date', required: true, description: 'YYYY-MM-DD format' },
     { key: 'fees', label: 'Fees', required: false },
     { key: 'currency', label: 'Currency', required: false, description: 'defaults to USD' },
     { key: 'broker', label: 'Broker', required: false },
     { key: 'notes', label: 'Notes', required: false }
   ],
-  sampleData: `symbol,type,quantity,price_per_unit,date,fees,currency,broker,notes
-${symbol},buy,100,50.00,2024-01-15,9.99,USD,Interactive Brokers,Initial purchase
-${symbol},buy,50,52.50,2024-02-20,9.99,USD,Interactive Brokers,Additional shares
-${symbol},sell,25,55.00,2024-03-10,9.99,USD,Interactive Brokers,Partial sale`,
+  sampleData: `symbol,type,quantity,price_per_unit,amount,date,fees,currency,broker,notes
+${symbol},buy,100,50.00,,2024-01-15,9.99,USD,Interactive Brokers,Initial purchase
+${symbol},buy,50,52.50,,2024-02-20,9.99,USD,Interactive Brokers,Additional shares
+${symbol},bonus,2,,100.00,2024-02-25,0,USD,Interactive Brokers,Bonus shares
+${symbol},sell,25,55.00,,2024-03-10,9.99,USD,Interactive Brokers,Partial sale`,
   parseRow: (values: string[], header: string[]): ParsedTransaction | null => {
     try {
+      const amountValue = values[header.indexOf('amount')] || ''
+      const pricePerUnitValue = values[header.indexOf('price_per_unit')] || ''
+      
       return {
         symbol: values[header.indexOf('symbol')] || symbol,
         type: values[header.indexOf('type')] as Database["public"]["Enums"]["transaction_type"],
         quantity: parseFloat(values[header.indexOf('quantity')]),
-        price_per_unit: parseFloat(values[header.indexOf('price_per_unit')]),
+        price_per_unit: pricePerUnitValue ? parseFloat(pricePerUnitValue) : 0,
         date: values[header.indexOf('date')],
         fees: parseFloat(values[header.indexOf('fees')] || '0'),
         currency: values[header.indexOf('currency')] || 'USD',
         broker: values[header.indexOf('broker')] || null,
-        notes: values[header.indexOf('notes')] || null
+        notes: values[header.indexOf('notes')] || null,
+        amount: amountValue ? parseFloat(amountValue) : undefined
       }
     } catch {
       return null
@@ -58,11 +65,26 @@ ${symbol},sell,25,55.00,2024-03-10,9.99,USD,Interactive Brokers,Partial sale`,
     if (!['buy', 'sell', 'dividend', 'bonus', 'deposit', 'withdrawal'].includes(row.type)) {
       return `Row ${index}: Invalid transaction type "${row.type}"`
     }
-    if (isNaN(row.quantity) || row.quantity <= 0) {
-      return `Row ${index}: Quantity must be a positive number`
+    if (isNaN(row.quantity) || (row.quantity <= 0 && row.type !== 'dividend')) {
+      return `Row ${index}: Quantity must be a positive number (except for dividend transactions)`
     }
-    if (isNaN(row.price_per_unit) || row.price_per_unit <= 0) {
-      return `Row ${index}: Price per unit must be a positive number`
+    
+    // For bonus transactions, allow either price_per_unit OR amount
+    if (row.type === 'bonus') {
+      if ((!row.amount || isNaN(row.amount) || row.amount <= 0) && 
+          (isNaN(row.price_per_unit) || row.price_per_unit <= 0)) {
+        return `Row ${index}: Bonus transactions require either a positive amount or positive price_per_unit`
+      }
+    } else if (row.type === 'dividend') {
+      // For dividends, price_per_unit can be 0 when quantity is 0 (cash dividends)
+      if (isNaN(row.price_per_unit) || row.price_per_unit < 0) {
+        return `Row ${index}: Price per unit must be a non-negative number for dividend transactions`
+      }
+    } else {
+      // For other transactions, require positive price_per_unit
+      if (isNaN(row.price_per_unit) || row.price_per_unit <= 0) {
+        return `Row ${index}: Price per unit must be a positive number`
+      }
     }
     if (!row.date || isNaN(new Date(row.date).getTime())) {
       return `Row ${index}: Invalid date format`
@@ -75,11 +97,17 @@ ${symbol},sell,25,55.00,2024-03-10,9.99,USD,Interactive Brokers,Partial sale`,
 
     for (const row of rows) {
       try {
+        // For bonus transactions with amount field, calculate price_per_unit
+        let pricePerUnit = row.price_per_unit;
+        if (row.type === 'bonus' && row.amount && row.quantity > 0) {
+          pricePerUnit = row.amount / row.quantity;
+        }
+        
         const result = await portfolioService.addTransactionForUser(user, {
           symbol: row.symbol,
           type: row.type,
           quantity: row.quantity,
-          pricePerUnit: row.price_per_unit,
+          pricePerUnit: pricePerUnit,
           date: row.date,
           fees: row.fees,
           currency: row.currency,
@@ -179,6 +207,7 @@ export interface ParsedMultiTransaction {
   currency: string
   broker: string | null
   notes: string | null
+  amount?: number // For bonus transactions
 }
 
 export const multiBulkTransactionImportConfig: CsvImportConfig<ParsedMultiTransaction> = {
@@ -191,32 +220,38 @@ export const multiBulkTransactionImportConfig: CsvImportConfig<ParsedMultiTransa
     { key: 'date', label: 'Date', required: true, description: 'YYYY-MM-DD format' },
     { key: 'quantity', label: 'Quantity', required: true },
     { key: 'fees', label: 'Fees', required: false },
-    { key: 'price_per_unit', label: 'Price per Unit', required: true },
+    { key: 'price_per_unit', label: 'Price per Unit', required: false, description: 'Not needed for bonus transactions if amount is provided' },
+    { key: 'amount', label: 'Amount', required: false, description: 'Total amount for bonus transactions (replaces price_per_unit * quantity)' },
     { key: 'currency', label: 'Currency', required: false, description: 'defaults to USD' },
     { key: 'broker', label: 'Broker', required: false },
     { key: 'comments', label: 'Comments', required: false }
   ],
-  sampleData: `symbol,name,type,date,quantity,fees,price_per_unit,currency,broker,comments
-AAPL,Apple Inc,buy,2024-01-15,100,9.99,150.00,USD,Interactive Brokers,Initial purchase
-MSFT,Microsoft Corp,buy,2024-01-20,50,9.99,300.00,USD,Interactive Brokers,Tech position
-AAPL,Apple Inc,sell,2024-02-10,25,9.99,160.00,USD,Interactive Brokers,Partial sale
-BTC,Bitcoin,buy,2024-01-25,0.5,25.00,42000.00,USD,Coinbase,Crypto allocation`,
+  sampleData: `symbol,name,type,date,quantity,fees,price_per_unit,amount,currency,broker,comments
+AAPL,Apple Inc,buy,2024-01-15,100,9.99,150.00,,USD,Interactive Brokers,Initial purchase
+MSFT,Microsoft Corp,buy,2024-01-20,50,9.99,300.00,,USD,Interactive Brokers,Tech position
+AAPL,Apple Inc,bonus,2024-01-25,5,0,,750.00,USD,Interactive Brokers,Bonus shares
+AAPL,Apple Inc,sell,2024-02-10,25,9.99,160.00,,USD,Interactive Brokers,Partial sale
+BTC,Bitcoin,buy,2024-01-25,0.5,25.00,42000.00,,USD,Coinbase,Crypto allocation`,
   parseRow: (values: string[], header: string[]): ParsedMultiTransaction | null => {
     try {
       // Handle price_per_unit with potential comma formatting (e.g., "14,300.00")
       const priceValue = values[header.indexOf('price_per_unit')] || '0'
       const cleanedPrice = priceValue.replace(/"/g, '').replace(/,/g, '')
       
+      // Handle amount field
+      const amountValue = values[header.indexOf('amount')] || ''
+      
       return {
         symbol: values[header.indexOf('symbol')],
         type: values[header.indexOf('type')] as Database["public"]["Enums"]["transaction_type"],
         quantity: parseFloat(values[header.indexOf('quantity')]),
-        price_per_unit: parseFloat(cleanedPrice),
+        price_per_unit: cleanedPrice ? parseFloat(cleanedPrice) : 0,
         date: values[header.indexOf('date')],
         fees: parseFloat(values[header.indexOf('fees')] || '0'),
         currency: values[header.indexOf('currency')] || 'USD',
         broker: values[header.indexOf('broker')] || null,
-        notes: values[header.indexOf('comments')] || null
+        notes: values[header.indexOf('comments')] || null,
+        amount: amountValue ? parseFloat(amountValue.replace(/"/g, '').replace(/,/g, '')) : undefined
       }
     } catch {
       return null
@@ -229,11 +264,26 @@ BTC,Bitcoin,buy,2024-01-25,0.5,25.00,42000.00,USD,Coinbase,Crypto allocation`,
     if (!['buy', 'sell', 'dividend', 'bonus', 'deposit', 'withdrawal'].includes(row.type)) {
       return `Row ${index}: Invalid transaction type "${row.type}"`
     }
-    if (isNaN(row.quantity) || row.quantity === 0) {
-      return `Row ${index}: Quantity must be a non-zero number`
+    if (isNaN(row.quantity) || (row.quantity === 0 && row.type !== 'dividend')) {
+      return `Row ${index}: Quantity must be a non-zero number (except for dividend transactions)`
     }
-    if (isNaN(row.price_per_unit) || row.price_per_unit < 0) {
-      return `Row ${index}: Price per unit must be a non-negative number`
+    
+    // For bonus transactions, allow either price_per_unit OR amount
+    if (row.type === 'bonus') {
+      if ((!row.amount || isNaN(row.amount) || row.amount <= 0) && 
+          (isNaN(row.price_per_unit) || row.price_per_unit <= 0)) {
+        return `Row ${index}: Bonus transactions require either a positive amount or positive price_per_unit`
+      }
+    } else if (row.type === 'dividend') {
+      // For dividends, price_per_unit can be 0 when quantity is 0 (cash dividends)
+      if (isNaN(row.price_per_unit) || row.price_per_unit < 0) {
+        return `Row ${index}: Price per unit must be a non-negative number for dividend transactions`
+      }
+    } else {
+      // For other transactions, require positive price_per_unit
+      if (isNaN(row.price_per_unit) || row.price_per_unit <= 0) {
+        return `Row ${index}: Price per unit must be a positive number`
+      }
     }
     if (!row.date || isNaN(new Date(row.date).getTime())) {
       return `Row ${index}: Invalid date format (use YYYY-MM-DD)`
@@ -267,11 +317,17 @@ BTC,Bitcoin,buy,2024-01-25,0.5,25.00,42000.00,USD,Coinbase,Crypto allocation`,
     // Import all rows
     for (const [rowIndex, row] of rows.entries()) {
       try {
+        // For bonus transactions with amount field, calculate price_per_unit
+        let pricePerUnit = row.price_per_unit;
+        if (row.type === 'bonus' && row.amount && row.quantity > 0) {
+          pricePerUnit = row.amount / row.quantity;
+        }
+        
         const result = await portfolioService.addTransactionForUser(user, {
           symbol: row.symbol,
           type: row.type,
           quantity: row.quantity,
-          pricePerUnit: row.price_per_unit,
+          pricePerUnit: pricePerUnit,
           date: row.date,
           fees: row.fees,
           currency: row.currency,

@@ -25,6 +25,7 @@ export interface TransactionFormData {
   broker?: string
   currency: string
   notes?: string
+  amount?: number // For bonus transactions
 }
 
 const TRANSACTION_TYPES: { value: TransactionType; label: string; description: string }[] = [
@@ -58,12 +59,20 @@ export default function AddTransactionForm({
       broker: '',
       currency: 'USD',
       notes: '',
+      amount: undefined,
     }
   )
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit(formData)
+    
+    // For bonus transactions with amount field, calculate price_per_unit
+    let submitData = { ...formData }
+    if (formData.type === 'bonus' && formData.amount && formData.quantity > 0) {
+      submitData.pricePerUnit = formData.amount / formData.quantity
+    }
+    
+    onSubmit(submitData)
   }
 
   const handleChange = (field: keyof TransactionFormData, value: string | number) => {
@@ -120,34 +129,50 @@ export default function AddTransactionForm({
             </select>
           </div>
 
-          {/* Quantity and Price per Unit */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Quantity, Price per Unit, and Amount */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Quantity
               </label>
               <input
                 type="number"
-                step="0.0001"
+                step="0.00001"
                 value={formData.quantity || ''}
                 onChange={(e) => handleChange('quantity', parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                required
+                required={formData.type !== 'dividend'}
                 min="0"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Price per Unit
+                {formData.type === 'bonus' && <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">(optional if amount provided)</span>}
               </label>
               <input
                 type="number"
-                step="0.01"
+                step="0.00001"
                 value={formData.pricePerUnit || ''}
                 onChange={(e) => handleChange('pricePerUnit', parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                required
+                required={formData.type !== 'bonus' || (!formData.amount || formData.amount <= 0)}
                 min="0"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Amount
+                {formData.type === 'bonus' && <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">(replaces price × quantity)</span>}
+              </label>
+              <input
+                type="number"
+                step="0.00001"
+                value={formData.amount || ''}
+                onChange={(e) => handleChange('amount', parseFloat(e.target.value) || undefined)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                min="0"
+                placeholder={formData.type === 'bonus' ? 'Total bonus amount' : 'Optional'}
               />
             </div>
           </div>
@@ -172,7 +197,7 @@ export default function AddTransactionForm({
               </label>
               <input
                 type="number"
-                step="0.01"
+                step="0.00001"
                 value={formData.fees || ''}
                 onChange={(e) => handleChange('fees', parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"

@@ -192,9 +192,17 @@ export default function BulkCsvImport<T>({
   const renderPreviewTable = () => {
     if (parsedRows.length === 0) return null
 
-    // Get the first few keys from the first row for table headers
+    // Get important columns, prioritizing key fields including amount
     const sampleRow = parsedRows[0] as any
-    const headers = Object.keys(sampleRow).slice(0, 5) // Show first 5 columns
+    const allKeys = Object.keys(sampleRow)
+    
+    // Prioritize important columns
+    const priorityColumns = ['symbol', 'type', 'quantity', 'price_per_unit', 'amount', 'date']
+    const importantKeys = priorityColumns.filter(key => allKeys.includes(key))
+    const otherKeys = allKeys.filter(key => !priorityColumns.includes(key))
+    
+    // Show priority columns first, then others, limit to 6 total
+    const headers = [...importantKeys, ...otherKeys].slice(0, 6)
 
     return (
       <div>
@@ -217,7 +225,9 @@ export default function BulkCsvImport<T>({
                 <tr key={index}>
                   {headers.map((header) => (
                     <td key={header} className="px-2 py-1 text-gray-900 dark:text-gray-300">
-                      {String((row as any)[header] || '-')}
+                      {(row as any)[header] !== undefined && (row as any)[header] !== null && (row as any)[header] !== '' 
+                        ? String((row as any)[header]) 
+                        : '-'}
                     </td>
                   ))}
                 </tr>
