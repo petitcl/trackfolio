@@ -4,10 +4,14 @@ Mark done item with ✅
 ## TODO P1
 - ✅ Multi transaction CSV import functionality from home page
 - ✅ Multi custom price CSV import functionality from home page
-- [ ] Multi custom holding CSV import functionality from home page
 - ✅ Value Evolution charts takes into account dividends
+- [ ] HoldingDetails - always show Dividends & Capital Gains, regardless if they are 0
+- [ ] HoldingDetails - "Value Evolution" and "Performance Breakdown" show different total price than Current Position => data comes out like this from portfolio service. Current position seems to have the latest, correct amount to show
+- [ ] HoldingDetails - "Performance" should take into account dividends
+- [ ] Return Breakdown on Dashboard - fix Realized Gains vs Unrealized Gains, same for Capital Gains -> showing crazy values
+- [ ] Performance Breakdown on HoldingDetails - always show Dividends & Capital Gains, regardless if they are 0
+- [ ] Multi custom holding CSV import functionality from home page
 - [ ] Delete holding / price / tx buttons should be red / danger
-- [ ] Portfolio P&L and Annualized Returns should show value depending on selected timeframe
 - [ ] Hardcoded list of brokers to pick from
 - [ ] Portfolio export / backup
 
@@ -29,6 +33,7 @@ Mark done item with ✅
 - [ ] Allow to edit custom holding details
 - [ ] Responsive design improvements - don't show chart legend on mobile / small screens
 - [ ] Responsive design improvements - more
+- [ ] Portfolio P&L and Annualized Returns should show value depending on selected timeframe
 
 ## TODO P3
 - [ ] Automatic Database Backups
