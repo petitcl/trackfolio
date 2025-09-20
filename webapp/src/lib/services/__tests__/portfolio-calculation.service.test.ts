@@ -71,7 +71,7 @@ describe('PortfolioCalculationService', () => {
   });
 
   describe('calculatePositionsFromTransactions', () => {
-    it('should handle simple buy transactions', () => {
+    it('should handle simple buy transactions', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -87,7 +87,15 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0]).toEqual({
@@ -102,7 +110,7 @@ describe('PortfolioCalculationService', () => {
       });
     });
 
-    it('should calculate average cost correctly for multiple buy transactions', () => {
+    it('should calculate average cost correctly for multiple buy transactions', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -130,7 +138,15 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(30);
@@ -141,7 +157,7 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].unrealizedPnL).toBeCloseTo(1100.00, 2); // 4500 - 3400
     });
 
-    it('should handle sell transactions correctly', () => {
+    it('should handle sell transactions correctly', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -169,7 +185,15 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(15);
@@ -178,7 +202,7 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].unrealizedPnL).toBe(750.00); // 2250 - (15 * 100)
     });
 
-    it('should remove position when completely sold', () => {
+    it('should remove position when completely sold', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -206,12 +230,20 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(0);
     });
 
-    it('should handle dividend transactions without changing cost basis', () => {
+    it('should handle dividend transactions without changing cost basis', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -239,19 +271,27 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(12);
-      expect(positions[0].avgCost).toBe(100.00); // Cost basis unchanged for original shares
+      expect(positions[0].avgCost).toBeCloseTo(83.33, 2); // Cost basis spread across all shares: $1000/12
       expect(positions[0].value).toBe(1800.00); // 12 * 150
       // P&L calculation: 1800 - (12 * 100) = 1800 - 1200 = 600
       // But since 2 shares were free (dividends), actual cost was only 10 * 100 = 1000
       // So unrealized P&L should be 1800 - 1000 = 800
-      expect(positions[0].unrealizedPnL).toBe(600.00); // Current implementation uses avgCost for all shares
+      expect(positions[0].unrealizedPnL).toBeCloseTo(800.00, 2); // 1800 - 1000 = 800
     });
 
-    it('should handle bonus shares without changing cost basis', () => {
+    it('should handle bonus shares without changing cost basis', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -279,16 +319,24 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(15);
-      expect(positions[0].avgCost).toBe(100.00);
+      expect(positions[0].avgCost).toBeCloseTo(66.67, 2); // $1000/15 shares = $66.67
       expect(positions[0].value).toBe(2250.00); // 15 * 150
-      expect(positions[0].unrealizedPnL).toBe(750.00); // 2250 - (15 * 100)
+      expect(positions[0].unrealizedPnL).toBeCloseTo(1250.00, 2); // 2250 - 1000 = 1250
     });
 
-    it('should handle dividend-only positions (no initial purchase)', () => {
+    it('should handle dividend-only positions (no initial purchase)', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -304,7 +352,15 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(5);
@@ -313,7 +369,7 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].unrealizedPnL).toBe(750.00); // All profit since cost is 0
     });
 
-    it('should handle deposit transactions (cash)', () => {
+    it('should handle deposit transactions (cash)', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -329,7 +385,15 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(1000);
@@ -338,7 +402,7 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].unrealizedPnL).toBe(0.00); // No change for cash
     });
 
-    it('should handle withdrawal transactions (cash)', () => {
+    it('should handle withdrawal transactions (cash)', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -366,7 +430,15 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].quantity).toBe(700);
@@ -375,7 +447,10 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].unrealizedPnL).toBe(0.00);
     });
 
-    it('should handle custom assets correctly', () => {
+    it('should handle custom assets correctly', async () => {
+      // Mock historical price service to return expected custom price
+      jest.spyOn(historicalPriceService, 'getHistoricalPriceForDate').mockResolvedValue(500000.00);
+
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -391,7 +466,15 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       expect(positions[0].symbol).toBe('HOUSE_123');
@@ -401,9 +484,12 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].value).toBe(500000.00);
       expect(positions[0].unrealizedPnL).toBe(100000.00);
       expect(positions[0].isCustom).toBe(true);
+
+      // Clean up mock
+      jest.restoreAllMocks();
     });
 
-    it('should handle mixed asset types in portfolio', () => {
+    it('should handle mixed asset types in portfolio', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -443,7 +529,15 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(3);
 
@@ -463,7 +557,7 @@ describe('PortfolioCalculationService', () => {
       expect(cashPosition?.unrealizedPnL).toBe(0.00);
     });
 
-    it('should handle complex transaction history with multiple operations', () => {
+    it('should handle complex transaction history with multiple operations', async () => {
       const transactions: Transaction[] = [
         // Initial AAPL purchase
         {
@@ -519,7 +613,15 @@ describe('PortfolioCalculationService', () => {
         }
       ];
 
-      const positions = service.calculatePositionsFromTransactions(transactions, mockSymbols);
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, mockSymbols, mockUser);
 
       expect(positions).toHaveLength(1);
       const position = positions[0];
@@ -527,16 +629,19 @@ describe('PortfolioCalculationService', () => {
       expect(position.symbol).toBe('AAPL');
       expect(position.quantity).toBe(24); // 20 + 10 - 8 + 2
 
-      // Average cost calculation: (20 * 90 + 10 * 110) / 30 = (1800 + 1100) / 30 = 96.67
-      expect(position.avgCost).toBeCloseTo(96.67, 2);
+      // Average cost calculation with UnifiedCalculationService:
+      // Buy 1: 20 @ $90 = $1800, Buy 2: 10 @ $110 = $1100, Total: 30 shares @ $96.67 avg
+      // Sell 8: remaining 22 shares, cost = 22 * $96.67 = $2126.67
+      // Dividend +2: 24 shares, $2126.67 cost, avgCost = $88.61
+      expect(position.avgCost).toBeCloseTo(88.61, 2);
       expect(position.currentPrice).toBe(150.00);
       expect(position.value).toBe(3600.00); // 24 * 150
-      expect(position.unrealizedPnL).toBeCloseTo(1280.00, 2); // 3600 - (24 * 96.67)
+      expect(position.unrealizedPnL).toBeCloseTo(1473.33, 2); // 3600 - (24 * 88.61)
     });
   });
 
   describe('calculateCumulativeInvestedForDate', () => {
-    it('should calculate invested amount for buy transactions', () => {
+    it('should calculate invested amount for buy transactions', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -570,7 +675,7 @@ describe('PortfolioCalculationService', () => {
       expect(invested).toBe(1607.50);
     });
 
-    it('should reduce invested amount for sell transactions', () => {
+    it('should reduce invested amount for sell transactions', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -606,7 +711,7 @@ describe('PortfolioCalculationService', () => {
       expect(invested).toBe(1415.00);
     });
 
-    it('should include deposits and exclude withdrawals', () => {
+    it('should include deposits and exclude withdrawals', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -642,7 +747,7 @@ describe('PortfolioCalculationService', () => {
       expect(invested).toBe(800.00);
     });
 
-    it('should exclude dividends and bonuses from invested amount', () => {
+    it('should exclude dividends and bonuses from invested amount', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -688,7 +793,7 @@ describe('PortfolioCalculationService', () => {
       expect(invested).toBe(1000.00);
     });
 
-    it('should filter transactions by date correctly', () => {
+    it('should filter transactions by date correctly', async () => {
       const transactions: Transaction[] = [
         {
           id: 'tx1',
@@ -740,7 +845,10 @@ describe('PortfolioCalculationService', () => {
   });
 
   describe('Currency Conversion and Current Price Bug Fixes', () => {
-    it('should calculate correct position values for EUR custom asset scenario', () => {
+    it('should calculate correct position values for EUR custom asset scenario', async () => {
+      // Mock historical price service to return expected custom price
+      jest.spyOn(historicalPriceService, 'getHistoricalPriceForDate').mockResolvedValue(1024.885);
+
       // Test data based on a real bug where EUR custom asset showed incorrect values
       const symbols: Symbol[] = [
         {
@@ -775,7 +883,14 @@ describe('PortfolioCalculationService', () => {
       ]
 
       // Calculate positions
-      const positions = service.calculatePositionsFromTransactions(transactions, symbols)
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, symbols, mockUser, 'EUR')
       const position = positions.find(p => p.symbol === 'CUSTOM_EUR_ASSET')
 
       expect(position).toBeDefined()
@@ -800,9 +915,15 @@ describe('PortfolioCalculationService', () => {
         expect(position.value).not.toBe(741.059) // Anonymized version of 7410.59
         expect(position.quantity * position.avgCost).not.toBe(741.059)
       }
+
+      // Clean up mock
+      jest.restoreAllMocks();
     })
 
-    it('should handle currency conversion correctly', () => {
+    it('should handle currency conversion correctly', async () => {
+      // Mock historical price service to return expected custom price
+      jest.spyOn(historicalPriceService, 'getHistoricalPriceForDate').mockResolvedValue(1024.885);
+
       // Test if the issue might be related to currency conversion
       // The user is viewing in EUR, symbol is in EUR, so no conversion should occur
 
@@ -838,7 +959,14 @@ describe('PortfolioCalculationService', () => {
         }
       ]
 
-      const positions = service.calculatePositionsFromTransactions(transactions, symbols)
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, symbols, mockUser, 'EUR')
       const position = positions.find(p => p.symbol === 'CUSTOM_EUR_ASSET')
 
       expect(position).toBeDefined()
@@ -866,9 +994,15 @@ describe('PortfolioCalculationService', () => {
         // So it's incorrectly converting EUR -> EUR using USD as intermediary:
         // EUR value * (1/EURUSD_rate) ≈ EUR_value * 0.85 ≈ 741.059
       }
+
+      // Clean up mock
+      jest.restoreAllMocks();
     })
 
-    it('should handle multiple transactions correctly', () => {
+    it('should handle multiple transactions correctly', async () => {
+      // Mock historical price service to return expected custom price
+      jest.spyOn(historicalPriceService, 'getHistoricalPriceForDate').mockResolvedValue(1024.885);
+
       // Test edge case: multiple transactions that might cause averaging issues
       const symbols: Symbol[] = [
         {
@@ -919,7 +1053,14 @@ describe('PortfolioCalculationService', () => {
         }
       ]
 
-      const positions = service.calculatePositionsFromTransactions(transactions, symbols)
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+      const positions = await service.calculatePositionsFromTransactionsAsync(transactions, symbols, mockUser, 'EUR')
       const position = positions.find(p => p.symbol === 'CUSTOM_EUR_ASSET')
 
       expect(position).toBeDefined()
@@ -943,7 +1084,7 @@ describe('PortfolioCalculationService', () => {
       }
     })
 
-    it('should use current prices from user symbol prices for custom symbols (async version)', async () => {
+    it('shoulduse current prices from user symbol prices for custom symbols (async version)', async () => {
       // Test the new async method that properly handles current prices
       const mockUser: AuthUser = {
         id: 'test-user',
@@ -1030,9 +1171,12 @@ describe('PortfolioCalculationService', () => {
         // Restore original method
         historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
       }
+
+      // Clean up mock
+      jest.restoreAllMocks();
     })
 
-    it('should reproduce dividend handling discrepancy between position value and historical chart value', async () => {
+    it('shouldreproduce dividend handling discrepancy between position value and historical chart value', async () => {
       // BUG REPRODUCTION: Position value differs from chart value due to dividend handling
       // This test reproduces the scenario where position calculation and
       // historical data calculation produce different values for the same holding
@@ -1188,7 +1332,7 @@ describe('PortfolioCalculationService', () => {
     // These tests ensure that current position calculation and historical data calculation
     // use the same price sources to prevent value discrepancies
 
-    it('should use symbol.last_price for market symbols in current position calculation', async () => {
+    it('shoulduse symbol.last_price for market symbols in current position calculation', async () => {
       const mockUser: AuthUser = {
         id: 'test-user',
         email: 'test@example.com',
@@ -1269,7 +1413,7 @@ describe('PortfolioCalculationService', () => {
       }
     })
 
-    it('should use historical price service for custom symbols in current position calculation', async () => {
+    it('shoulduse historical price service for custom symbols in current position calculation', async () => {
       const mockUser: AuthUser = {
         id: 'test-user',
         email: 'test@example.com',
