@@ -13,6 +13,7 @@ import PortfolioValueEvolutionChart from '@/components/charts/PortfolioValueEvol
 import QuickActions from '@/components/QuickActions'
 import DemoModeBanner from '@/components/DemoModeBanner'
 import CurrencySelector from '@/components/CurrencySelector'
+import MultiBulkTransactionImport from '@/components/MultiBulkTransactionImport'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 
 interface DashboardProps {
@@ -28,6 +29,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
   const [repartitionData, setRepartitionData] = useState<Array<{ assetType: string; value: number; percentage: number }>>([])
   const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('USD')
+  const [showBulkImport, setShowBulkImport] = useState(false)
   const router = useRouter()
 
   // Initialize currency preference on mount
@@ -81,6 +83,20 @@ export default function Dashboard({ user }: DashboardProps) {
     setIsLoading(true)
     await clientAuthService.signOut()
     router.push('/login')
+  }
+
+  const handleBulkImport = () => {
+    setShowBulkImport(true)
+  }
+
+  const handleBulkImportComplete = () => {
+    setShowBulkImport(false)
+    // Refresh portfolio data after import
+    window.location.reload()
+  }
+
+  const handleBulkImportCancel = () => {
+    setShowBulkImport(false)
   }
 
   const formatCurrency = (amount: number) => {
@@ -491,11 +507,37 @@ export default function Dashboard({ user }: DashboardProps) {
               icon: '📈',
               label: 'Add Holding',
               onClick: () => router.push('/add-holding')
+            },
+            {
+              id: 'bulk-import',
+              icon: '📊',
+              label: 'Bulk Import',
+              onClick: handleBulkImport
             }
           ]}
           columns={3}
           className="mt-8"
         />
+
+        {/* Bulk Import Modal */}
+        {showBulkImport && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={handleBulkImportCancel}
+            />
+            
+            {/* Modal Content */}
+            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <MultiBulkTransactionImport
+                user={user}
+                onTransactionsImported={handleBulkImportComplete}
+                onCancel={handleBulkImportCancel}
+              />
+            </div>
+          </div>
+        )}
 
       </main>
     </div>

@@ -20,6 +20,7 @@
 - [ ] Portfolio export to CSV
 - [ ] Portfolio backup
 - [ ] Live price Updates using Yahoo Finance API
+- [ ] Some way to see performance per period bucket (eg: ALL shows perf of 2024, 2025, etc..)
 - [ ] Better Support for cash positions
 
 ## TODO P3

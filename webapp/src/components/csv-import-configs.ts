@@ -167,3 +167,128 @@ ${symbol},2024-03-15,98.75,Quarterly review`,
     return { success: successCount, errors }
   }
 })
+
+// Multi-Symbol Transaction Import Configuration
+export interface ParsedMultiTransaction {
+  symbol: string
+  type: Database["public"]["Enums"]["transaction_type"]
+  quantity: number
+  price_per_unit: number
+  date: string
+  fees: number
+  currency: string
+  broker: string | null
+  notes: string | null
+}
+
+export const multiBulkTransactionImportConfig: CsvImportConfig<ParsedMultiTransaction> = {
+  title: 'Bulk Import Transactions',
+  description: 'Import transactions for multiple symbols from CSV',
+  columns: [
+    { key: 'symbol', label: 'Symbol', required: true },
+    { key: 'name', label: 'Name', required: false, description: 'Human readable name (ignored)' },
+    { key: 'type', label: 'Type', required: true, description: 'buy, sell, dividend, bonus, deposit, withdrawal' },
+    { key: 'date', label: 'Date', required: true, description: 'YYYY-MM-DD format' },
+    { key: 'quantity', label: 'Quantity', required: true },
+    { key: 'fees', label: 'Fees', required: false },
+    { key: 'price_per_unit', label: 'Price per Unit', required: true },
+    { key: 'currency', label: 'Currency', required: false, description: 'defaults to USD' },
+    { key: 'broker', label: 'Broker', required: false },
+    { key: 'comments', label: 'Comments', required: false }
+  ],
+  sampleData: `symbol,name,type,date,quantity,fees,price_per_unit,currency,broker,comments
+AAPL,Apple Inc,buy,2024-01-15,100,9.99,150.00,USD,Interactive Brokers,Initial purchase
+MSFT,Microsoft Corp,buy,2024-01-20,50,9.99,300.00,USD,Interactive Brokers,Tech position
+AAPL,Apple Inc,sell,2024-02-10,25,9.99,160.00,USD,Interactive Brokers,Partial sale
+BTC,Bitcoin,buy,2024-01-25,0.5,25.00,42000.00,USD,Coinbase,Crypto allocation`,
+  parseRow: (values: string[], header: string[]): ParsedMultiTransaction | null => {
+    try {
+      // Handle price_per_unit with potential comma formatting (e.g., "14,300.00")
+      const priceValue = values[header.indexOf('price_per_unit')] || '0'
+      const cleanedPrice = priceValue.replace(/"/g, '').replace(/,/g, '')
+      
+      return {
+        symbol: values[header.indexOf('symbol')],
+        type: values[header.indexOf('type')] as Database["public"]["Enums"]["transaction_type"],
+        quantity: parseFloat(values[header.indexOf('quantity')]),
+        price_per_unit: parseFloat(cleanedPrice),
+        date: values[header.indexOf('date')],
+        fees: parseFloat(values[header.indexOf('fees')] || '0'),
+        currency: values[header.indexOf('currency')] || 'USD',
+        broker: values[header.indexOf('broker')] || null,
+        notes: values[header.indexOf('comments')] || null
+      }
+    } catch {
+      return null
+    }
+  },
+  validateRow: (row: ParsedMultiTransaction, index: number): string | null => {
+    if (!row.symbol) {
+      return `Row ${index}: Symbol is required`
+    }
+    if (!['buy', 'sell', 'dividend', 'bonus', 'deposit', 'withdrawal'].includes(row.type)) {
+      return `Row ${index}: Invalid transaction type "${row.type}"`
+    }
+    if (isNaN(row.quantity) || row.quantity === 0) {
+      return `Row ${index}: Quantity must be a non-zero number`
+    }
+    if (isNaN(row.price_per_unit) || row.price_per_unit < 0) {
+      return `Row ${index}: Price per unit must be a non-negative number`
+    }
+    if (!row.date || isNaN(new Date(row.date).getTime())) {
+      return `Row ${index}: Invalid date format (use YYYY-MM-DD)`
+    }
+    return null
+  },
+  importRows: async (user: AuthUser, rows: ParsedMultiTransaction[]) => {
+    const errors: string[] = []
+    let successCount = 0
+
+    // First validate all symbols exist
+    const uniqueSymbols = [...new Set(rows.map(row => row.symbol))]
+    
+    // Get all existing symbols
+    let existingSymbols: string[] = []
+    try {
+      const symbols = await portfolioService.getSymbols(user)
+      existingSymbols = symbols.map(s => s.symbol)
+    } catch (err) {
+      errors.push(`Failed to fetch existing symbols: ${err}`)
+      return { success: 0, errors }
+    }
+
+    // Check which symbols don't exist
+    const missingSymbols = uniqueSymbols.filter(symbol => !existingSymbols.includes(symbol))
+    if (missingSymbols.length > 0) {
+      errors.push(`The following symbols don't exist in your portfolio: ${missingSymbols.join(', ')}. Please add them first.`)
+      return { success: 0, errors }
+    }
+
+    // Import all rows
+    for (const [rowIndex, row] of rows.entries()) {
+      try {
+        const result = await portfolioService.addTransactionForUser(user, {
+          symbol: row.symbol,
+          type: row.type,
+          quantity: row.quantity,
+          pricePerUnit: row.price_per_unit,
+          date: row.date,
+          fees: row.fees,
+          currency: row.currency,
+          broker: row.broker,
+          notes: row.notes
+        })
+
+        if (!result.success) {
+          errors.push(`Row ${rowIndex + 2}: Failed to import transaction for ${row.symbol} - ${result.error}`)
+        } else {
+          successCount++
+        }
+      } catch (err) {
+        errors.push(`Row ${rowIndex + 2}: Error importing transaction for ${row.symbol} - ${err}`)
+      }
+    }
+
+    return { success: successCount, errors }
+  }
+}
