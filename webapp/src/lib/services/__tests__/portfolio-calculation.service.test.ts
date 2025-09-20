@@ -1183,4 +1183,434 @@ describe('PortfolioCalculationService', () => {
       }
     })
   })
+
+  describe('Current Position vs Historical Data Price Consistency', () => {
+    // These tests ensure that current position calculation and historical data calculation
+    // use the same price sources to prevent value discrepancies
+
+    it('should use symbol.last_price for market symbols in current position calculation', async () => {
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2022-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const symbols: Symbol[] = [
+        {
+          symbol: 'VWCE.DE',
+          name: 'Vanguard FTSE All-World ETF',
+          asset_type: 'etf',
+          currency: 'EUR',
+          last_price: 139.04, // Current market price
+          last_updated: '2025-09-19T00:00:00Z',
+          is_custom: false,
+          created_by_user_id: null,
+          created_at: '2022-01-01T00:00:00Z'
+        }
+      ]
+
+      const transactions: Transaction[] = [
+        {
+          id: 'vwce-1',
+          user_id: 'test-user',
+          date: '2022-01-18',
+          symbol: 'VWCE.DE',
+          type: 'buy',
+          quantity: 1242,
+          price_per_unit: 115.94,
+          currency: 'EUR',
+          fees: 1.00,
+          notes: 'Initial purchase',
+          broker: null,
+          created_at: '2022-01-18T00:00:00Z',
+          updated_at: '2022-01-18T00:00:00Z'
+        }
+      ]
+
+      // Mock historical price service to return outdated price (simulating the bug scenario)
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockResolvedValue(121.54) // Outdated price
+
+      try {
+        const positions = await service.calculatePositionsFromTransactionsAsync(
+          transactions,
+          symbols,
+          mockUser,
+          'EUR'
+        )
+
+        const position = positions.find(p => p.symbol === 'VWCE.DE')
+        expect(position).toBeDefined()
+
+        if (position) {
+          // AFTER FIX: Should use symbol.last_price (139.04) for market symbols
+          // NOT the outdated historical price (121.54)
+          expect(position.currentPrice).toBe(139.04)
+          expect(position.value).toBeCloseTo(1242 * 139.04, 2) // €172,691.68
+          expect(position.avgCost).toBeCloseTo(115.94, 2)
+
+          // This would fail before the fix (position.currentPrice would be 121.54)
+          expect(position.currentPrice).not.toBe(121.54)
+          expect(position.value).not.toBeCloseTo(1242 * 121.54, 2) // Should NOT be €150,952.68
+
+          console.log('Market symbol test result:', {
+            symbol: position.symbol,
+            currentPrice: position.currentPrice,
+            expectedPrice: 139.04,
+            value: position.value,
+            expectedValue: 1242 * 139.04,
+            historicalPriceWouldGive: 1242 * 121.54
+          })
+        }
+      } finally {
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+
+    it('should use historical price service for custom symbols in current position calculation', async () => {
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const symbols: Symbol[] = [
+        {
+          symbol: 'PERCO.BNP',
+          name: 'Perco BNP',
+          asset_type: 'stock',
+          currency: 'EUR',
+          last_price: 8704.00, // This is the original purchase price, NOT current price
+          last_updated: '2025-09-20T10:12:30.4+00:00',
+          is_custom: true,
+          created_by_user_id: 'test-user',
+          created_at: '2021-01-01T00:00:00Z'
+        }
+      ]
+
+      const transactions: Transaction[] = [
+        {
+          id: 'perco-1',
+          user_id: 'test-user',
+          date: '2021-01-01',
+          symbol: 'PERCO.BNP',
+          type: 'buy',
+          quantity: 1,
+          price_per_unit: 8704.00,
+          currency: 'EUR',
+          fees: 0,
+          notes: 'Initial purchase',
+          broker: null,
+          created_at: '2021-01-01T00:00:00Z',
+          updated_at: '2021-01-01T00:00:00Z'
+        }
+      ]
+
+      // Mock historical price service to return current manual price
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockResolvedValue(10248.85) // Current manual price
+
+      try {
+        const positions = await service.calculatePositionsFromTransactionsAsync(
+          transactions,
+          symbols,
+          mockUser,
+          'EUR'
+        )
+
+        const position = positions.find(p => p.symbol === 'PERCO.BNP')
+        expect(position).toBeDefined()
+
+        if (position) {
+          // AFTER FIX: Should use historical price service (10248.85) for custom symbols
+          // NOT the symbol.last_price (8704.00)
+          expect(position.currentPrice).toBe(10248.85)
+          expect(position.value).toBeCloseTo(1 * 10248.85, 2) // €10,248.85
+          expect(position.avgCost).toBe(8704.00)
+          expect(position.unrealizedPnL).toBeCloseTo(1544.85, 2)
+
+          // This would fail before the fix (position.currentPrice would be 8704.00)
+          expect(position.currentPrice).not.toBe(8704.00)
+          expect(position.value).not.toBe(8704.00) // Should NOT equal cost basis
+
+          // Verify historical price service was called for custom symbol
+          expect(historicalPriceService.getHistoricalPriceForDate).toHaveBeenCalledWith(
+            'PERCO.BNP',
+            expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+            mockUser,
+            symbols[0]
+          )
+
+          console.log('Custom symbol test result:', {
+            symbol: position.symbol,
+            currentPrice: position.currentPrice,
+            expectedPrice: 10248.85,
+            value: position.value,
+            costBasis: position.quantity * position.avgCost,
+            symbolLastPrice: symbols[0].last_price,
+            isCustom: position.isCustom
+          })
+        }
+      } finally {
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+
+    it('should handle mixed portfolio with both market and custom symbols correctly', async () => {
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const symbols: Symbol[] = [
+        {
+          symbol: 'VWCE.DE',
+          name: 'Vanguard FTSE All-World ETF',
+          asset_type: 'etf',
+          currency: 'EUR',
+          last_price: 139.04, // Current market price
+          last_updated: '2025-09-19T00:00:00Z',
+          is_custom: false,
+          created_by_user_id: null,
+          created_at: '2022-01-01T00:00:00Z'
+        },
+        {
+          symbol: 'PERCO.BNP',
+          name: 'Perco BNP',
+          asset_type: 'stock',
+          currency: 'EUR',
+          last_price: 8704.00, // Original purchase price
+          last_updated: '2025-09-20T10:12:30.4+00:00',
+          is_custom: true,
+          created_by_user_id: 'test-user',
+          created_at: '2021-01-01T00:00:00Z'
+        }
+      ]
+
+      const transactions: Transaction[] = [
+        {
+          id: 'vwce-1',
+          user_id: 'test-user',
+          date: '2022-01-18',
+          symbol: 'VWCE.DE',
+          type: 'buy',
+          quantity: 1242,
+          price_per_unit: 115.94,
+          currency: 'EUR',
+          fees: 1.00,
+          notes: 'ETF purchase',
+          broker: null,
+          created_at: '2022-01-18T00:00:00Z',
+          updated_at: '2022-01-18T00:00:00Z'
+        },
+        {
+          id: 'perco-1',
+          user_id: 'test-user',
+          date: '2021-01-01',
+          symbol: 'PERCO.BNP',
+          type: 'buy',
+          quantity: 1,
+          price_per_unit: 8704.00,
+          currency: 'EUR',
+          fees: 0,
+          notes: 'Custom asset purchase',
+          broker: null,
+          created_at: '2021-01-01T00:00:00Z',
+          updated_at: '2021-01-01T00:00:00Z'
+        }
+      ]
+
+      // Mock historical price service to return different prices based on symbol type
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockImplementation((symbol) => {
+        if (symbol === 'VWCE.DE') {
+          return Promise.resolve(121.54) // Outdated price for market symbol (should be ignored)
+        } else if (symbol === 'PERCO.BNP') {
+          return Promise.resolve(10248.85) // Current manual price for custom symbol (should be used)
+        }
+        return Promise.resolve(null)
+      })
+
+      try {
+        const positions = await service.calculatePositionsFromTransactionsAsync(
+          transactions,
+          symbols,
+          mockUser,
+          'EUR'
+        )
+
+        expect(positions).toHaveLength(2)
+
+        // Market symbol should use symbol.last_price
+        const vwcePosition = positions.find(p => p.symbol === 'VWCE.DE')
+        expect(vwcePosition).toBeDefined()
+        if (vwcePosition) {
+          expect(vwcePosition.currentPrice).toBe(139.04) // From symbol.last_price
+          expect(vwcePosition.value).toBeCloseTo(1242 * 139.04, 2)
+          expect(vwcePosition.isCustom).toBe(false)
+        }
+
+        // Custom symbol should use historical price service
+        const percoPosition = positions.find(p => p.symbol === 'PERCO.BNP')
+        expect(percoPosition).toBeDefined()
+        if (percoPosition) {
+          expect(percoPosition.currentPrice).toBe(10248.85) // From historical price service
+          expect(percoPosition.value).toBeCloseTo(1 * 10248.85, 2)
+          expect(percoPosition.isCustom).toBe(true)
+        }
+
+        // Verify correct methods were called
+        expect(historicalPriceService.getHistoricalPriceForDate).toHaveBeenCalledWith(
+          'PERCO.BNP',
+          expect.any(String),
+          mockUser,
+          expect.objectContaining({ is_custom: true })
+        )
+
+        console.log('Mixed portfolio test results:', {
+          vwce: {
+            currentPrice: vwcePosition?.currentPrice,
+            value: vwcePosition?.value,
+            isCustom: vwcePosition?.isCustom
+          },
+          perco: {
+            currentPrice: percoPosition?.currentPrice,
+            value: percoPosition?.value,
+            isCustom: percoPosition?.isCustom
+          }
+        })
+      } finally {
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+
+    it('should handle fallback scenarios correctly', async () => {
+      const mockUser: AuthUser = {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2021-01-01T00:00:00Z',
+        aud: 'authenticated',
+        role: 'authenticated'
+      }
+
+      const symbols: Symbol[] = [
+        {
+          symbol: 'NO_PRICE_MARKET',
+          name: 'Market Symbol Without Price',
+          asset_type: 'stock',
+          currency: 'USD',
+          last_price: 0, // No current price available
+          last_updated: '2025-09-20T00:00:00Z',
+          is_custom: false,
+          created_by_user_id: null,
+          created_at: '2022-01-01T00:00:00Z'
+        },
+        {
+          symbol: 'NO_PRICE_CUSTOM',
+          name: 'Custom Symbol Without Price',
+          asset_type: 'other',
+          currency: 'USD',
+          last_price: 100.00, // Irrelevant for custom symbols
+          last_updated: '2025-09-20T00:00:00Z',
+          is_custom: true,
+          created_by_user_id: 'test-user',
+          created_at: '2021-01-01T00:00:00Z'
+        }
+      ]
+
+      const transactions: Transaction[] = [
+        {
+          id: 'market-1',
+          user_id: 'test-user',
+          date: '2022-01-01',
+          symbol: 'NO_PRICE_MARKET',
+          type: 'buy',
+          quantity: 10,
+          price_per_unit: 50.00,
+          currency: 'USD',
+          fees: 0,
+          notes: 'Market symbol without current price',
+          broker: null,
+          created_at: '2022-01-01T00:00:00Z',
+          updated_at: '2022-01-01T00:00:00Z'
+        },
+        {
+          id: 'custom-1',
+          user_id: 'test-user',
+          date: '2021-01-01',
+          symbol: 'NO_PRICE_CUSTOM',
+          type: 'buy',
+          quantity: 5,
+          price_per_unit: 200.00,
+          currency: 'USD',
+          fees: 0,
+          notes: 'Custom symbol without manual price',
+          broker: null,
+          created_at: '2021-01-01T00:00:00Z',
+          updated_at: '2021-01-01T00:00:00Z'
+        }
+      ]
+
+      // Mock historical price service to return null (no historical data)
+      const originalGetHistoricalPrice = historicalPriceService.getHistoricalPriceForDate
+      historicalPriceService.getHistoricalPriceForDate = jest.fn().mockImplementation((symbol) => {
+        if (symbol === 'NO_PRICE_MARKET') {
+          return Promise.resolve(45.00) // Historical fallback for market symbol
+        } else if (symbol === 'NO_PRICE_CUSTOM') {
+          return Promise.resolve(null) // No manual price available for custom symbol
+        }
+        return Promise.resolve(null)
+      })
+
+      try {
+        const positions = await service.calculatePositionsFromTransactionsAsync(
+          transactions,
+          symbols,
+          mockUser,
+          'USD'
+        )
+
+        expect(positions).toHaveLength(2)
+
+        // Market symbol should fall back to historical price when no last_price
+        const marketPosition = positions.find(p => p.symbol === 'NO_PRICE_MARKET')
+        expect(marketPosition).toBeDefined()
+        if (marketPosition) {
+          expect(marketPosition.currentPrice).toBe(45.00) // From historical fallback
+          expect(marketPosition.value).toBe(10 * 45.00)
+        }
+
+        // Custom symbol should fall back to avg cost when no historical price
+        const customPosition = positions.find(p => p.symbol === 'NO_PRICE_CUSTOM')
+        expect(customPosition).toBeDefined()
+        if (customPosition) {
+          expect(customPosition.currentPrice).toBe(200.00) // From avgCost fallback
+          expect(customPosition.value).toBe(5 * 200.00)
+          expect(customPosition.unrealizedPnL).toBe(0) // No gain/loss if using cost as current price
+        }
+
+        console.log('Fallback test results:', {
+          market: {
+            currentPrice: marketPosition?.currentPrice,
+            fallbackUsed: 'historical',
+            value: marketPosition?.value
+          },
+          custom: {
+            currentPrice: customPosition?.currentPrice,
+            fallbackUsed: 'avgCost',
+            value: customPosition?.value
+          }
+        })
+      } finally {
+        historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+  })
 });

@@ -397,16 +397,33 @@ export class UnifiedCalculationService {
     for (const position of unifiedPositions) {
       const symbolData = symbols.find(s => s.symbol === position.symbol)
 
-      // Get current price using historical price service
-      const currentPrice = await this.getUnifiedHistoricalPrice(
-        position.symbol,
-        currentDate,
-        user,
-        symbols
-      )
+      // Get current price - handle custom vs market symbols differently
+      let finalCurrentPrice: number = 0
 
-      // Fallback to symbol's last_price or avg cost if no current price
-      const finalCurrentPrice = currentPrice || symbolData?.last_price || position.avgCost
+      if (symbolData?.is_custom) {
+        // For custom symbols, always use historical price service to get latest manual price
+        const historicalPrice = await this.getUnifiedHistoricalPrice(
+          position.symbol,
+          currentDate,
+          user,
+          symbols
+        )
+        finalCurrentPrice = historicalPrice || position.avgCost
+      } else {
+        // For market symbols, prioritize symbol's last_price (current market price)
+        finalCurrentPrice = symbolData?.last_price || 0
+
+        // Fallback to historical price if no last_price available
+        if (!finalCurrentPrice) {
+          const historicalPrice = await this.getUnifiedHistoricalPrice(
+            position.symbol,
+            currentDate,
+            user,
+            symbols
+          )
+          finalCurrentPrice = historicalPrice || position.avgCost
+        }
+      }
 
       // Convert to target currency if needed
       const symbolCurrency = (symbolData?.currency || 'USD') as SupportedCurrency

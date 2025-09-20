@@ -58,11 +58,12 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
         const symbolData = symbols.find(s => s.symbol === symbol)
         const symbolTransactions = transactions.filter(t => t.symbol === symbol)
         const position = portfolioData.positions.find(p => p.symbol === symbol) || null
-
+        
+        const lastHistoricalDataPoint = historicalData.at(-1);
         console.log('HoldingDetails - symbolData', symbolData);
         console.log('HoldingDetails - portfolioData', portfolioData);
+        console.log('HoldingDetails - lastHistoricalDataPoint', lastHistoricalDataPoint);
         console.log('HoldingDetails - position', position);
-        console.log('HoldingDetails - historicalData', historicalData);
         console.log('HoldingDetails - annualizedReturns', annualizedReturns);
 
         if (!symbolData && !position) {
