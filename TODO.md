@@ -15,8 +15,11 @@ Mark done item with ✅
 - [ ] HoldingDetails - "Value Evolution" and "Performance Breakdown" show different total price than Current Position => data comes out like this from portfolio service. Current position seems to have the latest, correct amount to show
 
 ## TODO P2
+- ✅ Portfolio repartition history can switch betwen % and absolute value
+- ✅ Toggle / switch component 
 - [ ] MAYBE -> fix "Annualized Return" - not sure how
 - [ ] MAYBE -> make timerange change correctly affect other metrics
+- [ ] Portfolio Value Evolution - Use day as point legend instead of month
 - [ ] Dashboard - We should show closed holdings, maybe not displayed by default
 - [ ] HoldingDetails - Weird rounding error on quantity => sometimes get 1.00 transformed to 0.99998 
 - [ ] Multi custom holding CSV import functionality from home page
@@ -26,14 +29,12 @@ Mark done item with ✅
 - [ ] Allow Bonus with price 0
 - [ ] Remove need for transaction with price = 0, simplify custom holding creation
 - [ ] Use existing symbols instead of symbol search when adding symbol
-- [ ] Portfolio repartition history can switch betwen % and absolute value
 - [ ] Cost Basis takes into account currency conversion
 - [ ] Creating a custom holding should redirect to holding detail page instead of homepage 
 - [ ] Adding or editing a custom price or transaction in the the holding page should refresh the page
 - [ ] Infinite scrolling in Transaction History
 - [ ] Add cursor: pointer; hover on all buttons
 - [ ] Allow to right click -> open in a new tab holding detail pages on homepage
-- [ ] Toggle / switch component 
 - [ ] Live price Updates using Yahoo Finance API
 - [ ] Some way to see performance per period bucket (eg: ALL shows perf of 2024, 2025, etc..)
 - [ ] Better Support for cash positions
