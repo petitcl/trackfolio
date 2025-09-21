@@ -68,6 +68,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
         console.log('HoldingDetails - lastHistoricalDataPoint', lastHistoricalDataPoint);
         console.log('HoldingDetails - position', position);
         console.log('HoldingDetails - annualizedReturns', annualizedReturns);
+        console.log('HoldingDetails - detailedReturns', detailedReturns);
 
         if (!symbolData && !position) {
           setError(`Holding "${symbol}" not found`)
@@ -201,6 +202,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
   const realizedPnL = detailedReturns?.summaryV2?.realizedPnL || 0
   const unrealizedPnL = detailedReturns?.summaryV2?.unrealizedPnL || 0
   const totalReturn = detailedReturns?.summaryV2?.totalPnL || (unrealizedPnL + realizedPnL)
+  const totalInvested = detailedReturns?.summaryV2?.totalInvested || 0
 
   // Calculate portfolio weight using consistent current value
   const portfolioWeight = currentValue && portfolioData.totalValue > 0
@@ -338,7 +340,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
                       {formatCurrency(costBasis)}
                     </dd>
                     <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Avg: {formatCurrency(quantity > 0 ? costBasis / quantity : 0)}
+                      {quantity > 0 ? `Avg: ${formatCurrency(costBasis / quantity)}` : 'Position closed'}
                     </dd>
                   </dl>
                 </div>
@@ -359,9 +361,9 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
                     <dd className={`text-lg font-medium ${timeRangeMetrics.totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {formatCurrency(timeRangeMetrics.totalReturn)}
                     </dd>
-                    {timeRange === 'all' && costBasis > 0 && (
+                    {timeRange === 'all' && (costBasis > 0 || totalInvested > 0) && (
                       <dd className={`text-xs ${timeRangeMetrics.totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mt-1`}>
-                        {formatPercent((timeRangeMetrics.totalReturn / costBasis) * 100)}
+                        {formatPercent((timeRangeMetrics.totalReturn / (costBasis > 0 ? costBasis : totalInvested)) * 100)}
                       </dd>
                     )}
                   </dl>

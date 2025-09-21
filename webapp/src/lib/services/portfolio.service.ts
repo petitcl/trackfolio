@@ -337,11 +337,28 @@ export class PortfolioService {
         startDate = filterStartDate.toISOString().split('T')[0]
       }
 
+      // DEBUG: Log actual transactions being used for calculation
+      if (symbol === 'DHER.DE') {
+        console.log('🔍 DHER.DE DEBUG: Actual transactions from database:', transactions.length)
+        transactions.forEach((tx, i) => {
+          console.log(`  ${i+1}. ${tx.date}: ${tx.type} ${tx.quantity} @ €${tx.price_per_unit} (fees: €${tx.fees || 0})`)
+        })
+
+        const totalBought = transactions.filter(t => t.type === 'buy').reduce((sum, t) => sum + t.quantity, 0)
+        const totalSold = transactions.filter(t => t.type === 'sell').reduce((sum, t) => sum + t.quantity, 0)
+        console.log(`🔍 DHER.DE: Total bought ${totalBought}, sold ${totalSold}, remaining ${totalBought - totalSold}`)
+      }
+
       const summaryV2 = returnCalculationService.calculatePortfolioSummaryV2(
         transactions,
         historicalData,
         startDate
       )
+
+      // DEBUG: Log the calculation result
+      if (symbol === 'DHER.DE') {
+        console.log('🔍 DHER.DE DEBUG: SummaryV2 result:', summaryV2)
+      }
 
       const annualizedReturns = returnCalculationService.calculateAnnualizedReturns(
         transactions,

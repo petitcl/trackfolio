@@ -96,10 +96,11 @@ function computePortfolioSummaryV2(
 
       case "sell":
         let remainingQty = tx.quantity;
+        const sellFeesPerUnit = (tx.fees || 0) / tx.quantity;
         while (remainingQty > 0 && lotsBySymbol[tx.symbol].length > 0) {
           const lot = lotsBySymbol[tx.symbol][0];
           const qtyUsed = Math.min(remainingQty, lot.quantity);
-          realizedPnL += qtyUsed * (tx.price_per_unit - lot.costPerUnit);
+          realizedPnL += qtyUsed * (tx.price_per_unit - sellFeesPerUnit - lot.costPerUnit);
           lot.quantity -= qtyUsed;
           remainingQty -= qtyUsed;
           if (lot.quantity === 0) lotsBySymbol[tx.symbol].shift();

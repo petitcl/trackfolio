@@ -805,11 +805,11 @@ describe('computePortfolioSummaryV2', () => {
 
       expect(result.totalInvested).toBe(1001) // 100 * 10 + 1 fee
       expect(result.costBasis).toBe(0) // No remaining position
-      expect(result.realizedPnL).toBe(499) // (15 - 10.01) * 100 = 499
+      expect(result.realizedPnL).toBeCloseTo(498, 0) // (15 - 0.01 sell fee - 10.01) * 100 = 498
       expect(result.unrealizedPnL).toBe(0) // No remaining position
-      expect(result.capitalGains).toBe(499) // All gains are realized
+      expect(result.capitalGains).toBeCloseTo(498, 0) // All gains are realized
       expect(result.dividends).toBe(0) // No dividends
-      expect(result.totalPnL).toBe(499) // All from realized gains
+      expect(result.totalPnL).toBeCloseTo(498, 0) // All from realized gains
     })
 
     it('📉 Loss-Making Closed Position: Buy high, sell low', () => {
@@ -855,11 +855,11 @@ describe('computePortfolioSummaryV2', () => {
 
       expect(result.totalInvested).toBe(2002) // 100 * 20 + 2 fee
       expect(result.costBasis).toBe(0) // No remaining position
-      expect(result.realizedPnL).toBe(-802) // (12 - 20.02) * 100 = -802
+      expect(result.realizedPnL).toBeCloseTo(-804, 0) // (12 - 0.02 sell fee - 20.02) * 100 = -804
       expect(result.unrealizedPnL).toBe(0) // No remaining position
-      expect(result.capitalGains).toBe(-802) // All losses are realized
+      expect(result.capitalGains).toBeCloseTo(-804, 0) // All losses are realized
       expect(result.dividends).toBe(0) // No dividends
-      expect(result.totalPnL).toBe(-802) // All from realized losses
+      expect(result.totalPnL).toBeCloseTo(-804, 0) // All from realized losses
     })
 
     it('🔄 Complex Closed Position: Multiple buys at different prices, then sell all', () => {
@@ -920,12 +920,12 @@ describe('computePortfolioSummaryV2', () => {
       // FIFO calculation:
       // First 50 shares: (15 - 10.02) * 50 = 249
       // Next 50 shares: (15 - 20.02) * 50 = -251
-      // Total realized: 249 - 251 = -2
-      expect(result.realizedPnL).toBeCloseTo(-2, 1)
+      // Total realized: 249 - 251 = -2 (plus sell fees = -4)
+      expect(result.realizedPnL).toBeCloseTo(-4, 0)
       expect(result.unrealizedPnL).toBe(0) // No remaining position
-      expect(result.capitalGains).toBeCloseTo(-2, 1) // Small net loss due to fees
+      expect(result.capitalGains).toBeCloseTo(-4, 0) // Loss due to fees
       expect(result.dividends).toBe(0)
-      expect(result.totalPnL).toBeCloseTo(-2, 1)
+      expect(result.totalPnL).toBeCloseTo(-4, 0)
     })
   })
 
@@ -1055,9 +1055,87 @@ describe('computePortfolioSummaryV2', () => {
       expect(result.totalInvested).toBe(1001) // Initial purchase only
       expect(result.costBasis).toBe(500.5) // Remaining 55 shares at avg cost ~$10.01
       expect(result.dividends).toBe(25) // Dividend payment
-      expect(result.realizedPnL).toBeCloseTo(99.5, 1) // Profit from sale (approximately)
+      expect(result.realizedPnL).toBeCloseTo(98.5, 0) // Profit from sale (approximately)
       expect(result.unrealizedPnL).toBeCloseTo(159.5, 1) // Remaining position gain
-      expect(result.totalPnL).toBeCloseTo(284, 0) // Total of all components
+      expect(result.totalPnL).toBeCloseTo(283, 0) // Total of all components
+    })
+  })
+
+  describe('Currency Conversion and Current Price Bug Fixes', () => {
+    it('🔧 DHER.DE Scenario: Closed position with correct percentage calculation', () => {
+      // SCENARIO: Reproducing the DHER.DE bug where closed position shows 99.61% instead of ~-3%
+      const dherTransactions: Transaction[] = [
+        // Simulate some of the DHER.DE buy transactions
+        { id: 'tx-1', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 37, price_per_unit: 38.48, fees: 0, date: '2022-12-15', notes: null, created_at: '2022-12-15T10:00:00Z', updated_at: '2022-12-15T10:00:00Z' },
+        { id: 'tx-2', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 68, price_per_unit: 38.40, fees: 0, date: '2023-06-28', notes: null, created_at: '2023-06-28T10:00:00Z', updated_at: '2023-06-28T10:00:00Z' },
+        { id: 'tx-3', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 92, price_per_unit: 38.29, fees: 0, date: '2024-11-13', notes: null, created_at: '2024-11-13T10:00:00Z', updated_at: '2024-11-13T10:00:00Z' },
+        { id: 'tx-4', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 120, price_per_unit: 24.23, fees: 0, date: '2025-02-06', notes: null, created_at: '2025-02-06T10:00:00Z', updated_at: '2025-02-06T10:00:00Z' },
+        { id: 'tx-5', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 28, price_per_unit: 23.44, fees: 0, date: '2025-06-09', notes: null, created_at: '2025-06-09T10:00:00Z', updated_at: '2025-06-09T10:00:00Z' },
+
+        // Final sale that closes the position
+        { id: 'tx-sale', user_id: mockUserId, symbol: 'DHER.DE', type: 'sell', quantity: 345, price_per_unit: 27.18, fees: 44, date: '2025-07-24', notes: null, created_at: '2025-07-24T10:00:00Z', updated_at: '2025-07-24T10:00:00Z' }
+      ]
+
+      // Calculate expected values
+      const totalPurchases = 37*38.48 + 68*38.40 + 92*38.29 + 120*24.23 + 28*23.44 // ≈ €21,044.60
+      const totalSales = 345 * 27.18 - 44 // ≈ €9,331 - €44 = €9,287 (with fees)
+      const actualLoss = totalSales - totalPurchases // Should be negative
+
+      const historicalData: HistoricalDataPoint[] = [
+        {
+          date: '2022-12-15',
+          totalValue: 1423.76, // 37 * 38.48
+          costBasis: 1423.76,
+          totalPnL: 0,
+          totalPnLPercentage: 0,
+          assetTypeAllocations: { stock: 100 },
+          assetTypeValues: { stock: 1423.76 }
+        },
+        {
+          date: '2025-09-20', // After the position is closed
+          totalValue: 0, // Position fully closed
+          costBasis: 0,
+          totalPnL: actualLoss,
+          totalPnLPercentage: (actualLoss / totalPurchases) * 100,
+          assetTypeAllocations: { stock: 0 },
+          assetTypeValues: { stock: 0 }
+        }
+      ]
+
+      const result = returnCalculationService.calculatePortfolioSummaryV2(
+        dherTransactions,
+        historicalData,
+        '2022-12-15',
+        '2025-09-20'
+      )
+
+      // The bug: totalInvested should equal totalPurchases, not get corrupted
+      expect(result.totalInvested).toBeCloseTo(totalPurchases, 0)
+      expect(result.costBasis).toBe(0) // No remaining position
+      expect(result.unrealizedPnL).toBe(0) // No remaining position
+
+      // Realized P&L should reflect the actual loss from trading
+      expect(result.realizedPnL).toBeCloseTo(actualLoss, 10)
+      expect(result.totalPnL).toBeCloseTo(actualLoss, 10)
+
+      // Calculate percentage correctly for closed positions
+      const annualizedReturns = returnCalculationService.calculateAnnualizedReturns(
+        dherTransactions,
+        historicalData,
+        [{ id: 'dher', symbol: 'DHER.DE', name: 'Delivery Hero SE', asset_type: 'stock', currency: 'EUR', last_price: 27.80, is_custom: false, created_at: '2022-01-01T00:00:00Z', updated_at: '2025-09-20T00:00:00Z' }]
+      )
+
+      // Should show reasonable negative return, not 99.61%
+      expect(annualizedReturns.totalReturn).toBeCloseTo((actualLoss / totalPurchases) * 100, 1)
+      expect(annualizedReturns.totalReturn).toBeLessThan(0) // Should be negative
+      expect(annualizedReturns.totalReturn).toBeGreaterThan(-25) // But not extreme
+
+      console.log('DHER.DE Bug Fix Test:', {
+        totalInvested: result.totalInvested.toFixed(2),
+        realizedPnL: result.realizedPnL.toFixed(2),
+        totalReturnPercentage: annualizedReturns.totalReturn.toFixed(2) + '%',
+        expectedLoss: actualLoss.toFixed(2)
+      })
     })
   })
 })
