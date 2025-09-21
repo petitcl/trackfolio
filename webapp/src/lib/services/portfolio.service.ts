@@ -277,10 +277,10 @@ export class PortfolioService {
         options
       )
 
-      console.log('📊 Calculated annualized returns for', symbol, ':', {
-        twr: annualizedReturns.timeWeightedReturn.toFixed(2) + '%',
-        mwr: annualizedReturns.moneyWeightedReturn.toFixed(2) + '%'
-      })
+      // console.log('📊 Calculated annualized returns for', symbol, ':', {
+      //   twr: annualizedReturns.timeWeightedReturn.toFixed(2) + '%',
+      //   mwr: annualizedReturns.moneyWeightedReturn.toFixed(2) + '%'
+      // })
 
       return annualizedReturns
     } catch (error) {

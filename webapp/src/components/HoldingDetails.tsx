@@ -30,6 +30,7 @@ interface HoldingData {
   historicalData: HistoricalDataPoint[]
   portfolioData: PortfolioData
   annualizedReturns: AnnualizedReturnMetrics | null
+  detailedReturns: any | null
 }
 
 export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' }: HoldingDetailsProps) {
@@ -48,12 +49,13 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
         console.log(`🔍 Loading holding data for symbol: ${symbol}`)
 
         // Get all portfolio data and filter for this symbol
-        const [portfolioData, symbols, transactions, historicalData, annualizedReturns] = await Promise.all([
+        const [portfolioData, symbols, transactions, historicalData, annualizedReturns, detailedReturns] = await Promise.all([
           portfolioService.getPortfolioData(user, selectedCurrency),
           portfolioService.getSymbols(user),
           portfolioService.getTransactions(user),
           portfolioService.getHoldingHistoricalData(user, symbol, selectedCurrency),
-          portfolioService.getHoldingAnnualizedReturns(user, symbol, selectedCurrency)
+          portfolioService.getHoldingAnnualizedReturns(user, symbol, selectedCurrency, timeRange),
+          portfolioService.getHoldingDetailedReturns(user, symbol, selectedCurrency, timeRange)
         ])
 
         const symbolData = symbols.find(s => s.symbol === symbol)
@@ -78,7 +80,8 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
           transactions: symbolTransactions,
           historicalData,
           portfolioData,
-          annualizedReturns
+          annualizedReturns,
+          detailedReturns
         })
 
         console.log(`✅ Loaded ${symbolTransactions.length} transactions for ${symbol}`)
@@ -91,7 +94,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
     }
 
     loadHoldingData()
-  }, [user, symbol, selectedCurrency])
+  }, [user, symbol, selectedCurrency, timeRange])
 
   const formatCurrency = (amount: number) => {
     return currencyService.formatCurrency(amount, selectedCurrency)
@@ -183,81 +186,34 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
     return null
   }
 
-  const { position, symbol: symbolData, transactions, portfolioData } = holdingData
+  const { position, symbol: symbolData, transactions, portfolioData, detailedReturns } = holdingData
 
-  // Calculate realized P&L from sell transactions
-  const realizedPnL = transactions
-    .filter(t => t.type === 'sell')
-    .reduce((total, t) => {
-      // Simplified calculation - in reality you'd track cost basis more precisely
-      return total + ((t.price_per_unit - (position?.avgCost || 0)) * t.quantity) - (t.fees || 0)
-    }, 0)
+  // Use detailed returns data for consistent calculations
+  const currentValue = detailedReturns?.summaryV2
+    ? detailedReturns.summaryV2.costBasis + detailedReturns.summaryV2.unrealizedPnL
+    : position?.value || 0
 
-  const totalReturn = position ? position.unrealizedPnL + realizedPnL : realizedPnL
+  const costBasis = detailedReturns?.summaryV2?.costBasis || (position ? position.quantity * position.avgCost : 0)
+  const currentPrice = currentValue && position?.quantity ? currentValue / position.quantity : position?.currentPrice || 0
+  const quantity = position?.quantity || 0
 
-  // Calculate portfolio weight
-  const portfolioWeight = position && portfolioData.totalValue > 0 
-    ? (position.value / portfolioData.totalValue) * 100 
+  // Use detailed returns data for P&L calculations
+  const realizedPnL = detailedReturns?.summaryV2?.realizedPnL || 0
+  const unrealizedPnL = detailedReturns?.summaryV2?.unrealizedPnL || 0
+  const totalReturn = detailedReturns?.summaryV2?.totalPnL || (unrealizedPnL + realizedPnL)
+
+  // Calculate portfolio weight using consistent current value
+  const portfolioWeight = currentValue && portfolioData.totalValue > 0
+    ? (currentValue / portfolioData.totalValue) * 100
     : 0
 
   // Calculate time-range specific performance metrics
   const calculateTimeRangeMetrics = () => {
-    if (timeRange === 'all') {
-      return {
-        realizedPnL,
-        unrealizedPnL: position?.unrealizedPnL || 0,
-        totalReturn
-      }
-    }
-
-    // Filter transactions based on time range
-    const now = new Date()
-    let startDate: Date
-    
-    switch (timeRange) {
-      case '5d':
-        startDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
-        break
-      case '1m':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        break
-      case '6m':
-        startDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000)
-        break
-      case 'ytd':
-        startDate = new Date(now.getFullYear(), 0, 1)
-        break
-      case '1y':
-        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
-        break
-      case '5y':
-        startDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000)
-        break
-      default:
-        startDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000) // Default to 6m
-    }
-
-    const startDateString = startDate.toISOString().split('T')[0]
-    
-    // Calculate realized P&L for the time range
-    const timeRangeRealizedPnL = transactions
-      .filter(t => t.type === 'sell' && t.date >= startDateString)
-      .reduce((total, t) => {
-        return total + ((t.price_per_unit - (position?.avgCost || 0)) * t.quantity) - (t.fees || 0)
-      }, 0)
-
-    // Find position value at start of time range from historical data
-    const startPointData = holdingData.historicalData.find(point => point.date >= startDateString)
-    const currentValue = position?.value || 0
-    const startValue = startPointData?.totalValue || currentValue
-    
-    // Calculate unrealized P&L change over the time range
-    const valueChange = currentValue - startValue
-    
+    // Now using time-range specific detailed returns data
     return {
-      realizedPnL: timeRangeRealizedPnL,
-      unrealizedPnL: valueChange,
-      totalReturn: timeRangeRealizedPnL + valueChange
+      realizedPnL,
+      unrealizedPnL,
+      totalReturn
     }
   }
 
@@ -357,10 +313,10 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Current Position</dt>
                     <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(position?.value || 0)}
+                      {formatCurrency(currentValue)}
                     </dd>
                     <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {position?.quantity.toLocaleString() || '0'} × {formatCurrency(position?.currentPrice || 0)}
+                      {quantity.toLocaleString()} × {formatCurrency(currentPrice)}
                     </dd>
                   </dl>
                 </div>
@@ -379,10 +335,10 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Cost Basis</dt>
                     <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                      {formatCurrency((position?.avgCost || 0) * (position?.quantity || 0))}
+                      {formatCurrency(costBasis)}
                     </dd>
                     <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Avg: {formatCurrency(position?.avgCost || 0)}
+                      Avg: {formatCurrency(quantity > 0 ? costBasis / quantity : 0)}
                     </dd>
                   </dl>
                 </div>
@@ -403,9 +359,9 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
                     <dd className={`text-lg font-medium ${timeRangeMetrics.totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {formatCurrency(timeRangeMetrics.totalReturn)}
                     </dd>
-                    {position && timeRange === 'all' && (
+                    {timeRange === 'all' && costBasis > 0 && (
                       <dd className={`text-xs ${timeRangeMetrics.totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mt-1`}>
-                        {formatPercent((position.unrealizedPnL / (position.avgCost * position.quantity)) * 100)}
+                        {formatPercent((timeRangeMetrics.totalReturn / costBasis) * 100)}
                       </dd>
                     )}
                   </dl>

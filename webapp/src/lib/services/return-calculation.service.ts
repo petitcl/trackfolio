@@ -276,8 +276,10 @@ export class ReturnCalculationService {
     }
 
     return {
-      timeWeightedReturn: v2Summary.annualizedReturn * 100, // V2 already provides TWR
-      moneyWeightedReturn: v2Summary.annualizedReturn * 100, // Simplified: use same value
+      // V2 already provides TWR
+      timeWeightedReturn: v2Summary.annualizedReturn * 100,
+      // Simplified: use same value
+      moneyWeightedReturn: v2Summary.annualizedReturn * 100,
       totalReturn,
       annualizedVolatility: 0,
       startDate: firstPoint.date,
