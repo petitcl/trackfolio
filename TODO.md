@@ -5,17 +5,20 @@ Mark done item with ✅
 - ✅ Multi transaction CSV import functionality from home page
 - ✅ Multi custom price CSV import functionality from home page
 - ✅ Value Evolution charts takes into account dividends
+- [ ] Dashboard - Shows inflated current positions -> race condition occurs, where currency is not loaded before we display the data
 - [ ] HoldingDetails - always show Dividends & Capital Gains, regardless if they are 0
 - [ ] HoldingDetails - "Value Evolution" and "Performance Breakdown" show different total price than Current Position => data comes out like this from portfolio service. Current position seems to have the latest, correct amount to show
 - [ ] HoldingDetails - "Performance" should take into account dividends
-- [ ] Return Breakdown on Dashboard - fix Realized Gains vs Unrealized Gains, same for Capital Gains -> showing crazy values
-- [ ] Performance Breakdown on HoldingDetails - always show Dividends & Capital Gains, regardless if they are 0
+- [ ] HoldingDetails - "Performance Breakdown" shows >0 "Price appreciation" / "Capital Gains" for positions that do not have Capital Gains
+- [ ] HoldingDetails - "Performance Breakdown" should always show Dividends & Capital Gains, regardless if they are 0
+- [ ] Dashboard - Return Breakdown - fix Realized Gains vs Unrealized Gains, same for Capital Gains -> showing crazy values
+
+## TODO P2
+- [ ] HoldingDetails - Weird rounding error on quantity => sometimes get 1.00 transformed to 0.99998 
 - [ ] Multi custom holding CSV import functionality from home page
 - [ ] Delete holding / price / tx buttons should be red / danger
 - [ ] Hardcoded list of brokers to pick from
 - [ ] Portfolio export / backup
-
-## TODO P2
 - [ ] Allow Bonus with price 0
 - [ ] Remove need for transaction with price = 0, simplify custom holding creation
 - [ ] Use existing symbols instead of symbol search when adding symbol
