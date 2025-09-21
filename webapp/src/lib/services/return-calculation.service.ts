@@ -55,6 +55,182 @@ export interface DetailedReturnCalculationOptions extends ReturnCalculationOptio
   fifoMethod?: boolean // Use FIFO for realized gains calculation (default: true)
 }
 
+
+
+// FIFO lot
+interface Lot {
+  quantity: number;
+  costPerUnit: number;
+}
+
+interface PortfolioSummary {
+  totalPnL: number;
+  realizedPnL: number;
+  unrealizedPnL: number;
+  capitalGains: number;
+  dividends: number;
+  costBasis: number;
+  totalInvested: number;
+  annualizedReturn: number;
+}
+
+
+
+interface Lot {
+  quantity: number;
+  costPerUnit: number;
+}
+
+interface PortfolioSummary {
+  totalPnL: number;
+  realizedPnL: number;
+  unrealizedPnL: number;
+  capitalGains: number;
+  dividends: number;
+  costBasis: number;
+  totalInvested: number;
+  annualizedReturn: number;
+}
+
+function computePortfolioSummaryV2(
+  transactions: Transaction[],
+  histData: HistoricalDataPoint[],
+  startDate: string,
+  endDate: string
+): PortfolioSummary {
+  // Sort historical data
+  const histSorted = histData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const histStart = histSorted.find(d => d.date >= startDate) ?? histSorted[0];
+  const histEnd = histSorted.slice().reverse().find(d => d.date <= endDate) ?? histSorted[histSorted.length - 1];
+
+  // Filter transactions within range
+  const txs = transactions.filter(tx => tx.date >= startDate && tx.date <= endDate);
+
+  const lotsBySymbol: Record<string, Lot[]> = {};
+  let realizedPnL = 0;
+  let dividends = 0;
+  let totalInvested = 0;
+
+  // Process transactions
+  for (const tx of txs) {
+    if (!lotsBySymbol[tx.symbol]) lotsBySymbol[tx.symbol] = [];
+
+    switch (tx.type) {
+      case "buy":
+        if (tx.quantity > 0) {
+          lotsBySymbol[tx.symbol].push({ quantity: tx.quantity, costPerUnit: tx.price_per_unit + (tx.fees || 0) / tx.quantity });
+          totalInvested += tx.price_per_unit * tx.quantity + (tx.fees || 0);
+        }
+        break;
+
+      case "sell":
+        let remainingQty = tx.quantity;
+        while (remainingQty > 0 && lotsBySymbol[tx.symbol].length > 0) {
+          const lot = lotsBySymbol[tx.symbol][0];
+          const qtyUsed = Math.min(remainingQty, lot.quantity);
+          realizedPnL += qtyUsed * (tx.price_per_unit - lot.costPerUnit);
+          lot.quantity -= qtyUsed;
+          remainingQty -= qtyUsed;
+          if (lot.quantity === 0) lotsBySymbol[tx.symbol].shift();
+        }
+        break;
+
+      case "dividend":
+        dividends += tx.price_per_unit;
+        break;
+
+      case "bonus":
+        if (tx.quantity > 0) lotsBySymbol[tx.symbol].push({ quantity: tx.quantity, costPerUnit: 0 });
+        break;
+    }
+  }
+
+  // Compute cost basis of remaining lots
+  let costBasis = 0;
+  for (const symbol in lotsBySymbol) {
+    for (const lot of lotsBySymbol[symbol]) {
+      costBasis += lot.quantity * lot.costPerUnit;
+    }
+  }
+
+  // Compute unrealized PnL using historical end values
+  const totalCurrentValue = Object.values(histEnd.assetTypeValues).reduce((a, b) => a + b, 0);
+  const unrealizedPnL = totalCurrentValue - costBasis;
+
+  // Capital gains and total PnL
+  const capitalGains = realizedPnL + unrealizedPnL;
+  const totalPnL = capitalGains + dividends;
+
+  // Annualized TWR
+  const startValue = Object.values(histStart.assetTypeValues).reduce((a, b) => a + b, 0);
+  const years = (new Date(histEnd.date).getTime() - new Date(histStart.date).getTime()) / (1000 * 3600 * 24 * 365.25);
+  const annualizedReturn = computeAnnualizedTWR(histData, txs, startDate, endDate);
+
+  return {
+    totalPnL,
+    realizedPnL,
+    unrealizedPnL,
+    capitalGains,
+    dividends,
+    costBasis,
+    totalInvested,
+    annualizedReturn,
+  };
+}
+
+function computeAnnualizedTWR(
+  histData: HistoricalDataPoint[],
+  transactions: Transaction[],
+  startDate: string,
+  endDate: string
+): number {
+  // Sort historical data
+  const histSorted = histData
+    .filter(d => d.date >= startDate && d.date <= endDate)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  if (histSorted.length < 2) return 0;
+
+  let twr = 1;
+
+  for (let i = 0; i < histSorted.length - 1; i++) {
+    const start = histSorted[i];
+    const end = histSorted[i + 1];
+
+    // Cash flows between start.date (exclusive) and end.date (inclusive)
+    const cf = transactions
+      .filter(tx => tx.date > start.date && tx.date <= end.date)
+      .reduce((acc, tx) => {
+        switch (tx.type) {
+          case "buy":
+            return acc + tx.price_per_unit * tx.quantity + (tx.fees || 0);
+          case "sell":
+            return acc - tx.price_per_unit * tx.quantity + (tx.fees || 0);
+          // dividend is inflow, reduce net outflow
+          case "dividend":
+            return acc - tx.price_per_unit;
+          default:
+            return acc;
+        }
+      }, 0);
+
+    const V_start = Object.values(start.assetTypeValues).reduce((a, b) => a + b, 0);
+    const V_end = Object.values(end.assetTypeValues).reduce((a, b) => a + b, 0);
+
+    if (V_start > 0) {
+      const periodReturn = (V_end - cf) / V_start - 1;
+      twr *= 1 + periodReturn;
+    }
+  }
+
+  const years =
+    (new Date(histSorted[histSorted.length - 1].date).getTime() -
+      new Date(histSorted[0].date).getTime()) /
+    (1000 * 3600 * 24 * 365.25);
+
+  return years > 0 ? Math.pow(twr, 1 / years) - 1 : 0;
+}
+
 /**
  * Service for calculating various return metrics including annualized returns
  * Supports both Time-Weighted Return (TWR) and Money-Weighted Return (XIRR)
@@ -70,7 +246,6 @@ export class ReturnCalculationService {
     symbols: Symbol[],
     options: ReturnCalculationOptions = {}
   ): AnnualizedReturnMetrics {
-    
     if (historicalData.length === 0) {
       return this.getEmptyMetrics()
     }
@@ -199,6 +374,12 @@ export class ReturnCalculationService {
     symbols: Symbol[],
     options: DetailedReturnCalculationOptions = {}
   ): DetailedReturnMetrics {
+
+        
+
+    const res = computePortfolioSummaryV2(transactions, historicalData, '2000-01-01', '2025-09-20')
+    console.log("computePortfolioSummaryV2", res);
+
 
     // First get the basic metrics
     const basicMetrics = this.calculateAnnualizedReturns(transactions, historicalData, symbols, options)
@@ -808,6 +989,7 @@ export class ReturnCalculationService {
     totalInvested: number,
     firstTransactionDate: string
   ): number {
+
     if (totalInvested <= 0) return 0
 
     const years = this.calculateYearsDifference(
