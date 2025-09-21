@@ -94,9 +94,6 @@ export default function DetailedHoldingReturns({
     )
   }
 
-  const hasRealizedGains = detailedReturns.summaryV2.realizedPnL !== 0
-  const hasDividends = detailedReturns.summaryV2.dividends > 0
-  const hasWithdrawals = false // Not available in V2
 
   return (
     <div className={`bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700 ${className}`}>
@@ -110,158 +107,48 @@ export default function DetailedHoldingReturns({
       </div>
 
       <div className="p-6">
-        <div className="space-y-6">
-          {/* Main Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400">Total Return</div>
-              <div className={`text-lg font-semibold ${getPnLColor(detailedReturns.annualizedReturns.totalReturn)}`}>
-                {formatPercent(detailedReturns.annualizedReturns.totalReturn)}
-              </div>
-              <div className={`text-xs ${getPnLColor(detailedReturns.annualizedReturns.totalReturn)}`}>
-                {formatCurrency(detailedReturns.summaryV2.totalPnL)}
-              </div>
+        <div className="space-y-4">
+          {/* Capital Gains */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <span className="text-xl">📈</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Capital Gains</span>
             </div>
-
-            <div className="text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400">Annualized</div>
-              <div className={`text-lg font-semibold ${getPnLColor(detailedReturns.annualizedReturns.timeWeightedReturn)}`}>
-                {formatPercent(detailedReturns.annualizedReturns.timeWeightedReturn)}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                {detailedReturns.annualizedReturns.periodYears < 1 ?
-                  `${Math.round(detailedReturns.annualizedReturns.periodYears * 365)}d` :
-                  `${detailedReturns.annualizedReturns.periodYears.toFixed(1)}y`
-                }
-              </div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400">Invested</div>
-              <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                {formatCurrency(detailedReturns.summaryV2.totalInvested)}
-              </div>
-            </div>
-
-            <div className="text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400">Current Value</div>
-              <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                {formatCurrency(detailedReturns.summaryV2.costBasis + detailedReturns.summaryV2.unrealizedPnL)}
+            <div className="text-right">
+              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.capitalGains)}`}>
+                {formatCurrency(detailedReturns.summaryV2.capitalGains)}
               </div>
             </div>
           </div>
 
-          {/* Return Components */}
-          <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
-            <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">Return Components</h4>
-
-            <div className="space-y-4">
-              {/* Capital Gains */}
-              <div className="flex justify-between items-center py-2">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">📈</span>
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Capital Gains</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Price appreciation</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.capitalGains)}`}>
-                    {formatCurrency(detailedReturns.summaryV2.capitalGains)}
-                  </div>
-                  <div className={`text-xs ${getPnLColor(detailedReturns.summaryV2.annualizedReturn * 100)}`}>
-                    {formatPercent(detailedReturns.summaryV2.annualizedReturn * 100)} annual
-                  </div>
-                </div>
+          {/* Dividends */}
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <span className="text-xl">💰</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Dividends</span>
+            </div>
+            <div className="text-right">
+              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.dividends)}`}>
+                {formatCurrency(detailedReturns.summaryV2.dividends)}
               </div>
-
-              {/* Dividends (if any) */}
-              {hasDividends && (
-                <div className="flex justify-between items-center py-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">💰</span>
-                    <div>
-                      <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Dividend Income</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">Cash distributions</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.dividends)}`}>
-                      {formatCurrency(detailedReturns.summaryV2.dividends)}
-                    </div>
-                    <div className={`text-xs text-gray-500 dark:text-gray-400`}>
-                      Yield data unavailable
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
           {/* Realized vs Unrealized */}
-          <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
-            <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">Realized vs Unrealized</h4>
-
-            <div className="space-y-3">
-              {hasRealizedGains ? (
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">✅</span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Realized Returns</span>
-                  </div>
-                  <div className="text-right">
-                    <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.realizedPnL + detailedReturns.summaryV2.dividends)}`}>
-                      {formatCurrency(detailedReturns.summaryV2.realizedPnL + detailedReturns.summaryV2.dividends)}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-2 text-gray-500 dark:text-gray-400 text-sm">
-                  📋 All returns are unrealized (no sales yet)
-                </div>
-              )}
-
-              <div className="flex justify-between items-center">
-                <div className="flex items-center space-x-2">
-                  <span className="text-lg">📋</span>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Unrealized Returns</span>
-                </div>
-                <div className="text-right">
-                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.unrealizedPnL)}`}>
-                    {formatCurrency(detailedReturns.summaryV2.unrealizedPnL)}
-                  </div>
-                </div>
+          <div className="border-t border-gray-200 dark:border-gray-600 pt-4 space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Realized P&L</span>
+              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.realizedPnL)}`}>
+                {formatCurrency(detailedReturns.summaryV2.realizedPnL)}
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Unrealized P&L</span>
+              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.unrealizedPnL)}`}>
+                {formatCurrency(detailedReturns.summaryV2.unrealizedPnL)}
               </div>
             </div>
           </div>
-
-
-          {/* Cash Flow Summary */}
-          {hasWithdrawals && (
-            <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
-              <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">Cash Flow Summary</h4>
-              <div className="grid grid-cols-3 gap-4 text-center text-sm">
-                <div>
-                  <div className="text-gray-500 dark:text-gray-400">Money In</div>
-                  <div className="font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(detailedReturns.summaryV2.totalInvested)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-500 dark:text-gray-400">Money Out</div>
-                  <div className="font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(0)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-500 dark:text-gray-400">Net Invested</div>
-                  <div className="font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(detailedReturns.summaryV2.totalInvested)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

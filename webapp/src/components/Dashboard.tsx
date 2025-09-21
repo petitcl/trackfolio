@@ -21,6 +21,13 @@ interface DashboardProps {
   user: AuthUser
 }
 
+const defaultPortfolioData = ()=> ({
+  totalValue: 0,
+  totalCostBasis: 0,
+  positions: [],
+  totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
+})
+
 export default function Dashboard({ user }: DashboardProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
@@ -64,12 +71,7 @@ export default function Dashboard({ user }: DashboardProps) {
       console.log('✅ Portfolio data loaded successfully')
     } catch (error) {
       console.error('❌ Error loading portfolio data:', error)
-      setPortfolioData({
-        totalValue: 0,
-        totalCostBasis: 0,
-        positions: [],
-        totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
-      })
+      setPortfolioData(defaultPortfolioData())
       setEnhancedPortfolioData({
         totalValue: 0,
         totalCostBasis: 0,
@@ -126,7 +128,6 @@ export default function Dashboard({ user }: DashboardProps) {
     if (totalCost === 0) return 0
     return (unrealizedPnL / totalCost) * 100
   }
-
 
   const getAssetTypeIcon = (assetType: string) => {
     const icons: Record<string, string> = {
@@ -278,7 +279,7 @@ export default function Dashboard({ user }: DashboardProps) {
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Cost Basis</dt>
                       <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(portfolioData.totalCostBasis)}
+                        {formatCurrency(enhancedPortfolioData?.totalCostBasis ?? 0)}
                       </dd>
                     </dl>
                   </div>

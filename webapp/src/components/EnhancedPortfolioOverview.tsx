@@ -115,9 +115,9 @@ export default function EnhancedPortfolioOverview({
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Invested</dt>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Cost Basis</dt>
                   <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(summaryV2.totalInvested)}
+                    {formatCurrency(summaryV2.costBasis)}
                   </dd>
                 </dl>
               </div>
