@@ -213,9 +213,6 @@ export default function DetailedHoldingReturns({
                     <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.realizedPnL + detailedReturns.summaryV2.dividends)}`}>
                       {formatCurrency(detailedReturns.summaryV2.realizedPnL + detailedReturns.summaryV2.dividends)}
                     </div>
-                    <div className={`text-xs text-gray-500 dark:text-gray-400`}>
-                      Percentage unavailable
-                    </div>
                   </div>
                 </div>
               ) : (
@@ -233,29 +230,11 @@ export default function DetailedHoldingReturns({
                   <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.unrealizedPnL)}`}>
                     {formatCurrency(detailedReturns.summaryV2.unrealizedPnL)}
                   </div>
-                  <div className={`text-xs text-gray-500 dark:text-gray-400`}>
-                    Percentage unavailable
-                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Money Weighted Return (XIRR) */}
-          <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h4 className="text-md font-medium text-gray-900 dark:text-white">Money-Weighted Return (XIRR)</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Includes timing of cash flows</p>
-              </div>
-              <div className="text-right">
-                <div className={`text-lg font-semibold ${getPnLColor(detailedReturns.annualizedReturns.moneyWeightedReturn)}`}>
-                  {formatPercent(detailedReturns.annualizedReturns.moneyWeightedReturn)}
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">Investor experience</div>
-              </div>
-            </div>
-          </div>
 
           {/* Cash Flow Summary */}
           {hasWithdrawals && (
