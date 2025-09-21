@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { AssetType, Symbol } from '@/lib/supabase/types'
 import { clientAuthService, type AuthUser } from '@/lib/auth/client.auth.service'
@@ -30,64 +30,62 @@ export default function Dashboard({ user }: DashboardProps) {
   const [symbols, setSymbols] = useState<Symbol[]>([])
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
   const [repartitionData, setRepartitionData] = useState<Array<{ assetType: string; value: number; percentage: number }>>([])
-  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('USD')
+  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>(
+    currencyService.getPreferredCurrency()
+  )
   const [showBulkImport, setShowBulkImport] = useState(false)
   const router = useRouter()
 
-  // Initialize currency preference on mount
-  useEffect(() => {
-    const preferredCurrency = currencyService.getPreferredCurrency()
-    setSelectedCurrency(preferredCurrency)
-  }, [])
+  // Unified loader for portfolio data
+  const loadPortfolioData = useCallback(async (currency: SupportedCurrency) => {
+    try {
+      setDataLoading(true)
+      console.log('📊 Loading portfolio data for user:', user.email, 'currency:', currency)
 
-  // Load portfolio data on mount and when user changes
-  useEffect(() => {
-    const loadPortfolioData = async () => {
-      try {
-        setDataLoading(true)
-        console.log('📊 Loading portfolio data for user:', user.email)
-        
-        const [portfolio, enhancedPortfolio, symbolsData, historical, repartition] = await Promise.all([
-          portfolioService.getPortfolioData(user, selectedCurrency),
-          portfolioService.getEnhancedPortfolioData(user, selectedCurrency),
-          portfolioService.getSymbols(user),
-          portfolioService.getPortfolioHistoricalData(user, selectedCurrency),
-          portfolioService.getPortfolioRepartitionData(user, selectedCurrency)
-        ])
+      const [portfolio, enhancedPortfolio, symbolsData, historical, repartition] = await Promise.all([
+        portfolioService.getPortfolioData(user, currency),
+        portfolioService.getEnhancedPortfolioData(user, currency),
+        portfolioService.getSymbols(user),
+        portfolioService.getPortfolioHistoricalData(user, currency),
+        portfolioService.getPortfolioRepartitionData(user, currency)
+      ])
 
-        setPortfolioData(portfolio)
-        setEnhancedPortfolioData(enhancedPortfolio)
-        setSymbols(symbolsData)
-        setHistoricalData(historical)
-        setRepartitionData(repartition)
-        
-        console.log('✅ Portfolio data loaded successfully')
-      } catch (error) {
-        console.error('❌ Error loading portfolio data:', error)
-        // Fallback to empty data
-        setPortfolioData({
-          totalValue: 0,
-          totalCostBasis: 0,
-          positions: [],
-          totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
-        })
-        setEnhancedPortfolioData({
-          totalValue: 0,
-          totalCostBasis: 0,
-          positions: [],
-          totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
-        })
-        setSymbols([])
-        setHistoricalData([])
-        setRepartitionData([])
-      } finally {
-        setDataLoading(false)
-      }
+      setPortfolioData(portfolio)
+      setEnhancedPortfolioData(enhancedPortfolio)
+      setSymbols(symbolsData)
+      setHistoricalData(historical)
+      setRepartitionData(repartition)
+
+      console.log('✅ Portfolio data loaded successfully')
+    } catch (error) {
+      console.error('❌ Error loading portfolio data:', error)
+      setPortfolioData({
+        totalValue: 0,
+        totalCostBasis: 0,
+        positions: [],
+        totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
+      })
+      setEnhancedPortfolioData({
+        totalValue: 0,
+        totalCostBasis: 0,
+        positions: [],
+        totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
+      })
+      setSymbols([])
+      setHistoricalData([])
+      setRepartitionData([])
+    } finally {
+      setDataLoading(false)
     }
+  }, [user])
 
-    loadPortfolioData()
-  }, [user, selectedCurrency])
+  useEffect(() => {
+    loadPortfolioData(selectedCurrency)
+  }, [loadPortfolioData, selectedCurrency])
 
+  const handleCurrencyChange = (newCurrency: SupportedCurrency) => {
+    setSelectedCurrency(newCurrency)
+  }
 
   const handleSignOut = async () => {
     setIsLoading(true)
@@ -149,34 +147,6 @@ export default function Dashboard({ user }: DashboardProps) {
     return labels[assetType] || 'Unknown'
   }
 
-  const handleCurrencyChange = async (newCurrency: SupportedCurrency) => {
-    setSelectedCurrency(newCurrency)
-    
-    // Reload all portfolio data with the new currency
-    try {
-      setDataLoading(true)
-      console.log('💱 Reloading portfolio data for currency:', newCurrency)
-      
-      const [portfolio, enhancedPortfolio, historical, repartition] = await Promise.all([
-        portfolioService.getPortfolioData(user, newCurrency),
-        portfolioService.getEnhancedPortfolioData(user, newCurrency),
-        portfolioService.getPortfolioHistoricalData(user, newCurrency),
-        portfolioService.getPortfolioRepartitionData(user, newCurrency)
-      ])
-
-      setPortfolioData(portfolio)
-      setEnhancedPortfolioData(enhancedPortfolio)
-      setHistoricalData(historical)
-      setRepartitionData(repartition)
-      
-      console.log('✅ Portfolio data reloaded for currency:', newCurrency)
-    } catch (error) {
-      console.error('Failed to reload portfolio data for new currency:', error)
-    } finally {
-      setDataLoading(false)
-    }
-  }
-
   const getPnLColor = (pnl: number) => {
     if (pnl > 0) return 'text-green-600 dark:text-green-400'
     if (pnl < 0) return 'text-red-600 dark:text-red-400'
@@ -212,9 +182,9 @@ export default function Dashboard({ user }: DashboardProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <img 
-                src="/icon-192x192.png" 
-                alt="Trackfolio Logo" 
+              <img
+                src="/icon-192x192.png"
+                alt="Trackfolio Logo"
                 className="w-10 h-10 mr-3 rounded-lg"
               />
               <div>
@@ -378,7 +348,7 @@ export default function Dashboard({ user }: DashboardProps) {
               selectedCurrency={selectedCurrency}
             />
           </div>
-          
+
           {/* Bottom Row - Portfolio Value Evolution */}
           <div className="grid grid-cols-1">
             <PortfolioValueEvolutionChart
@@ -436,20 +406,20 @@ export default function Dashboard({ user }: DashboardProps) {
                   }, {} as Record<string, typeof portfolioData.positions>)
 
                   const rows: React.ReactElement[] = []
-                  
+
                   // Define order for asset types
                   const typeOrder: AssetType[] = ['stock', 'crypto', 'real_estate', 'other']
-                  
+
                   typeOrder.forEach(assetType => {
                     const positions = positionsByType[assetType]
                     if (!positions || positions.length === 0) return
-                    
+
                     // Calculate totals for this asset type
                     const typeTotalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
                     const typeTotalPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
                     const typeTotalCost = positions.reduce((sum, pos) => sum + (pos.avgCost * pos.quantity), 0)
                     const typePnLPercentage = typeTotalCost > 0 ? (typeTotalPnL / typeTotalCost) * 100 : 0
-                    
+
                     // Add individual positions
                     positions.forEach(position => {
                       const pnlPercentage = calculatePnLPercentage(position.unrealizedPnL, position.avgCost, position.quantity)
@@ -487,7 +457,7 @@ export default function Dashboard({ user }: DashboardProps) {
                         </tr>
                       )
                     })
-                    
+
                     // Add category total row
                     rows.push(
                       <tr key={`${assetType}-total`} className="bg-gray-100 dark:bg-gray-700 font-semibold">
@@ -514,7 +484,7 @@ export default function Dashboard({ user }: DashboardProps) {
                       </tr>
                     )
                   })
-                  
+
                   return rows
                 })()}
               </tbody>
@@ -547,11 +517,11 @@ export default function Dashboard({ user }: DashboardProps) {
         {showBulkImport && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
-            <div 
+            <div
               className="absolute inset-0 bg-black/50 backdrop-blur-sm"
               onClick={handleBulkImportCancel}
             />
-            
+
             {/* Modal Content */}
             <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto">
               <MultiBulkImportModal
