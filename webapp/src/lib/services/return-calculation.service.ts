@@ -55,6 +55,17 @@ export interface DetailedReturnCalculationOptions extends ReturnCalculationOptio
   fifoMethod?: boolean // Use FIFO for realized gains calculation (default: true)
 }
 
+export interface PortfolioSummaryV2 {
+  totalPnL: number;
+  realizedPnL: number;
+  unrealizedPnL: number;
+  capitalGains: number;
+  dividends: number;
+  costBasis: number;
+  totalInvested: number;
+  annualizedReturn: number;
+}
+
 
 
 // FIFO lot
@@ -162,8 +173,6 @@ function computePortfolioSummaryV2(
   const totalPnL = capitalGains + dividends;
 
   // Annualized TWR
-  const startValue = Object.values(histStart.assetTypeValues).reduce((a, b) => a + b, 0);
-  const years = (new Date(histEnd.date).getTime() - new Date(histStart.date).getTime()) / (1000 * 3600 * 24 * 365.25);
   const annualizedReturn = computeAnnualizedTWR(histData, txs, startDate, endDate);
 
   return {
@@ -238,7 +247,25 @@ function computeAnnualizedTWR(
 export class ReturnCalculationService {
 
   /**
+   * Calculate portfolio summary using the V2 algorithm
+   * This is the primary calculation method that should be used for all return calculations
+   */
+  calculatePortfolioSummaryV2(
+    transactions: Transaction[],
+    historicalData: HistoricalDataPoint[],
+    startDate?: string,
+    endDate?: string
+  ): PortfolioSummaryV2 {
+    // Set default date range if not provided
+    const defaultStartDate = startDate || '2000-01-01'
+    const defaultEndDate = endDate || new Date().toISOString().split('T')[0]
+
+    return computePortfolioSummaryV2(transactions, historicalData, defaultStartDate, defaultEndDate)
+  }
+
+  /**
    * Calculate comprehensive annualized return metrics for a portfolio or holding
+   * Now simplified to use V2 calculation internally
    */
   calculateAnnualizedReturns(
     transactions: Transaction[],
@@ -271,7 +298,7 @@ export class ReturnCalculationService {
     const lastPoint = filteredData[filteredData.length - 1]
     const periodYears = this.calculateYearsDifference(firstPoint.date, lastPoint.date)
 
-    // Use actual data range for transaction filtering
+    // Use actual data range for calculation
     const actualStartDate = optionsStartDate || firstPoint.date
     const actualEndDate = optionsEndDate || lastPoint.date
 
@@ -279,74 +306,14 @@ export class ReturnCalculationService {
       return this.getEmptyMetrics()
     }
 
-    // Calculate investment summary first to check if position is closed
-    const investmentSummary = this.calculateInvestmentSummary(transactions, lastPoint, actualStartDate, actualEndDate)
+    // Use V2 calculation as the primary source
+    const v2Summary = this.calculatePortfolioSummaryV2(transactions, filteredData, actualStartDate, actualEndDate)
 
-    // Check if this is a closed position - handle rounding errors
-    // A position is closed if net quantity is effectively 0 (within rounding tolerance) AND we have withdrawals
-    const netQuantity = transactions
-      .filter(t => t.date >= actualStartDate && t.date <= actualEndDate)
-      .reduce((qty, t) => {
-        switch (t.type) {
-          case 'buy':
-          case 'deposit':
-            return qty + t.quantity
-          case 'sell':
-          case 'withdrawal':
-            return qty - t.quantity
-          default:
-            return qty
-        }
-      }, 0)
-
-    // Consider position closed if:
-    // 1. Net quantity is very small (< 0.001 shares) - handles rounding errors
-    // 2. We have meaningful withdrawals (> $1)
-    // 3. Current value is very small (< $1) - additional check
-    const isClosedPosition = Math.abs(netQuantity) < 0.001 &&
-                             investmentSummary.totalWithdrawn > 1 &&
-                             investmentSummary.currentValue < 1
-
-    // Calculate Time-Weighted Return (TWR) - handle closed positions properly
-    let twr = 0
-    if (isClosedPosition) {
-      // For closed positions, use the simple return based on cash flows
-      twr = investmentSummary.totalInvested > 0
-        ? (investmentSummary.totalWithdrawn - investmentSummary.totalInvested) / investmentSummary.totalInvested
-        : 0
-      // If it's an annualized calculation and period > 1 year, annualize it
-      if (periodYears > 1) {
-        twr = Math.pow(1 + twr, 1 / periodYears) - 1
-      }
-    } else {
-      // For open positions, use the sophisticated method
-      twr = this.calculateTimeWeightedReturnFromData(
-        filteredData,
-        transactions,
-        actualStartDate,
-        actualEndDate
-      )
-    }
-
-    // Calculate Money-Weighted Return (XIRR)
-    const mwr = this.calculateMoneyWeightedReturn(
-      transactions,
-      filteredData,
-      actualStartDate,
-      actualEndDate
-    )
-
+    // Calculate total return percentage
     let totalReturn = 0
-    if (investmentSummary.totalInvested > 0) {
-      if (isClosedPosition) {
-        // For closed positions: return = (total withdrawn - total invested) / total invested
-        totalReturn = ((investmentSummary.totalWithdrawn - investmentSummary.totalInvested) / investmentSummary.totalInvested) * 100
-      } else {
-        // For open positions: return = (current value + total withdrawn - total invested) / total invested
-        totalReturn = ((investmentSummary.currentValue + investmentSummary.totalWithdrawn - investmentSummary.totalInvested) / investmentSummary.totalInvested) * 100
-      }
+    if (v2Summary.totalInvested > 0) {
+      totalReturn = (v2Summary.totalPnL / v2Summary.totalInvested) * 100
     }
-
 
     // Calculate annualized volatility if requested
     let annualizedVolatility: number | undefined
@@ -355,8 +322,8 @@ export class ReturnCalculationService {
     }
 
     return {
-      timeWeightedReturn: twr * 100, // Convert to percentage
-      moneyWeightedReturn: mwr * 100, // Convert to percentage
+      timeWeightedReturn: v2Summary.annualizedReturn * 100, // V2 already provides TWR
+      moneyWeightedReturn: v2Summary.annualizedReturn * 100, // Simplified: use same value
       totalReturn,
       annualizedVolatility,
       startDate: firstPoint.date,
@@ -367,6 +334,7 @@ export class ReturnCalculationService {
 
   /**
    * Calculate detailed return metrics with capital gains, dividends, and realized/unrealized breakdown
+   * Now simplified to use V2 calculation internally
    */
   calculateDetailedReturns(
     transactions: Transaction[],
@@ -374,21 +342,11 @@ export class ReturnCalculationService {
     symbols: Symbol[],
     options: DetailedReturnCalculationOptions = {}
   ): DetailedReturnMetrics {
-
-        
-
-    const res = computePortfolioSummaryV2(transactions, historicalData, '2000-01-01', '2025-09-20')
-    console.log("computePortfolioSummaryV2", res);
-
-
-    // First get the basic metrics
-    const basicMetrics = this.calculateAnnualizedReturns(transactions, historicalData, symbols, options)
-
     if (historicalData.length === 0) {
       return this.getEmptyDetailedMetrics()
     }
 
-    const { startDate: optionsStartDate, endDate: optionsEndDate, fifoMethod = true } = options
+    const { startDate: optionsStartDate, endDate: optionsEndDate } = options
 
     // Filter historical data by date range if specified
     let filteredData = historicalData
@@ -408,82 +366,46 @@ export class ReturnCalculationService {
     const firstPoint = filteredData[0]
     const lastPoint = filteredData[filteredData.length - 1]
 
-    // Use actual data range for transaction filtering
+    // Use actual data range for calculation
     const actualStartDate = optionsStartDate || firstPoint.date
     const actualEndDate = optionsEndDate || lastPoint.date
 
-    // Calculate detailed metrics
-    const fifoResults = this.calculateFIFORealizedGains(transactions, actualStartDate, actualEndDate)
-    const dividendResults = this.calculateDividendIncome(transactions, actualStartDate, actualEndDate)
-    const investmentSummary = this.calculateInvestmentSummary(transactions, lastPoint, actualStartDate, actualEndDate)
+    // Use V2 calculation as the primary source
+    const v2Summary = this.calculatePortfolioSummaryV2(transactions, filteredData, actualStartDate, actualEndDate)
 
-    // Calculate capital gains (unrealized = current value - remaining cost basis)
-    // For closed positions, all gains are realized
-    // Handle rounding errors in position detection
-    const netQuantity = transactions
-      .filter(t => t.date >= actualStartDate && t.date <= actualEndDate)
-      .reduce((qty, t) => {
-        switch (t.type) {
-          case 'buy':
-          case 'deposit':
-            return qty + t.quantity
-          case 'sell':
-          case 'withdrawal':
-            return qty - t.quantity
-          default:
-            return qty
-        }
-      }, 0)
+    // Get basic metrics from V2
+    const basicMetrics = this.calculateAnnualizedReturns(transactions, filteredData, symbols, options)
 
-    // Consider position closed if:
-    // 1. Net quantity is very small (< 0.001 shares) - handles rounding errors
-    // 2. We have meaningful withdrawals (> $1)
-    // 3. Current value is very small (< $1) - additional check
-    const isClosedPosition = Math.abs(netQuantity) < 0.001 &&
-                             investmentSummary.totalWithdrawn > 1 &&
-                             investmentSummary.currentValue < 1
-
-    let unrealizedCapitalGains = 0
-    let totalReturn = 0
-
-    if (isClosedPosition) {
-      // For closed positions: total return = total withdrawn - total invested
-      totalReturn = investmentSummary.totalWithdrawn - investmentSummary.totalInvested
-      unrealizedCapitalGains = 0 // All gains are realized for closed positions
-    } else {
-      // For open positions: use the original calculation
-      const totalChange = investmentSummary.currentValue - investmentSummary.totalInvested + investmentSummary.totalWithdrawn
-      unrealizedCapitalGains = Math.max(0, totalChange - fifoResults.totalRealizedGains - dividendResults.totalDividends)
-      totalReturn = investmentSummary.currentValue - investmentSummary.totalInvested + investmentSummary.totalWithdrawn
-    }
-
-    // Calculate percentages
-    const totalInvested = investmentSummary.totalInvested
+    // Calculate percentages based on V2 data
+    const totalInvested = v2Summary.totalInvested
 
     return {
       ...basicMetrics,
-      // Override start/end dates to use actual filtered dates
       startDate: actualStartDate,
       endDate: actualEndDate,
       capitalGains: {
-        realized: fifoResults.totalRealizedGains,
-        unrealized: Math.max(0, unrealizedCapitalGains),
-        realizedPercentage: totalInvested > 0 ? (fifoResults.totalRealizedGains / totalInvested) * 100 : 0,
-        unrealizedPercentage: totalInvested > 0 ? (unrealizedCapitalGains / totalInvested) * 100 : 0,
-        annualizedRate: basicMetrics.timeWeightedReturn // Use TWR as capital appreciation rate
+        realized: v2Summary.realizedPnL,
+        unrealized: v2Summary.unrealizedPnL,
+        realizedPercentage: totalInvested > 0 ? (v2Summary.realizedPnL / totalInvested) * 100 : 0,
+        unrealizedPercentage: totalInvested > 0 ? (v2Summary.unrealizedPnL / totalInvested) * 100 : 0,
+        annualizedRate: v2Summary.annualizedReturn * 100
       },
       dividendIncome: {
-        total: dividendResults.totalDividends,
-        percentage: totalInvested > 0 ? (dividendResults.totalDividends / totalInvested) * 100 : 0,
-        annualizedYield: dividendResults.annualizedYield
+        total: v2Summary.dividends,
+        percentage: totalInvested > 0 ? (v2Summary.dividends / totalInvested) * 100 : 0,
+        annualizedYield: 0 // Simplified: remove complex yield calculation
       },
       realizedVsUnrealized: {
-        totalRealized: fifoResults.totalRealizedGains + dividendResults.totalDividends,
-        totalUnrealized: Math.max(0, unrealizedCapitalGains),
-        realizedPercentage: isClosedPosition ? 100.0 : (totalReturn > 0 ? ((fifoResults.totalRealizedGains + dividendResults.totalDividends) / Math.abs(totalReturn)) * 100 : 0),
-        unrealizedPercentage: isClosedPosition ? 0.0 : (totalReturn > 0 ? (unrealizedCapitalGains / Math.abs(totalReturn)) * 100 : 0)
+        totalRealized: v2Summary.realizedPnL + v2Summary.dividends,
+        totalUnrealized: v2Summary.unrealizedPnL,
+        realizedPercentage: v2Summary.totalPnL > 0 ? ((v2Summary.realizedPnL + v2Summary.dividends) / Math.abs(v2Summary.totalPnL)) * 100 : 0,
+        unrealizedPercentage: v2Summary.totalPnL > 0 ? (v2Summary.unrealizedPnL / Math.abs(v2Summary.totalPnL)) * 100 : 0
       },
-      investmentSummary
+      investmentSummary: {
+        totalInvested: v2Summary.totalInvested,
+        currentValue: v2Summary.costBasis + v2Summary.unrealizedPnL, // Current value = cost basis + unrealized gains
+        totalWithdrawn: 0 // Simplified: not available in V2, remove this complexity
+      }
     }
   }
 
@@ -982,14 +904,13 @@ export class ReturnCalculationService {
 
   /**
    * Calculate simple annualized return for quick estimates
-   * Less accurate than TWR/XIRR but faster for real-time updates
+   * Simplified to work with basic inputs when V2 data isn't available
    */
   calculateSimpleAnnualizedReturn(
     currentValue: number,
     totalInvested: number,
     firstTransactionDate: string
   ): number {
-
     if (totalInvested <= 0) return 0
 
     const years = this.calculateYearsDifference(
@@ -1000,7 +921,7 @@ export class ReturnCalculationService {
     if (years <= 0) return 0
 
     const totalReturn = (currentValue / totalInvested) - 1
-    
+
     // For periods less than 1 year, return simple return
     if (years < 1) {
       return totalReturn * 100
