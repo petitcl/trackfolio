@@ -56,6 +56,11 @@ export default function Dashboard({ user }: DashboardProps) {
       setHistoricalData(historical)
       setRepartitionData(repartition)
 
+      console.log("portfolio", portfolio);
+      console.log("enhancedPortfolio", enhancedPortfolio);
+      console.log("historical last point", historical.at(-1));
+      console.log("repartition", repartition);
+
       console.log('✅ Portfolio data loaded successfully')
     } catch (error) {
       console.error('❌ Error loading portfolio data:', error)
