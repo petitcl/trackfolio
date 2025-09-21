@@ -41,17 +41,18 @@ export default function Dashboard({ user }: DashboardProps) {
     currencyService.getPreferredCurrency()
   )
   const [showBulkImport, setShowBulkImport] = useState(false)
+  const [showClosedPositions, setShowClosedPositions] = useState(false)
   const router = useRouter()
 
   // Unified loader for portfolio data
-  const loadPortfolioData = useCallback(async (currency: SupportedCurrency) => {
+  const loadPortfolioData = useCallback(async (currency: SupportedCurrency, includeClosedPositions?: boolean) => {
     try {
       setDataLoading(true)
       console.log('📊 Loading portfolio data for user:', user.email, 'currency:', currency)
 
       const [portfolio, enhancedPortfolio, symbolsData, historical, repartition] = await Promise.all([
-        portfolioService.getPortfolioData(user, currency),
-        portfolioService.getEnhancedPortfolioData(user, currency),
+        portfolioService.getPortfolioData(user, currency, includeClosedPositions ?? false),
+        portfolioService.getEnhancedPortfolioData(user, currency, includeClosedPositions ?? false),
         portfolioService.getSymbols(user),
         portfolioService.getPortfolioHistoricalData(user, currency),
         portfolioService.getPortfolioRepartitionData(user, currency)
@@ -87,8 +88,8 @@ export default function Dashboard({ user }: DashboardProps) {
   }, [user])
 
   useEffect(() => {
-    loadPortfolioData(selectedCurrency)
-  }, [loadPortfolioData, selectedCurrency])
+    loadPortfolioData(selectedCurrency, showClosedPositions)
+  }, [loadPortfolioData, selectedCurrency, showClosedPositions])
 
   const handleCurrencyChange = (newCurrency: SupportedCurrency) => {
     setSelectedCurrency(newCurrency)
@@ -127,6 +128,21 @@ export default function Dashboard({ user }: DashboardProps) {
     const totalCost = avgCost * quantity
     if (totalCost === 0) return 0
     return (unrealizedPnL / totalCost) * 100
+  }
+
+  const calculateRealizedPnLPercentage = (realizedPnL: number, realizedCostBasis: number) => {
+    if (realizedCostBasis === 0) return 0
+    return (realizedPnL / realizedCostBasis) * 100
+  }
+
+  const calculateTotalReturn = (unrealizedPnL: number, dividendIncome: number) => {
+    return unrealizedPnL + dividendIncome
+  }
+
+  const calculateTotalReturnPercentage = (unrealizedPnL: number, dividendIncome: number, avgCost: number, quantity: number) => {
+    const totalCost = avgCost * quantity
+    if (totalCost === 0) return 0
+    return ((unrealizedPnL + dividendIncome) / totalCost) * 100
   }
 
   const getAssetTypeIcon = (assetType: string) => {
@@ -287,7 +303,7 @@ export default function Dashboard({ user }: DashboardProps) {
               </div>
             </div>
 
-            {/* Total P&L */}
+            {/* P&L Breakdown */}
             <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
               <div className="p-5">
                 <div className="flex items-center">
@@ -295,14 +311,22 @@ export default function Dashboard({ user }: DashboardProps) {
                     <div className="text-2xl">🎯</div>
                   </div>
                   <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total P&L</dt>
-                      <dd className={`text-lg font-medium ${getPnLColor(portfolioData.totalPnL.total)}`}>
-                        {formatCurrency(portfolioData.totalPnL.total)}
-                      </dd>
-                      <dd className={`text-xs ${getPnLColor(portfolioData.totalPnL.totalPercentage)} mt-1`}>
-                        {formatPercent(portfolioData.totalPnL.totalPercentage)}
-                      </dd>
+                    <dl className="space-y-2">
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Unrealized P&L</dt>
+                        <dd className={`text-lg font-medium ${getPnLColor(portfolioData.totalPnL.unrealized)}`}>
+                          {formatCurrency(portfolioData.totalPnL.unrealized)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Return</dt>
+                        <dd className={`text-lg font-medium ${getPnLColor(portfolioData.totalPnL.total)}`}>
+                          {formatCurrency(portfolioData.totalPnL.total)}
+                        </dd>
+                        <dd className={`text-xs ${getPnLColor(portfolioData.totalPnL.totalPercentage)} mt-1`}>
+                          {formatPercent(portfolioData.totalPnL.totalPercentage)}
+                        </dd>
+                      </div>
                     </dl>
                   </div>
                 </div>
@@ -369,10 +393,38 @@ export default function Dashboard({ user }: DashboardProps) {
         {/* Holdings Table */}
         <div className="bg-white dark:bg-gray-800 shadow overflow-hidden sm:rounded-md border dark:border-gray-700">
           <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">Current Holdings</h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-              Your portfolio positions grouped by asset type
-            </p>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                  {showClosedPositions ? 'All Holdings' : 'Current Holdings'}
+                </h3>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+                  {showClosedPositions
+                    ? 'Your portfolio positions including closed positions grouped by asset type'
+                    : 'Your portfolio positions grouped by asset type'
+                  }
+                </p>
+              </div>
+              <div className="flex items-center">
+                <label className="flex items-center cursor-pointer">
+                  <span className="text-sm text-gray-700 dark:text-gray-300 mr-3">Show closed positions</span>
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={showClosedPositions}
+                      onChange={(e) => setShowClosedPositions(e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div className={`block bg-gray-300 dark:bg-gray-600 w-12 h-6 rounded-full transition-colors duration-200 ${
+                      showClosedPositions ? 'bg-blue-600 dark:bg-blue-500' : ''
+                    }`}></div>
+                    <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ${
+                      showClosedPositions ? 'transform translate-x-6' : ''
+                    }`}></div>
+                  </div>
+                </label>
+              </div>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -394,7 +446,10 @@ export default function Dashboard({ user }: DashboardProps) {
                     Market Value
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    P&L (Amount/%%)
+                    Unrealized P&L
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Total Return
                   </th>
                 </tr>
               </thead>
@@ -421,75 +476,113 @@ export default function Dashboard({ user }: DashboardProps) {
                     const positions = positionsByType[assetType]
                     if (!positions || positions.length === 0) return
 
-                    // Calculate totals for this asset type
-                    const typeTotalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
-                    const typeTotalPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
-                    const typeTotalCost = positions.reduce((sum, pos) => sum + (pos.avgCost * pos.quantity), 0)
+                    // Calculate totals for this asset type (only include active positions in totals)
+                    const activePositions = positions.filter(pos => pos.quantity > 0)
+                    const closedPositions = positions.filter(pos => pos.quantity === 0)
+                    const typeTotalValue = activePositions.reduce((sum, pos) => sum + pos.value, 0)
+                    const typeTotalPnL = activePositions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
+                    const typeTotalDividends = activePositions.reduce((sum, pos) => sum + pos.dividendIncome, 0)
+                    const typeTotalReturn = typeTotalPnL + typeTotalDividends
+                    const typeTotalRealizedPnL = positions.reduce((sum, pos) => sum + (pos.realizedPnL || 0), 0)
+                    const typeTotalRealizedCostBasis = positions.reduce((sum, pos) => sum + (pos.realizedCostBasis || 0), 0)
+                    const typeTotalCost = activePositions.reduce((sum, pos) => sum + (pos.avgCost * pos.quantity), 0)
                     const typePnLPercentage = typeTotalCost > 0 ? (typeTotalPnL / typeTotalCost) * 100 : 0
+                    const typeTotalReturnPercentage = typeTotalCost > 0 ? (typeTotalReturn / typeTotalCost) * 100 : 0
+                    const typeRealizedPnLPercentage = typeTotalRealizedCostBasis > 0 ? (typeTotalRealizedPnL / typeTotalRealizedCostBasis) * 100 : 0
 
                     // Add individual positions
                     positions.forEach(position => {
                       const pnlPercentage = calculatePnLPercentage(position.unrealizedPnL, position.avgCost, position.quantity)
+                      const realizedPnLPercentage = calculateRealizedPnLPercentage(position.realizedPnL, position.realizedCostBasis)
+                      const isClosed = position.quantity === 0
                       rows.push(
-                        <tr key={position.symbol} className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onClick={() => router.push(`/holdings/${encodeURIComponent(position.symbol)}`)}>
+                        <tr key={position.symbol} className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${isClosed ? 'opacity-60' : ''}`} onClick={() => router.push(`/holdings/${encodeURIComponent(position.symbol)}`)}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="flex-shrink-0 text-lg">
                                 {getAssetTypeIcon(assetType)}
                               </div>
                               <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">{position.symbol}</div>
+                                <div className={`text-sm font-medium hover:text-blue-600 dark:hover:text-blue-400 flex items-center ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                                  {position.symbol}
+                                  {isClosed && <span className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">CLOSED</span>}
+                                </div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
                                   {symbols.find(s => s.symbol === position.symbol)?.name || 'Unknown'}
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-300'}`}>
                             {position.quantity.toLocaleString()}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                            {formatCurrency(position.avgCost)}
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-300'}`}>
+                            {isClosed ? '-' : formatCurrency(position.avgCost)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                            {formatCurrency(position.currentPrice)}
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-300'}`}>
+                            {isClosed ? '-' : formatCurrency(position.currentPrice)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                            {formatCurrency(position.value)}
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                            {isClosed ? '-' : formatCurrency(position.value)}
                           </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${getPnLColor(position.unrealizedPnL)}`}>
-                            <div>{formatCurrency(position.unrealizedPnL)}</div>
-                            <div className="text-xs">{formatPercent(pnlPercentage)}</div>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? 'text-gray-500 dark:text-gray-400' : getPnLColor(position.unrealizedPnL)}`}>
+                            <div>{isClosed ? '-' : formatCurrency(position.unrealizedPnL)}</div>
+                            <div className="text-xs">{isClosed ? '-' : formatPercent(pnlPercentage)}</div>
+                          </td>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? getPnLColor(position.realizedPnL) : getPnLColor(calculateTotalReturn(position.unrealizedPnL, position.dividendIncome))}`}>
+                            <div>{isClosed ? formatCurrency(position.realizedPnL) : formatCurrency(calculateTotalReturn(position.unrealizedPnL, position.dividendIncome))}</div>
+                            <div className="text-xs">{isClosed ? formatPercent(realizedPnLPercentage) : formatPercent(calculateTotalReturnPercentage(position.unrealizedPnL, position.dividendIncome, position.avgCost, position.quantity))}</div>
                           </td>
                         </tr>
                       )
                     })
 
-                    // Add category total row
-                    rows.push(
-                      <tr key={`${assetType}-total`} className="bg-gray-100 dark:bg-gray-700 font-semibold">
-                        <td className="px-6 py-2 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 text-sm">
-                              {getAssetTypeIcon(assetType)}
+                    // Add category total row (only if there are active positions or if showing all positions)
+                    if (activePositions.length > 0 || showClosedPositions) {
+                      rows.push(
+                        <tr key={`${assetType}-total`} className="bg-gray-100 dark:bg-gray-700 font-semibold">
+                          <td className="px-6 py-2 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 text-sm">
+                                {getAssetTypeIcon(assetType)}
+                              </div>
+                              <div className="ml-3">
+                                <div className="text-sm font-bold text-gray-900 dark:text-white">
+                                  {getAssetTypeLabel(assetType)} Total
+                                  {showClosedPositions && activePositions.length === 0 && (
+                                    <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(All Closed)</span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div className="ml-3">
-                              <div className="text-sm font-bold text-gray-900 dark:text-white">{getAssetTypeLabel(assetType)} Total</div>
+                          </td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
+                          <td className="px-6 py-2 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
+                            {activePositions.length > 0 ? formatCurrency(typeTotalValue) : '-'}
+                          </td>
+                          <td className={`px-6 py-2 whitespace-nowrap text-sm font-bold ${activePositions.length > 0 ? getPnLColor(typeTotalPnL) : 'text-gray-500 dark:text-gray-400'}`}>
+                            <div>
+                              {activePositions.length > 0 ? formatCurrency(typeTotalPnL) : '-'}
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
-                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
-                        <td className="px-6 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">-</td>
-                        <td className="px-6 py-2 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
-                          {formatCurrency(typeTotalValue)}
-                        </td>
-                        <td className={`px-6 py-2 whitespace-nowrap text-sm font-bold ${getPnLColor(typeTotalPnL)}`}>
-                          <div>{formatCurrency(typeTotalPnL)}</div>
-                          <div className="text-xs">{formatPercent(typePnLPercentage)}</div>
-                        </td>
-                      </tr>
-                    )
+                            <div className="text-xs">
+                              {activePositions.length > 0 ? formatPercent(typePnLPercentage) : '-'}
+                            </div>
+                          </td>
+                          <td className={`px-6 py-2 whitespace-nowrap text-sm font-bold ${activePositions.length > 0 ? getPnLColor(typeTotalReturn) : (typeTotalRealizedPnL !== 0 ? getPnLColor(typeTotalRealizedPnL) : 'text-gray-500 dark:text-gray-400')}`}>
+                            <div>
+                              {activePositions.length > 0 ? formatCurrency(typeTotalReturn) :
+                               (typeTotalRealizedPnL !== 0 ? formatCurrency(typeTotalRealizedPnL) : '-')}
+                            </div>
+                            <div className="text-xs">
+                              {activePositions.length > 0 ? formatPercent(typeTotalReturnPercentage) :
+                               (typeTotalRealizedPnL !== 0 ? formatPercent(typeRealizedPnLPercentage) : 'No Activity')}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    }
                   })
 
                   return rows

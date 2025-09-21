@@ -11,9 +11,12 @@ Mark done item with ✅
 - ✅ HoldingDetails - "Performance Breakdown" should always show Dividends & Capital Gains, regardless if they are 0
 - ✅ Dashboard - Return Breakdown - fix Realized Gains vs Unrealized Gains, same for Capital Gains -> showing crazy values
 - ✅ HoldingDetails - always show Dividends & Capital Gains, regardless if they are 0
+- ✅ Dashboard - Toggle to show closed positions
 - [ ] HoldingDetails - "Value Evolution" and "Performance Breakdown" show different total price than Current Position => data comes out like this from portfolio service. Current position seems to have the latest, correct amount to show
 
 ## TODO P2
+- [ ] MAYBE -> fix "Annualized Return" - not sure how
+- [ ] MAYBE -> make timerange change correctly affect other metrics
 - [ ] Dashboard - We should show closed holdings, maybe not displayed by default
 - [ ] HoldingDetails - Weird rounding error on quantity => sometimes get 1.00 transformed to 0.99998 
 - [ ] Multi custom holding CSV import functionality from home page

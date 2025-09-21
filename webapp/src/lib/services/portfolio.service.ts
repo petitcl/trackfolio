@@ -54,7 +54,7 @@ export class PortfolioService {
     historicalPriceService.clearCache()
   }
 
-  async getPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD'): Promise<PortfolioData> {
+  async getPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', includeClosedPositions: boolean = false): Promise<PortfolioData> {
     console.log('🔄 Fetching portfolio data for user:', user.email)
     
     try {
@@ -68,9 +68,9 @@ export class PortfolioService {
       }
 
       // Calculate positions using unified calculation service (already in target currency)
-      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency)
+      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency, includeClosedPositions)
 
-  
+
 
       // Calculate totals in target currency (no additional conversion needed)
       const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
@@ -120,7 +120,7 @@ export class PortfolioService {
     }
   }
 
-  async getEnhancedPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD'): Promise<EnhancedPortfolioData> {
+  async getEnhancedPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', includeClosedPositions: boolean = false): Promise<EnhancedPortfolioData> {
     console.log('🔄 Fetching enhanced portfolio data with detailed returns for user:', user.email)
 
     try {
@@ -134,7 +134,7 @@ export class PortfolioService {
       }
 
       // Calculate positions using unified calculation service (already in target currency)
-      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency)
+      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency, includeClosedPositions)
 
       // Calculate totals in target currency (no additional conversion needed)
       const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
