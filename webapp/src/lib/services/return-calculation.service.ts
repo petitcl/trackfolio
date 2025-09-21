@@ -308,6 +308,7 @@ export class ReturnCalculationService {
 
     // Use V2 calculation as the primary source
     const v2Summary = this.calculatePortfolioSummaryV2(transactions, filteredData, actualStartDate, actualEndDate)
+    console.log("v2Summary", v2Summary);
 
     // Calculate total return percentage
     let totalReturn = 0

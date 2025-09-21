@@ -96,9 +96,9 @@ export default function EnhancedPortfolioOverview({
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Return</dt>
-                  <dd className={`text-lg font-medium ${getPnLColor(detailedReturns.totalReturn)}`}>
-                    {formatCurrency(totalValue - detailedReturns.investmentSummary.totalInvested)}
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Return (V2)</dt>
+                  <dd className={`text-lg font-medium ${getPnLColor(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized + detailedReturns.dividendIncome.total)}`}>
+                    {formatCurrency(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized + detailedReturns.dividendIncome.total)}
                   </dd>
                   <dd className={`text-xs ${getPnLColor(detailedReturns.totalReturn)} mt-1`}>
                     {formatPercent(detailedReturns.totalReturn)}
@@ -145,83 +145,89 @@ export default function EnhancedPortfolioOverview({
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Capital Gains vs Dividend Income */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Total Return Summary - Using V2 Data */}
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-3">
+              <span className="text-xl">🎯</span>
+              <h4 className="text-md font-medium text-gray-900 dark:text-white">Total Return</h4>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Capital Gains + Dividends (V2)</span>
+              <div className="text-right">
+                <div className={`text-lg font-semibold ${getPnLColor(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized + detailedReturns.dividendIncome.total)}`}>
+                  {formatCurrency(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized + detailedReturns.dividendIncome.total)}
+                </div>
+                <div className={`text-sm ${getPnLColor(detailedReturns.totalReturn)}`}>
+                  {formatPercent(detailedReturns.totalReturn)}
+                </div>
+              </div>
+            </div>
+          </div>
 
-            {/* Capital Gains */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <span className="text-xl">📈</span>
-                <h4 className="text-md font-medium text-gray-900 dark:text-white">Capital Gains</h4>
+          {/* Capital Gains */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-xl">📈</span>
+              <h4 className="text-md font-medium text-gray-900 dark:text-white">Capital Gains</h4>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Realized Gains</span>
+                <div className="text-right">
+                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.capitalGains.realized)}`}>
+                    {formatCurrency(detailedReturns.capitalGains.realized)}
+                  </div>
+                  <div className={`text-xs ${getPnLColor(detailedReturns.capitalGains.realizedPercentage)}`}>
+                    {formatPercent(detailedReturns.capitalGains.realizedPercentage)}
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Realized Gains</span>
-                  <div className="text-right">
-                    <div className={`text-sm font-medium ${getPnLColor(detailedReturns.capitalGains.realized)}`}>
-                      {formatCurrency(detailedReturns.capitalGains.realized)}
-                    </div>
-                    <div className={`text-xs ${getPnLColor(detailedReturns.capitalGains.realizedPercentage)}`}>
-                      {formatPercent(detailedReturns.capitalGains.realizedPercentage)}
-                    </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Unrealized Gains</span>
+                <div className="text-right">
+                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.capitalGains.unrealized)}`}>
+                    {formatCurrency(detailedReturns.capitalGains.unrealized)}
+                  </div>
+                  <div className={`text-xs ${getPnLColor(detailedReturns.capitalGains.unrealizedPercentage)}`}>
+                    {formatPercent(detailedReturns.capitalGains.unrealizedPercentage)}
                   </div>
                 </div>
+              </div>
 
+              <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Unrealized Gains</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Capital Gains</span>
                   <div className="text-right">
-                    <div className={`text-sm font-medium ${getPnLColor(detailedReturns.capitalGains.unrealized)}`}>
-                      {formatCurrency(detailedReturns.capitalGains.unrealized)}
+                    <div className={`text-sm font-semibold ${getPnLColor(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized)}`}>
+                      {formatCurrency(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized)}
                     </div>
-                    <div className={`text-xs ${getPnLColor(detailedReturns.capitalGains.unrealizedPercentage)}`}>
-                      {formatPercent(detailedReturns.capitalGains.unrealizedPercentage)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Capital Gains</span>
-                    <div className="text-right">
-                      <div className={`text-sm font-semibold ${getPnLColor(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized)}`}>
-                        {formatCurrency(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized)}
-                      </div>
-                      <div className={`text-xs ${getPnLColor(detailedReturns.capitalGains.annualizedRate)}`}>
-                        {formatPercent(detailedReturns.capitalGains.annualizedRate)} annual
-                      </div>
+                    <div className={`text-xs ${getPnLColor(detailedReturns.capitalGains.annualizedRate)}`}>
+                      {formatPercent(detailedReturns.capitalGains.annualizedRate)} annual
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Dividend Income */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <span className="text-xl">💰</span>
-                <h4 className="text-md font-medium text-gray-900 dark:text-white">Dividend Income</h4>
-              </div>
+          {/* Dividend Income */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-xl">💰</span>
+              <h4 className="text-md font-medium text-gray-900 dark:text-white">Dividend Income</h4>
+            </div>
 
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Total Dividends</span>
-                  <div className="text-right">
-                    <div className={`text-sm font-medium ${getPnLColor(detailedReturns.dividendIncome.total)}`}>
-                      {formatCurrency(detailedReturns.dividendIncome.total)}
-                    </div>
-                    <div className={`text-xs ${getPnLColor(detailedReturns.dividendIncome.percentage)}`}>
-                      {formatPercent(detailedReturns.dividendIncome.percentage)}
-                    </div>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Total Dividends</span>
+                <div className="text-right">
+                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.dividendIncome.total)}`}>
+                    {formatCurrency(detailedReturns.dividendIncome.total)}
                   </div>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Annualized Yield</span>
-                  <div className="text-right">
-                    <div className={`text-sm font-medium ${getPnLColor(detailedReturns.dividendIncome.annualizedYield)}`}>
-                      {formatPercent(detailedReturns.dividendIncome.annualizedYield)}
-                    </div>
+                  <div className={`text-xs ${getPnLColor(detailedReturns.dividendIncome.percentage)}`}>
+                    {formatPercent(detailedReturns.dividendIncome.percentage)}
                   </div>
                 </div>
               </div>
@@ -242,9 +248,6 @@ export default function EnhancedPortfolioOverview({
                   <div className={`text-sm font-medium ${getPnLColor(detailedReturns.realizedVsUnrealized.totalRealized)}`}>
                     {formatCurrency(detailedReturns.realizedVsUnrealized.totalRealized)}
                   </div>
-                  <div className={`text-xs ${getPnLColor(detailedReturns.realizedVsUnrealized.realizedPercentage)}`}>
-                    {formatPercent(detailedReturns.realizedVsUnrealized.realizedPercentage)} of total
-                  </div>
                 </div>
               </div>
 
@@ -253,9 +256,6 @@ export default function EnhancedPortfolioOverview({
                 <div className="text-right">
                   <div className={`text-sm font-medium ${getPnLColor(detailedReturns.realizedVsUnrealized.totalUnrealized)}`}>
                     {formatCurrency(detailedReturns.realizedVsUnrealized.totalUnrealized)}
-                  </div>
-                  <div className={`text-xs ${getPnLColor(detailedReturns.realizedVsUnrealized.unrealizedPercentage)}`}>
-                    {formatPercent(detailedReturns.realizedVsUnrealized.unrealizedPercentage)} of total
                   </div>
                 </div>
               </div>
