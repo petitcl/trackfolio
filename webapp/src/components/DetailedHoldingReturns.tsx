@@ -1,8 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { type DetailedReturnMetrics } from '@/lib/services/return-calculation.service'
-import { portfolioService } from '@/lib/services/portfolio.service'
+import { portfolioService, type HoldingReturnsData } from '@/lib/services/portfolio.service'
 import { type AuthUser } from '@/lib/auth/client.auth.service'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 import { type TimeRange } from '@/components/TimeRangeSelector'
@@ -22,7 +21,7 @@ export default function DetailedHoldingReturns({
   timeRange = 'all',
   className = ''
 }: DetailedHoldingReturnsProps) {
-  const [detailedReturns, setDetailedReturns] = useState<DetailedReturnMetrics | null>(null)
+  const [detailedReturns, setDetailedReturns] = useState<HoldingReturnsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -95,9 +94,9 @@ export default function DetailedHoldingReturns({
     )
   }
 
-  const hasRealizedGains = detailedReturns.capitalGains.realized !== 0
-  const hasDividends = detailedReturns.dividendIncome.total > 0
-  const hasWithdrawals = detailedReturns.investmentSummary.totalWithdrawn > 0
+  const hasRealizedGains = detailedReturns.summaryV2.realizedPnL !== 0
+  const hasDividends = detailedReturns.summaryV2.dividends > 0
+  const hasWithdrawals = false // Not available in V2
 
   return (
     <div className={`bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700 ${className}`}>
@@ -116,23 +115,23 @@ export default function DetailedHoldingReturns({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
               <div className="text-sm text-gray-500 dark:text-gray-400">Total Return</div>
-              <div className={`text-lg font-semibold ${getPnLColor(detailedReturns.totalReturn)}`}>
-                {formatPercent(detailedReturns.totalReturn)}
+              <div className={`text-lg font-semibold ${getPnLColor(detailedReturns.annualizedReturns.totalReturn)}`}>
+                {formatPercent(detailedReturns.annualizedReturns.totalReturn)}
               </div>
-              <div className={`text-xs ${getPnLColor(detailedReturns.totalReturn)}`}>
-                {formatCurrency(detailedReturns.investmentSummary.currentValue - detailedReturns.investmentSummary.totalInvested)}
+              <div className={`text-xs ${getPnLColor(detailedReturns.annualizedReturns.totalReturn)}`}>
+                {formatCurrency(detailedReturns.summaryV2.totalPnL)}
               </div>
             </div>
 
             <div className="text-center">
               <div className="text-sm text-gray-500 dark:text-gray-400">Annualized</div>
-              <div className={`text-lg font-semibold ${getPnLColor(detailedReturns.timeWeightedReturn)}`}>
-                {formatPercent(detailedReturns.timeWeightedReturn)}
+              <div className={`text-lg font-semibold ${getPnLColor(detailedReturns.annualizedReturns.timeWeightedReturn)}`}>
+                {formatPercent(detailedReturns.annualizedReturns.timeWeightedReturn)}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                {detailedReturns.periodYears < 1 ?
-                  `${Math.round(detailedReturns.periodYears * 365)}d` :
-                  `${detailedReturns.periodYears.toFixed(1)}y`
+                {detailedReturns.annualizedReturns.periodYears < 1 ?
+                  `${Math.round(detailedReturns.annualizedReturns.periodYears * 365)}d` :
+                  `${detailedReturns.annualizedReturns.periodYears.toFixed(1)}y`
                 }
               </div>
             </div>
@@ -140,14 +139,14 @@ export default function DetailedHoldingReturns({
             <div className="text-center">
               <div className="text-sm text-gray-500 dark:text-gray-400">Invested</div>
               <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                {formatCurrency(detailedReturns.investmentSummary.totalInvested)}
+                {formatCurrency(detailedReturns.summaryV2.totalInvested)}
               </div>
             </div>
 
             <div className="text-center">
               <div className="text-sm text-gray-500 dark:text-gray-400">Current Value</div>
               <div className="text-lg font-semibold text-gray-900 dark:text-white">
-                {formatCurrency(detailedReturns.investmentSummary.currentValue)}
+                {formatCurrency(detailedReturns.summaryV2.costBasis + detailedReturns.summaryV2.unrealizedPnL)}
               </div>
             </div>
           </div>
@@ -167,11 +166,11 @@ export default function DetailedHoldingReturns({
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized)}`}>
-                    {formatCurrency(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized)}
+                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.capitalGains)}`}>
+                    {formatCurrency(detailedReturns.summaryV2.capitalGains)}
                   </div>
-                  <div className={`text-xs ${getPnLColor(detailedReturns.capitalGains.annualizedRate)}`}>
-                    {formatPercent(detailedReturns.capitalGains.annualizedRate)} annual
+                  <div className={`text-xs ${getPnLColor(detailedReturns.summaryV2.annualizedReturn * 100)}`}>
+                    {formatPercent(detailedReturns.summaryV2.annualizedReturn * 100)} annual
                   </div>
                 </div>
               </div>
@@ -187,11 +186,11 @@ export default function DetailedHoldingReturns({
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className={`text-sm font-medium ${getPnLColor(detailedReturns.dividendIncome.total)}`}>
-                      {formatCurrency(detailedReturns.dividendIncome.total)}
+                    <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.dividends)}`}>
+                      {formatCurrency(detailedReturns.summaryV2.dividends)}
                     </div>
-                    <div className={`text-xs ${getPnLColor(detailedReturns.dividendIncome.annualizedYield)}`}>
-                      {formatPercent(detailedReturns.dividendIncome.annualizedYield)} yield
+                    <div className={`text-xs text-gray-500 dark:text-gray-400`}>
+                      Yield data unavailable
                     </div>
                   </div>
                 </div>
@@ -211,11 +210,11 @@ export default function DetailedHoldingReturns({
                     <span className="text-sm text-gray-600 dark:text-gray-400">Realized Returns</span>
                   </div>
                   <div className="text-right">
-                    <div className={`text-sm font-medium ${getPnLColor(detailedReturns.realizedVsUnrealized.totalRealized)}`}>
-                      {formatCurrency(detailedReturns.realizedVsUnrealized.totalRealized)}
+                    <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.realizedPnL + detailedReturns.summaryV2.dividends)}`}>
+                      {formatCurrency(detailedReturns.summaryV2.realizedPnL + detailedReturns.summaryV2.dividends)}
                     </div>
-                    <div className={`text-xs ${getPnLColor(detailedReturns.realizedVsUnrealized.realizedPercentage)}`}>
-                      {formatPercent(detailedReturns.realizedVsUnrealized.realizedPercentage)} of total
+                    <div className={`text-xs text-gray-500 dark:text-gray-400`}>
+                      Percentage unavailable
                     </div>
                   </div>
                 </div>
@@ -231,11 +230,11 @@ export default function DetailedHoldingReturns({
                   <span className="text-sm text-gray-600 dark:text-gray-400">Unrealized Returns</span>
                 </div>
                 <div className="text-right">
-                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.realizedVsUnrealized.totalUnrealized)}`}>
-                    {formatCurrency(detailedReturns.realizedVsUnrealized.totalUnrealized)}
+                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.unrealizedPnL)}`}>
+                    {formatCurrency(detailedReturns.summaryV2.unrealizedPnL)}
                   </div>
-                  <div className={`text-xs ${getPnLColor(detailedReturns.realizedVsUnrealized.unrealizedPercentage)}`}>
-                    {formatPercent(detailedReturns.realizedVsUnrealized.unrealizedPercentage)} of total
+                  <div className={`text-xs text-gray-500 dark:text-gray-400`}>
+                    Percentage unavailable
                   </div>
                 </div>
               </div>
@@ -250,8 +249,8 @@ export default function DetailedHoldingReturns({
                 <p className="text-xs text-gray-500 dark:text-gray-400">Includes timing of cash flows</p>
               </div>
               <div className="text-right">
-                <div className={`text-lg font-semibold ${getPnLColor(detailedReturns.moneyWeightedReturn)}`}>
-                  {formatPercent(detailedReturns.moneyWeightedReturn)}
+                <div className={`text-lg font-semibold ${getPnLColor(detailedReturns.annualizedReturns.moneyWeightedReturn)}`}>
+                  {formatPercent(detailedReturns.annualizedReturns.moneyWeightedReturn)}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">Investor experience</div>
               </div>
@@ -266,19 +265,19 @@ export default function DetailedHoldingReturns({
                 <div>
                   <div className="text-gray-500 dark:text-gray-400">Money In</div>
                   <div className="font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(detailedReturns.investmentSummary.totalInvested)}
+                    {formatCurrency(detailedReturns.summaryV2.totalInvested)}
                   </div>
                 </div>
                 <div>
                   <div className="text-gray-500 dark:text-gray-400">Money Out</div>
                   <div className="font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(detailedReturns.investmentSummary.totalWithdrawn)}
+                    {formatCurrency(0)}
                   </div>
                 </div>
                 <div>
                   <div className="text-gray-500 dark:text-gray-400">Net Invested</div>
                   <div className="font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(detailedReturns.investmentSummary.totalInvested - detailedReturns.investmentSummary.totalWithdrawn)}
+                    {formatCurrency(detailedReturns.summaryV2.totalInvested)}
                   </div>
                 </div>
               </div>

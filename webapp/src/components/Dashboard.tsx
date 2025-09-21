@@ -235,10 +235,11 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
         </div>
         {/* Portfolio Overview */}
-        {enhancedPortfolioData?.detailedReturns ? (
+        {(enhancedPortfolioData?.summaryV2 || enhancedPortfolioData?.annualizedReturns) ? (
           <div className="mb-8">
             <EnhancedPortfolioOverview
-              detailedReturns={enhancedPortfolioData.detailedReturns}
+              summaryV2={enhancedPortfolioData.summaryV2}
+              annualizedReturns={enhancedPortfolioData.annualizedReturns}
               totalValue={enhancedPortfolioData.totalValue}
               totalCostBasis={enhancedPortfolioData.totalCostBasis}
               selectedCurrency={selectedCurrency}

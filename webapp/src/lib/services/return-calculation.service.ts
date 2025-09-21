@@ -11,38 +11,6 @@ export interface AnnualizedReturnMetrics {
   periodYears: number
 }
 
-export interface DetailedReturnMetrics extends AnnualizedReturnMetrics {
-  // Capital gains breakdown
-  capitalGains: {
-    realized: number // Actual gains from completed sales (absolute value)
-    unrealized: number // Paper gains on current holdings (absolute value)
-    realizedPercentage: number // Realized gains as % of total invested
-    unrealizedPercentage: number // Unrealized gains as % of current cost basis
-    annualizedRate: number // Capital appreciation rate (annualized %)
-  }
-
-  // Dividend income breakdown
-  dividendIncome: {
-    total: number // Total dividends received (absolute value)
-    percentage: number // Dividends as % of total invested
-    annualizedYield: number // Dividend yield (annualized %)
-  }
-
-  // Realized vs Unrealized summary
-  realizedVsUnrealized: {
-    totalRealized: number // All realized gains + dividends (absolute value)
-    totalUnrealized: number // All unrealized gains (absolute value)
-    realizedPercentage: number // Realized as % of total return
-    unrealizedPercentage: number // Unrealized as % of total return
-  }
-
-  // Investment summary for context
-  investmentSummary: {
-    totalInvested: number // Total money put in
-    currentValue: number // Current portfolio value
-    totalWithdrawn: number // Total money taken out (from sales)
-  }
-}
 
 export interface ReturnCalculationOptions {
   startDate?: string
@@ -50,10 +18,6 @@ export interface ReturnCalculationOptions {
   includeVolatility?: boolean
 }
 
-export interface DetailedReturnCalculationOptions extends ReturnCalculationOptions {
-  includeDetailed?: boolean // Whether to calculate detailed breakdowns
-  fifoMethod?: boolean // Use FIFO for realized gains calculation (default: true)
-}
 
 export interface PortfolioSummaryV2 {
   totalPnL: number;
@@ -304,7 +268,6 @@ export class ReturnCalculationService {
 
     // Use V2 calculation as the primary source
     const v2Summary = this.calculatePortfolioSummaryV2(transactions, filteredData, actualStartDate, actualEndDate)
-    console.log("v2Summary", v2Summary);
 
     // Calculate total return percentage
     let totalReturn = 0
@@ -316,89 +279,13 @@ export class ReturnCalculationService {
       timeWeightedReturn: v2Summary.annualizedReturn * 100, // V2 already provides TWR
       moneyWeightedReturn: v2Summary.annualizedReturn * 100, // Simplified: use same value
       totalReturn,
-      annualizedVolatility,
+      annualizedVolatility: 0,
       startDate: firstPoint.date,
       endDate: lastPoint.date,
       periodYears
     }
   }
 
-  /**
-   * Calculate detailed return metrics with capital gains, dividends, and realized/unrealized breakdown
-   * Now simplified to use V2 calculation internally
-   */
-  calculateDetailedReturns(
-    transactions: Transaction[],
-    historicalData: HistoricalDataPoint[],
-    symbols: Symbol[],
-    options: DetailedReturnCalculationOptions = {}
-  ): DetailedReturnMetrics {
-    if (historicalData.length === 0) {
-      return this.getEmptyDetailedMetrics()
-    }
-
-    const { startDate: optionsStartDate, endDate: optionsEndDate } = options
-
-    // Filter historical data by date range if specified
-    let filteredData = historicalData
-    if (optionsStartDate || optionsEndDate) {
-      filteredData = historicalData.filter(point => {
-        const pointDate = point.date
-        if (optionsStartDate && pointDate < optionsStartDate) return false
-        if (optionsEndDate && pointDate > optionsEndDate) return false
-        return true
-      })
-    }
-
-    if (filteredData.length < 2) {
-      return this.getEmptyDetailedMetrics()
-    }
-
-    const firstPoint = filteredData[0]
-    const lastPoint = filteredData[filteredData.length - 1]
-
-    // Use actual data range for calculation
-    const actualStartDate = optionsStartDate || firstPoint.date
-    const actualEndDate = optionsEndDate || lastPoint.date
-
-    // Use V2 calculation as the primary source
-    const v2Summary = this.calculatePortfolioSummaryV2(transactions, filteredData, actualStartDate, actualEndDate)
-
-    // Get basic metrics from V2
-    const basicMetrics = this.calculateAnnualizedReturns(transactions, filteredData, symbols, options)
-
-    // Calculate percentages based on V2 data
-    const totalInvested = v2Summary.totalInvested
-
-    return {
-      ...basicMetrics,
-      startDate: actualStartDate,
-      endDate: actualEndDate,
-      capitalGains: {
-        realized: v2Summary.realizedPnL,
-        unrealized: v2Summary.unrealizedPnL,
-        realizedPercentage: totalInvested > 0 ? (v2Summary.realizedPnL / totalInvested) * 100 : 0,
-        unrealizedPercentage: totalInvested > 0 ? (v2Summary.unrealizedPnL / totalInvested) * 100 : 0,
-        annualizedRate: v2Summary.annualizedReturn * 100
-      },
-      dividendIncome: {
-        total: v2Summary.dividends,
-        percentage: totalInvested > 0 ? (v2Summary.dividends / totalInvested) * 100 : 0,
-        annualizedYield: 0 // Simplified: remove complex yield calculation
-      },
-      realizedVsUnrealized: {
-        totalRealized: v2Summary.realizedPnL + v2Summary.dividends,
-        totalUnrealized: v2Summary.unrealizedPnL,
-        realizedPercentage: v2Summary.totalPnL > 0 ? ((v2Summary.realizedPnL + v2Summary.dividends) / Math.abs(v2Summary.totalPnL)) * 100 : 0,
-        unrealizedPercentage: v2Summary.totalPnL > 0 ? (v2Summary.unrealizedPnL / Math.abs(v2Summary.totalPnL)) * 100 : 0
-      },
-      investmentSummary: {
-        totalInvested: v2Summary.totalInvested,
-        currentValue: v2Summary.costBasis + v2Summary.unrealizedPnL, // Current value = cost basis + unrealized gains
-        totalWithdrawn: 0 // Simplified: not available in V2, remove this complexity
-      }
-    }
-  }
 
   /**
    * Calculate the difference in years between two dates
@@ -440,38 +327,6 @@ export class ReturnCalculationService {
     return 'text-gray-600 dark:text-gray-400'
   }
 
-  /**
-   * Return empty detailed metrics structure
-   */
-  private getEmptyDetailedMetrics(): DetailedReturnMetrics {
-    const emptyBasic = this.getEmptyMetrics()
-    return {
-      ...emptyBasic,
-      capitalGains: {
-        realized: 0,
-        unrealized: 0,
-        realizedPercentage: 0,
-        unrealizedPercentage: 0,
-        annualizedRate: 0
-      },
-      dividendIncome: {
-        total: 0,
-        percentage: 0,
-        annualizedYield: 0
-      },
-      realizedVsUnrealized: {
-        totalRealized: 0,
-        totalUnrealized: 0,
-        realizedPercentage: 0,
-        unrealizedPercentage: 0
-      },
-      investmentSummary: {
-        totalInvested: 0,
-        currentValue: 0,
-        totalWithdrawn: 0
-      }
-    }
-  }
 
   /**
    * Calculate simple annualized return for quick estimates

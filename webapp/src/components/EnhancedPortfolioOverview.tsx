@@ -1,18 +1,20 @@
 'use client'
 
 import React from 'react'
-import { type DetailedReturnMetrics } from '@/lib/services/return-calculation.service'
+import { type PortfolioSummaryV2, type AnnualizedReturnMetrics } from '@/lib/services/portfolio.service'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 
 interface EnhancedPortfolioOverviewProps {
-  detailedReturns: DetailedReturnMetrics
+  summaryV2?: PortfolioSummaryV2
+  annualizedReturns?: AnnualizedReturnMetrics
   totalValue: number
   totalCostBasis: number
   selectedCurrency: SupportedCurrency
 }
 
 export default function EnhancedPortfolioOverview({
-  detailedReturns,
+  summaryV2,
+  annualizedReturns,
   totalValue,
   totalCostBasis,
   selectedCurrency
@@ -32,16 +34,52 @@ export default function EnhancedPortfolioOverview({
     return 'text-gray-600 dark:text-gray-400'
   }
 
-  const getIconForCategory = (category: string) => {
-    const icons: Record<string, string> = {
-      total: '💰',
-      invested: '💵',
-      capitalGains: '📈',
-      dividends: '💰',
-      realized: '✅',
-      unrealized: '📋'
-    }
-    return icons[category] || '❓'
+  // Show basic overview if detailed data is not available
+  if (!summaryV2 || !annualizedReturns) {
+    return (
+      <div className="space-y-6">
+        {/* Basic Portfolio Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="text-2xl">💰</div>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Portfolio</dt>
+                    <dd className="text-lg font-medium text-gray-900 dark:text-white">
+                      {formatCurrency(totalValue)}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="text-2xl">💵</div>
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Cost Basis</dt>
+                    <dd className="text-lg font-medium text-gray-900 dark:text-white">
+                      {formatCurrency(totalCostBasis)}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          📊 Detailed return metrics unavailable - insufficient historical data
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -79,7 +117,7 @@ export default function EnhancedPortfolioOverview({
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Invested</dt>
                   <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(detailedReturns.investmentSummary.totalInvested)}
+                    {formatCurrency(summaryV2.totalInvested)}
                   </dd>
                 </dl>
               </div>
@@ -96,12 +134,12 @@ export default function EnhancedPortfolioOverview({
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Return (V2)</dt>
-                  <dd className={`text-lg font-medium ${getPnLColor(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized + detailedReturns.dividendIncome.total)}`}>
-                    {formatCurrency(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized + detailedReturns.dividendIncome.total)}
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Return</dt>
+                  <dd className={`text-lg font-medium ${getPnLColor(summaryV2.totalPnL)}`}>
+                    {formatCurrency(summaryV2.totalPnL)}
                   </dd>
-                  <dd className={`text-xs ${getPnLColor(detailedReturns.totalReturn)} mt-1`}>
-                    {formatPercent(detailedReturns.totalReturn)}
+                  <dd className={`text-xs ${getPnLColor(annualizedReturns.totalReturn)} mt-1`}>
+                    {formatPercent(annualizedReturns.totalReturn)}
                   </dd>
                 </dl>
               </div>
@@ -119,14 +157,14 @@ export default function EnhancedPortfolioOverview({
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
-                  <dd className={`text-lg font-medium ${getPnLColor(detailedReturns.timeWeightedReturn)}`}>
-                    {formatPercent(detailedReturns.timeWeightedReturn)}
+                  <dd className={`text-lg font-medium ${getPnLColor(annualizedReturns.timeWeightedReturn)}`}>
+                    {formatPercent(annualizedReturns.timeWeightedReturn)}
                   </dd>
-                  {detailedReturns.periodYears > 0 && (
+                  {annualizedReturns.periodYears > 0 && (
                     <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {detailedReturns.periodYears < 1 ?
-                        `${Math.round(detailedReturns.periodYears * 365)} days` :
-                        `${detailedReturns.periodYears.toFixed(1)} years`
+                      {annualizedReturns.periodYears < 1 ?
+                        `${Math.round(annualizedReturns.periodYears * 365)} days` :
+                        `${annualizedReturns.periodYears.toFixed(1)} years`
                       }
                     </dd>
                   )}
@@ -137,157 +175,53 @@ export default function EnhancedPortfolioOverview({
         </div>
       </div>
 
-      {/* Detailed Return Breakdown */}
+      {/* Simplified Return Details */}
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700">
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">📊 Return Breakdown</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Detailed analysis of your portfolio performance</p>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Return Breakdown</h3>
         </div>
-
-        <div className="p-6 space-y-6">
-          {/* Total Return Summary - Using V2 Data */}
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-            <div className="flex items-center space-x-2 mb-3">
-              <span className="text-xl">🎯</span>
-              <h4 className="text-md font-medium text-gray-900 dark:text-white">Total Return</h4>
-            </div>
+        <div className="p-6">
+          <div className="space-y-4">
+            {/* Capital Gains */}
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Capital Gains + Dividends (V2)</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">📈</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Capital Gains</span>
+              </div>
               <div className="text-right">
-                <div className={`text-lg font-semibold ${getPnLColor(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized + detailedReturns.dividendIncome.total)}`}>
-                  {formatCurrency(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized + detailedReturns.dividendIncome.total)}
-                </div>
-                <div className={`text-sm ${getPnLColor(detailedReturns.totalReturn)}`}>
-                  {formatPercent(detailedReturns.totalReturn)}
+                <div className={`text-sm font-medium ${getPnLColor(summaryV2.capitalGains)}`}>
+                  {formatCurrency(summaryV2.capitalGains)}
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Capital Gains */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-xl">📈</span>
-              <h4 className="text-md font-medium text-gray-900 dark:text-white">Capital Gains</h4>
-            </div>
-
-            <div className="space-y-3">
+            {/* Dividends */}
+            {summaryV2.dividends > 0 && (
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Realized Gains</span>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xl">💰</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Dividends</span>
+                </div>
                 <div className="text-right">
-                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.capitalGains.realized)}`}>
-                    {formatCurrency(detailedReturns.capitalGains.realized)}
-                  </div>
-                  <div className={`text-xs ${getPnLColor(detailedReturns.capitalGains.realizedPercentage)}`}>
-                    {formatPercent(detailedReturns.capitalGains.realizedPercentage)}
+                  <div className={`text-sm font-medium ${getPnLColor(summaryV2.dividends)}`}>
+                    {formatCurrency(summaryV2.dividends)}
                   </div>
                 </div>
               </div>
+            )}
 
+            {/* Realized vs Unrealized */}
+            <div className="border-t border-gray-200 dark:border-gray-600 pt-4 space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Unrealized Gains</span>
-                <div className="text-right">
-                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.capitalGains.unrealized)}`}>
-                    {formatCurrency(detailedReturns.capitalGains.unrealized)}
-                  </div>
-                  <div className={`text-xs ${getPnLColor(detailedReturns.capitalGains.unrealizedPercentage)}`}>
-                    {formatPercent(detailedReturns.capitalGains.unrealizedPercentage)}
-                  </div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Realized P&L</span>
+                <div className={`text-sm font-medium ${getPnLColor(summaryV2.realizedPnL)}`}>
+                  {formatCurrency(summaryV2.realizedPnL)}
                 </div>
               </div>
-
-              <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Total Capital Gains</span>
-                  <div className="text-right">
-                    <div className={`text-sm font-semibold ${getPnLColor(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized)}`}>
-                      {formatCurrency(detailedReturns.capitalGains.realized + detailedReturns.capitalGains.unrealized)}
-                    </div>
-                    <div className={`text-xs ${getPnLColor(detailedReturns.capitalGains.annualizedRate)}`}>
-                      {formatPercent(detailedReturns.capitalGains.annualizedRate)} annual
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Dividend Income */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <span className="text-xl">💰</span>
-              <h4 className="text-md font-medium text-gray-900 dark:text-white">Dividend Income</h4>
-            </div>
-
-            <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Total Dividends</span>
-                <div className="text-right">
-                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.dividendIncome.total)}`}>
-                    {formatCurrency(detailedReturns.dividendIncome.total)}
-                  </div>
-                  <div className={`text-xs ${getPnLColor(detailedReturns.dividendIncome.percentage)}`}>
-                    {formatPercent(detailedReturns.dividendIncome.percentage)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Realized vs Unrealized Summary */}
-          <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <span className="text-xl">⚖️</span>
-              <h4 className="text-md font-medium text-gray-900 dark:text-white">Realized vs Unrealized Summary</h4>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">✅ Realized Returns</span>
-                <div className="text-right">
-                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.realizedVsUnrealized.totalRealized)}`}>
-                    {formatCurrency(detailedReturns.realizedVsUnrealized.totalRealized)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">📋 Unrealized Returns</span>
-                <div className="text-right">
-                  <div className={`text-sm font-medium ${getPnLColor(detailedReturns.realizedVsUnrealized.totalUnrealized)}`}>
-                    {formatCurrency(detailedReturns.realizedVsUnrealized.totalUnrealized)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Investment Summary */}
-          <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <span className="text-xl">📋</span>
-              <h4 className="text-md font-medium text-gray-900 dark:text-white">Investment Summary</h4>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="text-center">
-                <div className="text-gray-500 dark:text-gray-400">Money Invested</div>
-                <div className="text-lg font-medium text-gray-900 dark:text-white">
-                  {formatCurrency(detailedReturns.investmentSummary.totalInvested)}
-                </div>
-              </div>
-
-              <div className="text-center">
-                <div className="text-gray-500 dark:text-gray-400">Current Value</div>
-                <div className="text-lg font-medium text-gray-900 dark:text-white">
-                  {formatCurrency(detailedReturns.investmentSummary.currentValue)}
-                </div>
-              </div>
-
-              <div className="text-center">
-                <div className="text-gray-500 dark:text-gray-400">Money Withdrawn</div>
-                <div className="text-lg font-medium text-gray-900 dark:text-white">
-                  {formatCurrency(detailedReturns.investmentSummary.totalWithdrawn)}
+                <span className="text-sm text-gray-600 dark:text-gray-400">Unrealized P&L</span>
+                <div className={`text-sm font-medium ${getPnLColor(summaryV2.unrealizedPnL)}`}>
+                  {formatCurrency(summaryV2.unrealizedPnL)}
                 </div>
               </div>
             </div>
