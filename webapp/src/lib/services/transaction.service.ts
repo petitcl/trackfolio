@@ -3,6 +3,7 @@ import type { AuthUser } from '@/lib/auth/client.auth.service'
 import { clientAuthService } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol, Database, UserSymbolPrice, TransactionType } from '@/lib/supabase/types'
 import { getClientMockDataStore } from '@/lib/mockDataStoreClient'
+import { cacheService } from './cache.service'
 
 /**
  * Service responsible for CRUD operations on transactions, symbols, and user prices
@@ -23,51 +24,67 @@ export class TransactionService {
    * Get all symbols (both public and user custom symbols)
    */
   async getSymbols(user: AuthUser): Promise<Symbol[]> {
-    if (clientAuthService.isCurrentUserMock()) {
-      return getClientMockDataStore().getSymbols()
-    }
+    const cacheKey = cacheService.Keys.symbols(user.id)
 
-    try {
-      const { data, error } = await this.supabase
-        .from('symbols')
-        .select('*')
-        .or(`created_by_user_id.is.null,created_by_user_id.eq.${user.id}`)
+    return cacheService.getOrFetch(
+      cacheKey,
+      async () => {
+        if (clientAuthService.isCurrentUserMock()) {
+          return getClientMockDataStore().getSymbols()
+        }
 
-      if (error) {
-        console.error('Error fetching symbols:', error)
-        return []
-      }
+        try {
+          const { data, error } = await this.supabase
+            .from('symbols')
+            .select('*')
+            .or(`created_by_user_id.is.null,created_by_user_id.eq.${user.id}`)
 
-      return data || []
-    } catch (error) {
-      return this.handleError('fetching symbols', error, [])
-    }
+          if (error) {
+            console.error('Error fetching symbols:', error)
+            return []
+          }
+
+          return data || []
+        } catch (error) {
+          return this.handleError('fetching symbols', error, [])
+        }
+      },
+      cacheService.getTTL('symbols')
+    )
   }
 
   /**
    * Get all transactions for a user
    */
   async getTransactions(user: AuthUser): Promise<Transaction[]> {
-    if (clientAuthService.isCurrentUserMock()) {
-      return getClientMockDataStore().getTransactions()
-    }
+    const cacheKey = cacheService.Keys.transactions(user.id)
 
-    try {
-      const { data, error } = await this.supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false })
+    return cacheService.getOrFetch(
+      cacheKey,
+      async () => {
+        if (clientAuthService.isCurrentUserMock()) {
+          return getClientMockDataStore().getTransactions()
+        }
 
-      if (error) {
-        console.error('Error fetching transactions:', error)
-        return []
-      }
+        try {
+          const { data, error } = await this.supabase
+            .from('transactions')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('date', { ascending: false })
 
-      return data || []
-    } catch (error) {
-      return this.handleError('fetching transactions', error, [])
-    }
+          if (error) {
+            console.error('Error fetching transactions:', error)
+            return []
+          }
+
+          return data || []
+        } catch (error) {
+          return this.handleError('fetching transactions', error, [])
+        }
+      },
+      cacheService.getTTL('transactions')
+    )
   }
 
   /**
@@ -196,6 +213,10 @@ export class TransactionService {
         })
         
         console.log('✅ Added transaction to mock data store:', transaction.id)
+
+        // Invalidate cache for demo user
+        cacheService.invalidateUserData(user.id)
+
         return { success: true, transaction }
       } else {
         // For real users, use Supabase
@@ -211,12 +232,16 @@ export class TransactionService {
           currency: transactionData.currency,
           broker: transactionData.broker
         })
-        
+
         if (!transaction) {
           return { success: false, error: 'Failed to add transaction to database' }
         }
-        
+
         console.log('✅ Added transaction to database:', transaction.id)
+
+        // Invalidate cache for real user
+        cacheService.invalidateUserData(user.id)
+
         return { success: true, transaction }
       }
     } catch (error) {
@@ -303,6 +328,10 @@ export class TransactionService {
         }
         
         console.log('✅ Updated transaction in mock data store:', transactionId)
+
+        // Invalidate cache for demo user
+        cacheService.invalidateUserData(user.id)
+
         return { success: true }
       } else {
         // For real users, update in Supabase
@@ -323,13 +352,17 @@ export class TransactionService {
           .eq('user_id', user.id)
           .select()
           .single()
-        
+
         if (error) {
           console.error('Error updating transaction:', error)
           return { success: false, error: 'Failed to update transaction in database' }
         }
-        
+
         console.log('✅ Updated transaction in database:', transaction.id)
+
+        // Invalidate cache for real user
+        cacheService.invalidateUserData(user.id)
+
         return { success: true, transaction }
       }
     } catch (error) {
@@ -352,6 +385,10 @@ export class TransactionService {
         }
         
         console.log('✅ Deleted transaction from mock data store:', transactionId)
+
+        // Invalidate cache for demo user
+        cacheService.invalidateUserData(user.id)
+
         return { success: true }
       } else {
         // For real users, delete from Supabase
@@ -360,13 +397,17 @@ export class TransactionService {
           .delete()
           .eq('id', transactionId)
           .eq('user_id', user.id)
-        
+
         if (error) {
           console.error('Error deleting transaction:', error)
           return { success: false, error: 'Failed to delete transaction from database' }
         }
-        
+
         console.log('✅ Deleted transaction from database:', transactionId)
+
+        // Invalidate cache for real user
+        cacheService.invalidateUserData(user.id)
+
         return { success: true }
       }
     } catch (error) {
@@ -594,6 +635,9 @@ export class TransactionService {
       }
 
       console.log(`✅ Added price entry for ${priceData.symbol}: ${priceData.manual_price} on ${priceData.price_date}`)
+
+      // Invalidate price caches
+      cacheService.invalidateSymbolPrices(priceData.symbol.toUpperCase())
     } catch (error) {
       console.error('Error in addUserSymbolPrice:', error)
       throw error
@@ -663,6 +707,9 @@ export class TransactionService {
       }
 
       console.log(`✅ Updated price entry for ${priceData.symbol}: ${priceData.manual_price} on ${priceData.price_date}`)
+
+      // Invalidate price caches
+      cacheService.invalidateSymbolPrices(priceData.symbol.toUpperCase())
     } catch (error) {
       console.error('Error in updateUserSymbolPrice:', error)
       throw error
@@ -736,6 +783,9 @@ export class TransactionService {
       }
 
       console.log(`✅ Deleted price entry ${priceId}`)
+
+      // Invalidate price caches for the deleted symbol
+      cacheService.invalidateSymbolPrices(deletedPrice.symbol)
     } catch (error) {
       console.error('Error in deleteUserSymbolPrice:', error)
       throw error
