@@ -16,11 +16,13 @@ import PriceManagement from './PriceManagement'
 import TransactionManagement from './TransactionManagement'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 import DetailedHoldingReturns from './DetailedHoldingReturns'
+import Header from '@/components/Header'
 
 interface HoldingDetailsProps {
   user: AuthUser
   symbol: string
   selectedCurrency?: SupportedCurrency
+  onCurrencyChange?: (currency: SupportedCurrency) => void
 }
 
 interface HoldingData {
@@ -33,7 +35,7 @@ interface HoldingData {
   detailedReturns: any | null
 }
 
-export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' }: HoldingDetailsProps) {
+export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD', onCurrencyChange }: HoldingDetailsProps) {
   const [loading, setLoading] = useState(true)
   const [holdingData, setHoldingData] = useState<HoldingData | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -224,36 +226,20 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD' 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Link 
-                href="/" 
-                className="text-blue-600 dark:text-blue-400 hover:underline flex items-center"
-              >
-                ← Dashboard
-              </Link>
-              <div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-2xl">{getAssetTypeIcon(symbolData?.asset_type || 'other')}</span>
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{symbol}</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {symbolData?.name || 'Unknown Asset'}
-                      {symbolData?.is_custom && (
-                        <span className="ml-2 px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
-                          Custom Asset
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header
+        user={user}
+        showCurrencySelector={true}
+        selectedCurrency={selectedCurrency}
+        onCurrencyChange={onCurrencyChange}
+        backLink={{
+          href: '/',
+          label: 'Dashboard'
+        }}
+        title={symbol}
+        subtitle={symbolData?.name || 'Unknown Asset'}
+        icon={getAssetTypeIcon(symbolData?.asset_type || 'other')}
+        badges={symbolData?.is_custom ? [{ text: 'Custom Asset' }] : []}
+      />
 
       {/* Demo Mode Banner */}
       <DemoModeBanner />

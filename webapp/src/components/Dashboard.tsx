@@ -16,6 +16,7 @@ import CurrencySelector from '@/components/CurrencySelector'
 import MultiBulkImportModal from '@/components/MultiBulkImportModal'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 import EnhancedPortfolioOverview from '@/components/EnhancedPortfolioOverview'
+import Header from '@/components/Header'
 
 interface DashboardProps {
   user: AuthUser
@@ -95,11 +96,6 @@ export default function Dashboard({ user }: DashboardProps) {
     setSelectedCurrency(newCurrency)
   }
 
-  const handleSignOut = async () => {
-    setIsLoading(true)
-    await clientAuthService.signOut()
-    router.push('/login')
-  }
 
   const handleBulkImport = () => {
     setShowBulkImport(true)
@@ -200,37 +196,12 @@ export default function Dashboard({ user }: DashboardProps) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <img
-                src="/icon-192x192.png"
-                alt="Trackfolio Logo"
-                className="w-10 h-10 mr-3 rounded-lg"
-              />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Trackfolio</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Welcome back, {user.email}</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <CurrencySelector
-                selectedCurrency={selectedCurrency}
-                onCurrencyChange={handleCurrencyChange}
-                className="hidden sm:flex"
-              />
-              <button
-                onClick={handleSignOut}
-                disabled={isLoading}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-800 disabled:opacity-50"
-              >
-                {isLoading ? 'Signing out...' : 'Sign out'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header
+        user={user}
+        showCurrencySelector={true}
+        selectedCurrency={selectedCurrency}
+        onCurrencyChange={handleCurrencyChange}
+      />
 
       {/* Demo Mode Banner */}
       <DemoModeBanner />

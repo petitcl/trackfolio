@@ -73,5 +73,16 @@ export default function HoldingDetailsClient({ symbol }: HoldingDetailsClientPro
     )
   }
 
-  return <HoldingDetails user={user} symbol={symbol} selectedCurrency={selectedCurrency} />
+  const handleCurrencyChange = (newCurrency: SupportedCurrency) => {
+    setSelectedCurrency(newCurrency)
+  }
+
+  return (
+    <HoldingDetails
+      user={user}
+      symbol={symbol}
+      selectedCurrency={selectedCurrency}
+      onCurrencyChange={handleCurrencyChange}
+    />
+  )
 }

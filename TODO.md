@@ -17,6 +17,8 @@ Mark done item with ✅
 ## TODO P2
 - ✅ Portfolio repartition history can switch betwen % and absolute value
 - ✅ Toggle / switch component 
+- ✅ Mobile => fix header responsiveness
+- [ ] Optimization => don't refetch already fetched data
 - [ ] MAYBE -> fix "Annualized Return" - not sure how
 - [ ] MAYBE -> make timerange change correctly affect other metrics
 - [ ] Portfolio Value Evolution - Use day as point legend instead of month
