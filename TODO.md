@@ -12,13 +12,13 @@ Mark done item with ✅
 - ✅ Dashboard - Return Breakdown - fix Realized Gains vs Unrealized Gains, same for Capital Gains -> showing crazy values
 - ✅ HoldingDetails - always show Dividends & Capital Gains, regardless if they are 0
 - ✅ Dashboard - Toggle to show closed positions
-- [ ] HoldingDetails - "Value Evolution" and "Performance Breakdown" show different total price than Current Position => data comes out like this from portfolio service. Current position seems to have the latest, correct amount to show
+- ✅ HoldingDetails - "Value Evolution" and "Performance Breakdown" show different total price than Current Position => data comes out like this from portfolio service. Current position seems to have the latest, correct amount to show
 
 ## TODO P2
 - ✅ Portfolio repartition history can switch betwen % and absolute value
 - ✅ Toggle / switch component 
 - ✅ Mobile => fix header responsiveness
-- [ ] Optimization => don't refetch already fetched data
+- ✅ Optimization => don't refetch already fetched data
 - [ ] MAYBE -> fix "Annualized Return" - not sure how
 - [ ] MAYBE -> make timerange change correctly affect other metrics
 - [ ] Portfolio Value Evolution - Use day as point legend instead of month

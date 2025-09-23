@@ -11,6 +11,7 @@ import { cacheService } from './cache.service'
  */
 export class HistoricalPriceService {
   private supabase = createClient()
+  private readonly PAGE_SIZE = 1000 // Supabase default limit
 
   /**
    * Clear historical price cache (useful for testing or when data changes)
@@ -19,6 +20,75 @@ export class HistoricalPriceService {
     // Clear both old cache and new cache service
     cacheService.invalidatePattern('historicalPrices:*')
     cacheService.invalidatePattern('customPrices:*')
+  }
+
+  /**
+   * Fetch all symbol price history with pagination to handle >1000 records
+   * Returns all price history data for a symbol, fetching in batches if needed
+   */
+  async fetchAllSymbolPriceHistory(symbol: string): Promise<Array<{date: string, close_price: number}>> {
+    const allPrices: Array<{date: string, close_price: number}> = []
+    let page = 0
+    let hasMore = true
+
+    while (hasMore) {
+      const { data: pageData = [], error } = await this.supabase
+        .from('symbol_price_history')
+        .select('date, close_price')
+        .eq('symbol', symbol)
+        .order('date', { ascending: true })
+        .range(page * this.PAGE_SIZE, (page + 1) * this.PAGE_SIZE - 1)
+
+      if (error) {
+        console.warn(`Failed to fetch historical prices for ${symbol} (page ${page}):`, error)
+        break
+      }
+
+      if (pageData && pageData.length > 0) {
+        allPrices.push(...pageData)
+        hasMore = pageData.length === this.PAGE_SIZE
+        page++
+      } else {
+        hasMore = false
+      }
+    }
+
+    return allPrices
+  }
+
+  /**
+   * Fetch all user symbol prices with pagination to handle >1000 records
+   * Returns all price history data for a custom symbol, fetching in batches if needed
+   */
+  async fetchAllUserSymbolPrices(userId: string, symbol: string): Promise<Array<{price_date: string, manual_price: number}>> {
+    const allPrices: Array<{price_date: string, manual_price: number}> = []
+    let page = 0
+    let hasMore = true
+
+    while (hasMore) {
+      const { data: pageData = [], error } = await this.supabase
+        .from('user_symbol_prices')
+        .select('price_date, manual_price')
+        .eq('user_id', userId)
+        .eq('symbol', symbol)
+        .order('price_date', { ascending: true })
+        .range(page * this.PAGE_SIZE, (page + 1) * this.PAGE_SIZE - 1)
+
+      if (error) {
+        console.warn(`Failed to fetch user prices for custom symbol ${symbol} (page ${page}):`, error)
+        break
+      }
+
+      if (pageData && pageData.length > 0) {
+        allPrices.push(...pageData)
+        hasMore = pageData.length === this.PAGE_SIZE
+        page++
+      } else {
+        hasMore = false
+      }
+    }
+
+    return allPrices
   }
 
   /**
@@ -39,13 +109,10 @@ export class HistoricalPriceService {
             .filter(p => p.symbol === symbol)
             .forEach(p => priceMap.set(p.date, Number(p.close_price)))
         } else {
-          // Fetch all historical prices from Supabase for real users
-          const { data: historicalPrices = [] } = await this.supabase
-            .from('symbol_price_history')
-            .select('date, close_price')
-            .eq('symbol', symbol)
+          // Fetch all historical prices from Supabase for real users (with pagination)
+          const historicalPrices = await this.fetchAllSymbolPriceHistory(symbol)
 
-          historicalPrices?.forEach(p => priceMap.set(p.date, Number(p.close_price)))
+          historicalPrices.forEach(p => priceMap.set(p.date, Number(p.close_price)))
         }
 
         return priceMap
@@ -98,22 +165,12 @@ export class HistoricalPriceService {
     const symbolPriceMap = await cacheService.getOrFetch(
       cacheKey,
       async () => {
-        // Cache miss - fetch all user manual prices for this symbol
+        // Cache miss - fetch all user manual prices for this symbol (with pagination)
         try {
-          const { data: userPrices = [], error } = await this.supabase
-            .from('user_symbol_prices')
-            .select('price_date, manual_price')
-            .eq('user_id', user.id)
-            .eq('symbol', symbol)
-            .order('price_date', { ascending: true })
-
-          if (error) {
-            console.warn(`Failed to fetch user prices for custom symbol ${symbol}:`, error)
-            return new Map()
-          }
+          const userPrices = await this.fetchAllUserSymbolPrices(user.id, symbol)
 
           const priceMap = new Map<string, number>()
-          userPrices?.forEach(p => {
+          userPrices.forEach(p => {
             const price = Number(p.manual_price)
             if (!isNaN(price) && price > 0) {
               priceMap.set(p.price_date, price)
@@ -159,21 +216,12 @@ export class HistoricalPriceService {
     const symbolPriceMap = await cacheService.getOrFetch(
       cacheKey,
       async () => {
-        // Cache miss - fetch all historical prices for this symbol
+        // Cache miss - fetch all historical prices for this symbol (with pagination)
         try {
-          const { data: allPrices = [], error } = await this.supabase
-            .from('symbol_price_history')
-            .select('date, close_price')
-            .eq('symbol', symbol)
-            .order('date', { ascending: true })
-
-          if (error) {
-            console.warn(`Failed to fetch historical prices for ${symbol}:`, error)
-            return new Map()
-          }
+          const allPrices = await this.fetchAllSymbolPriceHistory(symbol)
 
           const priceMap = new Map<string, number>()
-          allPrices?.forEach(p => {
+          allPrices.forEach(p => {
             const price = Number(p.close_price)
             if (!isNaN(price) && price > 0) {
               priceMap.set(p.date, price)
