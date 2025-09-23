@@ -490,5 +490,168 @@ describe('UnifiedCalculationService', () => {
       expect(historicalData[0].assetTypeAllocations.stock).toBe(100)
       expect(historicalData[0].assetTypeAllocations.crypto).toBe(0)
     })
+
+    it('should continue generating historical data after position liquidation for single holdings', async () => {
+      const symbols: Symbol[] = [
+        {
+          symbol: 'CT.YOMONI',
+          name: 'YOMONI',
+          asset_type: 'stock',
+          currency: 'EUR',
+          last_price: 15786.07,
+          last_updated: '2025-04-30T00:00:00Z',
+          is_custom: true,
+          created_by_user_id: 'test-user',
+          created_at: '2021-11-29T00:00:00Z'
+        }
+      ]
+
+      // Scenario: Buy then fully liquidate
+      const transactions: Transaction[] = [
+        {
+          id: '1',
+          user_id: 'test-user',
+          date: '2021-11-29',
+          symbol: 'CT.YOMONI',
+          type: 'buy',
+          quantity: 1,
+          price_per_unit: 14300.00,
+          fees: 0,
+          notes: null,
+          created_at: '2021-11-29T00:00:00Z',
+          updated_at: '2021-11-29T00:00:00Z'
+        },
+        {
+          id: '2',
+          user_id: 'test-user',
+          date: '2025-04-30',
+          symbol: 'CT.YOMONI',
+          type: 'sell',
+          quantity: 1,
+          price_per_unit: 15786.07,
+          fees: 0,
+          notes: null,
+          created_at: '2025-04-30T00:00:00Z',
+          updated_at: '2025-04-30T00:00:00Z'
+        }
+      ]
+
+      // Mock price data including after liquidation
+      mockHistoricalPriceService.fetchHistoricalPrices.mockResolvedValue(
+        new Map([
+          ['2021-11-29', 14300.00],
+          ['2025-03-29', 17124.52],
+          ['2025-04-30', 15786.07], // Liquidation date
+          ['2025-05-01', 16000.00]  // After liquidation
+        ])
+      )
+
+      const historicalData = await unifiedCalculationService.calculateUnifiedHistoricalData(
+        mockUser,
+        transactions,
+        symbols,
+        {
+          targetSymbol: 'CT.YOMONI',
+          targetCurrency: 'EUR'
+        }
+      )
+
+      expect(historicalData.length).toBeGreaterThan(0)
+
+      // Find data points before, during, and after liquidation
+      const beforeLiquidation = historicalData.find(d => d.date === '2025-03-29')
+      const liquidationDate = historicalData.find(d => d.date === '2025-04-30')
+      const afterLiquidation = historicalData.find(d => d.date === '2025-05-01')
+
+      // Before liquidation: should have position
+      expect(beforeLiquidation).toBeDefined()
+      if (beforeLiquidation) {
+        expect(beforeLiquidation.assetTypeValues.stock).toBeGreaterThan(0)
+      }
+
+      // On liquidation date: should still have data point
+      expect(liquidationDate).toBeDefined()
+
+      // After liquidation: should still generate data points (this was the bug)
+      expect(afterLiquidation).toBeDefined()
+      if (afterLiquidation) {
+        // After liquidation, value should be 0 but data point should exist
+        expect(afterLiquidation.assetTypeValues.stock).toBe(0)
+      }
+
+      // Verify the last data point exists (should not stop at March 29)
+      const lastDataPoint = historicalData[historicalData.length - 1]
+      expect(new Date(lastDataPoint.date).getTime()).toBeGreaterThanOrEqual(new Date('2025-04-30').getTime())
+    })
+
+    it('should not generate data after liquidation for portfolio calculations', async () => {
+      const symbols: Symbol[] = [
+        {
+          symbol: 'AAPL',
+          name: 'Apple Inc',
+          asset_type: 'stock',
+          currency: 'USD',
+          last_price: 155.00,
+          last_updated: '2025-04-30T00:00:00Z',
+          is_custom: false,
+          created_by_user_id: null,
+          created_at: '2023-01-01T00:00:00Z'
+        }
+      ]
+
+      // Portfolio with complete liquidation
+      const transactions: Transaction[] = [
+        {
+          id: '1',
+          user_id: 'test-user',
+          date: '2023-01-01',
+          symbol: 'AAPL',
+          type: 'buy',
+          quantity: 10,
+          price_per_unit: 140.00,
+          fees: 0,
+          notes: null,
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z'
+        },
+        {
+          id: '2',
+          user_id: 'test-user',
+          date: '2023-01-05',
+          symbol: 'AAPL',
+          type: 'sell',
+          quantity: 10,
+          price_per_unit: 155.00,
+          fees: 0,
+          notes: null,
+          created_at: '2023-01-05T00:00:00Z',
+          updated_at: '2023-01-05T00:00:00Z'
+        }
+      ]
+
+      mockHistoricalPriceService.fetchHistoricalPrices.mockResolvedValue(
+        new Map([
+          ['2023-01-01', 140.00],
+          ['2023-01-02', 145.00],
+          ['2023-01-05', 155.00],
+          ['2023-01-06', 160.00]  // After liquidation
+        ])
+      )
+
+      // Portfolio calculation (no targetSymbol)
+      const historicalData = await unifiedCalculationService.calculateUnifiedHistoricalData(
+        mockUser,
+        transactions,
+        symbols
+      )
+
+      // For portfolio calculations, should stop generating data after complete liquidation
+      const afterLiquidation = historicalData.find(d => d.date === '2023-01-06')
+      expect(afterLiquidation).toBeUndefined()
+
+      // Last data point should be on or before liquidation date
+      const lastDataPoint = historicalData[historicalData.length - 1]
+      expect(new Date(lastDataPoint.date).getTime()).toBeLessThanOrEqual(new Date('2023-01-05').getTime())
+    })
   })
 })

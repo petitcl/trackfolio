@@ -254,7 +254,8 @@ export class UnifiedCalculationService {
       const currentDate = d.toISOString().split('T')[0]
       
       // Calculate positions as of this date
-      const positions = this.calculatePositionsUpToDate(transactions, currentDate, targetSymbol)
+      // For single holdings, include closed positions to continue generating data after liquidation
+      const positions = this.calculatePositionsUpToDate(transactions, currentDate, targetSymbol, !!targetSymbol)
       
       if (positions.length === 0) {
         continue
