@@ -77,7 +77,9 @@ describe('UnifiedCalculationService', () => {
         value: 15500, // 100 * 155.00 (no dividends included)
         unrealizedPnL: 1500, // 15500 - (100 * 140.00)
         isCustom: false,
-        dividendIncome: 0
+        dividendIncome: 0,
+        realizedCostBasis: 0,
+        realizedPnL: 0
       })
     })
 
@@ -147,7 +149,9 @@ describe('UnifiedCalculationService', () => {
         value: 15500, // 100 * 155.00 (dividends NOT included in value)
         unrealizedPnL: 1500, // 15500 - (100 * 140.00)
         isCustom: false,
-        dividendIncome: 250 // 100 * 2.50 (tracked separately)
+        dividendIncome: 250, // 100 * 2.50 (tracked separately)
+        realizedCostBasis: 0,
+        realizedPnL: 0
       })
     })
 
@@ -206,6 +210,8 @@ describe('UnifiedCalculationService', () => {
       expect(positions[0].unrealizedPnL).toBeCloseTo(145, 1) // 1045 - (10 * 90.00)
       expect(positions[0].isCustom).toBe(false)
       expect(positions[0].dividendIncome).toBe(0)
+      expect(positions[0].realizedCostBasis).toBe(0)
+      expect(positions[0].realizedPnL).toBe(0)
 
       expect(mockCurrencyService.getExchangeRate).toHaveBeenCalledWith(
         'EUR',
@@ -293,6 +299,8 @@ describe('UnifiedCalculationService', () => {
       expect(positions[0].unrealizedPnL).toBeCloseTo(2275, 1) // 16275 - 14000
       expect(positions[0].isCustom).toBe(false)
       expect(positions[0].dividendIncome).toBe(0) // No cash dividend income
+      expect(positions[0].realizedCostBasis).toBe(0)
+      expect(positions[0].realizedPnL).toBe(0)
     })
 
     it('should handle bonus shares correctly', async () => {
@@ -361,7 +369,9 @@ describe('UnifiedCalculationService', () => {
         value: 17050, // 110 * 155.00
         unrealizedPnL: 3050, // 17050 - 14000
         isCustom: false,
-        dividendIncome: 0
+        dividendIncome: 0,
+        realizedCostBasis: 0,
+        realizedPnL: 0
       })
     })
   })

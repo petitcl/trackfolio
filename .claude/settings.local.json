@@ -24,7 +24,8 @@
       "Bash(convert:*)",
       "Bash(sips:*)",
       "Bash(find:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx jest:*)"
     ],
     "deny": [],
     "ask": [],

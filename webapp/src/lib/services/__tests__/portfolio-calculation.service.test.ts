@@ -107,7 +107,9 @@ describe('PortfolioCalculationService', () => {
         value: 1500.00,
         unrealizedPnL: 500.00, // (10 * 150) - (10 * 100)
         isCustom: false,
-        dividendIncome: 0
+        dividendIncome: 0,
+        realizedCostBasis: 0,
+        realizedPnL: 0
       });
     });
 
