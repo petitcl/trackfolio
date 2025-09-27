@@ -468,9 +468,9 @@ export default function Dashboard({ user }: DashboardProps) {
                       const realizedPnLPercentage = calculateRealizedPnLPercentage(position.realizedPnL, position.realizedCostBasis)
                       const isClosed = position.quantity === 0
                       rows.push(
-                        <tr key={position.symbol} className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${isClosed ? 'opacity-60' : ''}`} onClick={() => router.push(`/holdings/${encodeURIComponent(position.symbol)}`)}>
+                        <tr key={position.symbol} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${isClosed ? 'opacity-60' : ''}`}>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
+                            <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="flex items-center w-full">
                               <div className="flex-shrink-0 text-lg">
                                 {getAssetTypeIcon(assetType)}
                               </div>
@@ -483,27 +483,39 @@ export default function Dashboard({ user }: DashboardProps) {
                                   {symbols.find(s => s.symbol === position.symbol)?.name || 'Unknown'}
                                 </div>
                               </div>
-                            </div>
+                            </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-300'}`}>
-                            {position.quantity.toLocaleString()}
+                            <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
+                              {position.quantity.toLocaleString()}
+                            </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-300'}`}>
-                            {isClosed ? '-' : formatCurrency(position.avgCost)}
+                            <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
+                              {isClosed ? '-' : formatCurrency(position.avgCost)}
+                            </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-300'}`}>
-                            {isClosed ? '-' : formatCurrency(position.currentPrice)}
+                            <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
+                              {isClosed ? '-' : formatCurrency(position.currentPrice)}
+                            </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
-                            {isClosed ? '-' : formatCurrency(position.value)}
+                            <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
+                              {isClosed ? '-' : formatCurrency(position.value)}
+                            </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? 'text-gray-500 dark:text-gray-400' : getPnLColor(position.unrealizedPnL)}`}>
-                            <div>{isClosed ? '-' : formatCurrency(position.unrealizedPnL)}</div>
-                            <div className="text-xs">{isClosed ? '-' : formatPercent(pnlPercentage)}</div>
+                            <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
+                              <div>{isClosed ? '-' : formatCurrency(position.unrealizedPnL)}</div>
+                              <div className="text-xs">{isClosed ? '-' : formatPercent(pnlPercentage)}</div>
+                            </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? getPnLColor(position.realizedPnL) : getPnLColor(calculateTotalReturn(position.unrealizedPnL, position.dividendIncome))}`}>
-                            <div>{isClosed ? formatCurrency(position.realizedPnL) : formatCurrency(calculateTotalReturn(position.unrealizedPnL, position.dividendIncome))}</div>
-                            <div className="text-xs">{isClosed ? formatPercent(realizedPnLPercentage) : formatPercent(calculateTotalReturnPercentage(position.unrealizedPnL, position.dividendIncome, position.avgCost, position.quantity))}</div>
+                            <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
+                              <div>{isClosed ? formatCurrency(position.realizedPnL) : formatCurrency(calculateTotalReturn(position.unrealizedPnL, position.dividendIncome))}</div>
+                              <div className="text-xs">{isClosed ? formatPercent(realizedPnLPercentage) : formatPercent(calculateTotalReturnPercentage(position.unrealizedPnL, position.dividendIncome, position.avgCost, position.quantity))}</div>
+                            </a>
                           </td>
                         </tr>
                       )
