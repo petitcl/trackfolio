@@ -385,32 +385,39 @@ export class PortfolioService {
     }
   }
 
-  async getPortfolioRepartitionData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', date?: string): Promise<Array<{
+  async getPortfolioRepartitionData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange, date?: string): Promise<Array<{
     assetType: string;
     value: number;
     percentage: number
   }>> {
     try {
-      console.log('📊 Getting portfolio repartition data for user:', user.email, 'date:', date || 'current')
-      
-      // Get historical data (which includes both allocations and values)
-      const historicalData = await this.getPortfolioHistoricalData(user, targetCurrency)
-      
+      console.log('📊 Getting portfolio repartition data for user:', user.email, 'timeRange:', timeRange, 'date:', date || 'current')
+
+      let historicalData: HistoricalDataPoint[]
+
+      // If timeRange is provided, use the same aggregated data as the history chart
+      if (timeRange) {
+        historicalData = await this.getPortfolioHistoricalDataByTimeRange(user, timeRange, targetCurrency)
+      } else {
+        // Fallback to full historical data (backwards compatibility)
+        historicalData = await this.getPortfolioHistoricalData(user, targetCurrency)
+      }
+
       if (historicalData.length === 0) {
         console.log('📊 No historical data available')
         return []
       }
-      
+
       // Find the data point for the target date, or use the last available point
       const targetDate = date || new Date().toISOString().split('T')[0]
       let targetDataPoint = historicalData.find(point => point.date === targetDate)
-      
-      // If no exact date match, use the last available point (most current data)
+
+      // If no exact date match, use the last available point (most current/recent aggregated data)
       if (!targetDataPoint) {
         targetDataPoint = historicalData[historicalData.length - 1]
         console.log(`📊 Using last available data point: ${targetDataPoint.date} (requested: ${targetDate})`)
       }
-      
+
       // Convert to chart format using both values and percentages from historical data
       const result = Object.entries(targetDataPoint.assetTypeAllocations)
         .filter(([_, percentage]) => percentage > 0)
@@ -419,10 +426,10 @@ export class PortfolioService {
           value: targetDataPoint.assetTypeValues[assetType] || 0,
           percentage
         }))
-      
-      console.log('📊 Portfolio repartition from historical data:', result.length, 'asset types')
+
+      console.log('📊 Portfolio repartition from historical data:', result.length, 'asset types', timeRange ? `(timeRange: ${timeRange})` : '(full historical)')
       return result
-      
+
     } catch (error) {
       console.error('❌ Error getting portfolio repartition data:', error)
       return []

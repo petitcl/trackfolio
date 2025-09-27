@@ -25,7 +25,9 @@
       "Bash(sips:*)",
       "Bash(find:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "mcp__chrome-devtools__*",
+      "mcp__chrome-devtools__list_pages"
     ],
     "deny": [],
     "ask": [],

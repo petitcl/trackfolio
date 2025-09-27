@@ -56,7 +56,7 @@ export default function Dashboard({ user }: DashboardProps) {
         portfolioService.getEnhancedPortfolioData(user, currency, includeClosedPositions ?? false),
         portfolioService.getSymbols(user),
         portfolioService.getPortfolioHistoricalData(user, currency),
-        portfolioService.getPortfolioRepartitionData(user, currency)
+        portfolioService.getPortfolioRepartitionData(user, currency, selectedTimeRange)
       ])
 
       setPortfolioData(portfolio)
@@ -86,7 +86,7 @@ export default function Dashboard({ user }: DashboardProps) {
     } finally {
       setDataLoading(false)
     }
-  }, [user])
+  }, [user, selectedTimeRange])
 
   useEffect(() => {
     loadPortfolioData(selectedCurrency, showClosedPositions)
