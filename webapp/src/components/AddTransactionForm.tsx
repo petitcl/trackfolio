@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import type { TransactionType } from '@/lib/supabase/types'
+import BrokerSelect from './BrokerSelect'
 
 interface AddTransactionFormProps {
   isOpen: boolean
@@ -228,12 +229,9 @@ export default function AddTransactionForm({
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Broker
               </label>
-              <input
-                type="text"
+              <BrokerSelect
                 value={formData.broker || ''}
-                onChange={(e) => handleChange('broker', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                placeholder="Optional"
+                onChange={(value) => handleChange('broker', value)}
               />
             </div>
           </div>

@@ -20,13 +20,13 @@ Mark done item with ✅
 - ✅ Mobile => fix header responsiveness
 - ✅ Optimization => don't refetch already fetched data
 - ✅ Portfolio Value Evolution - Use day as point legend instead of month
+- ✅ Dashboard - We should show closed holdings, maybe not displayed by default
 - [ ] MAYBE -> fix "Annualized Return" - not sure how
 - [ ] MAYBE -> make timerange change correctly affect other metrics
-- [ ] Dashboard - We should show closed holdings, maybe not displayed by default
 - [ ] HoldingDetails - Weird rounding error on quantity => sometimes get 1.00 transformed to 0.99998 
 - [ ] Multi custom holding CSV import functionality from home page
 - [ ] Delete holding / price / tx buttons should be red / danger
-- [ ] Hardcoded list of brokers to pick from
+- ✅ Hardcoded list of brokers to pick from
 - [ ] Portfolio export / backup
 - [ ] Allow Bonus with price 0
 - [ ] Remove need for transaction with price = 0, simplify custom holding creation
