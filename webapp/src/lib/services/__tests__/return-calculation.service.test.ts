@@ -127,10 +127,10 @@ describe('ReturnCalculationService', () => {
       expect(result.periodYears).toBeGreaterThan(3.5) // Full period ~3.7 years
       expect(result.totalReturn).toBeCloseTo(19.93, 0) // ~20% total return
 
-      // The key test: V2 calculation properly accounts for timing of investments
-      // With most money invested recently, the annualized return should be high
-      expect(result.timeWeightedReturn).toBeGreaterThan(100)
-      expect(result.timeWeightedReturn).toBeLessThan(120)
+      // The key test: TWR with corrected formula gives realistic returns
+      // With dollar-cost averaging over ~3.7 years and 20% total return
+      expect(result.timeWeightedReturn).toBeGreaterThan(4)
+      expect(result.timeWeightedReturn).toBeLessThan(7)
 
       console.log('Realistic investment pattern results:', {
         totalReturn: result.totalReturn.toFixed(2) + '%',
@@ -374,8 +374,8 @@ describe('ReturnCalculationService', () => {
 
       // The weighted average time should be much less than 1 year
       // since 90% of money was invested only ~2 months before end
-      // This should result in a high annualized return
-      expect(result.timeWeightedReturn).toBeGreaterThan(50) // High because money was invested recently
+      // This should result in a moderate annualized return with corrected TWR
+      expect(result.timeWeightedReturn).toBeGreaterThan(15) // Realistic with corrected formula
 
       console.log('Weighted time test:', {
         totalReturn: result.totalReturn.toFixed(2) + '%',
@@ -461,15 +461,90 @@ describe('ReturnCalculationService', () => {
         [createMockSymbol()]
       )
 
-      // V2 calculation: With most money invested recently, should be very high
-      expect(result.timeWeightedReturn).toBeGreaterThan(90)
-      expect(result.timeWeightedReturn).toBeLessThan(100)
+      // Corrected TWR calculation: More realistic returns
+      expect(result.timeWeightedReturn).toBeGreaterThan(5)
+      expect(result.timeWeightedReturn).toBeLessThan(10)
 
       console.log('Heavy recent investment test (should be ~15.77%):', {
         totalReturn: result.totalReturn.toFixed(2) + '%',
         timeWeightedReturn: result.timeWeightedReturn.toFixed(2) + '%',
         moneyWeightedReturn: result.moneyWeightedReturn.toFixed(2) + '%',
         periodYears: result.periodYears.toFixed(2)
+      })
+    })
+  })
+
+  describe('XIRR vs TWR comparison', () => {
+    it('should calculate different values for XIRR and TWR with irregular cash flows', () => {
+      // Create a scenario where TWR and XIRR should differ significantly
+      // Large investment early, then small investments, should make XIRR < TWR if returns are positive
+      const transactions: Transaction[] = [
+        {
+          id: 'tx1',
+          user_id: mockUserId,
+          symbol: 'TEST',
+          type: 'buy',
+          quantity: 100,
+          price_per_unit: 100,
+          fees: 0,
+          date: '2022-01-01',
+          notes: null,
+          created_at: '2022-01-01T00:00:00Z',
+          updated_at: '2022-01-01T00:00:00Z'
+        },
+        {
+          id: 'tx2',
+          user_id: mockUserId,
+          symbol: 'TEST',
+          type: 'buy',
+          quantity: 10,
+          price_per_unit: 110,
+          fees: 0,
+          date: '2023-01-01',
+          notes: null,
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z'
+        }
+      ]
+
+      const historicalData: HistoricalDataPoint[] = [
+        {
+          date: '2022-01-01',
+          totalValue: 10000,
+          assetTypeAllocations: { stock: 100 },
+          assetTypeValues: { stock: 10000 }
+        },
+        {
+          date: '2023-01-01',
+          totalValue: 12000, // 20% gain
+          assetTypeAllocations: { stock: 100 },
+          assetTypeValues: { stock: 12000 }
+        },
+        {
+          date: '2024-01-01',
+          totalValue: 15000, // Another 25% gain on the larger amount
+          assetTypeAllocations: { stock: 100 },
+          assetTypeValues: { stock: 15000 }
+        }
+      ]
+
+      const symbols: Symbol[] = [createMockSymbol()]
+
+      const result = returnCalculationService.calculateAnnualizedReturns(
+        transactions,
+        historicalData,
+        symbols
+      )
+
+      // XIRR and TWR should be different
+      expect(result.timeWeightedReturn).toBeDefined()
+      expect(result.moneyWeightedReturn).toBeDefined()
+      expect(result.timeWeightedReturn).not.toEqual(result.moneyWeightedReturn)
+
+      // Log for debugging
+      console.log('XIRR vs TWR comparison:', {
+        TWR: result.timeWeightedReturn.toFixed(2) + '%',
+        XIRR: result.moneyWeightedReturn.toFixed(2) + '%'
       })
     })
   })

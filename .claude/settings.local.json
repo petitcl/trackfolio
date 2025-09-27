@@ -27,7 +27,8 @@
       "Bash(npx tsc:*)",
       "Bash(npx jest:*)",
       "mcp__chrome-devtools__*",
-      "mcp__chrome-devtools__list_pages"
+      "mcp__chrome-devtools__list_pages",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": [],

@@ -175,7 +175,7 @@ function computeAnnualizedTWR(
           case "buy":
             return acc + tx.price_per_unit * tx.quantity + (tx.fees || 0);
           case "sell":
-            return acc - tx.price_per_unit * tx.quantity + (tx.fees || 0);
+            return acc - (tx.price_per_unit * tx.quantity - (tx.fees || 0));
           // dividend is inflow, reduce net outflow
           case "dividend":
             return acc - tx.price_per_unit;
@@ -187,8 +187,8 @@ function computeAnnualizedTWR(
     const V_start = Object.values(start.assetTypeValues).reduce((a, b) => a + b, 0);
     const V_end = Object.values(end.assetTypeValues).reduce((a, b) => a + b, 0);
 
-    if (V_start > 0) {
-      const periodReturn = (V_end - cf) / V_start - 1;
+    if (V_start + cf > 0) {
+      const periodReturn = V_end / (V_start + cf) - 1;
       twr *= 1 + periodReturn;
     }
   }
@@ -199,6 +199,118 @@ function computeAnnualizedTWR(
     (1000 * 3600 * 24 * 365.25);
 
   return years > 0 ? Math.pow(twr, 1 / years) - 1 : 0;
+}
+
+/**
+ * Calculate XIRR (Extended Internal Rate of Return) using Newton's method
+ * This is the money-weighted return that accounts for the timing of cash flows
+ */
+function calculateXIRR(
+  transactions: Transaction[],
+  endValue: number,
+  endDate: string,
+  maxIterations: number = 100,
+  tolerance: number = 0.000001
+): number {
+  // Build cash flow array
+  const cashFlows: { amount: number; date: Date }[] = [];
+
+  // Add all transactions as cash flows
+  for (const tx of transactions) {
+    let amount = 0;
+    switch (tx.type) {
+      case 'buy':
+        // Money out (negative)
+        amount = -(tx.price_per_unit * tx.quantity + (tx.fees || 0));
+        break;
+      case 'sell':
+        // Money in (positive)
+        amount = tx.price_per_unit * tx.quantity - (tx.fees || 0);
+        break;
+      case 'dividend':
+        // Money in (positive)
+        amount = tx.price_per_unit;
+        break;
+      case 'deposit':
+        // Money out (negative)
+        amount = -tx.price_per_unit;
+        break;
+      case 'withdrawal':
+        // Money in (positive)
+        amount = tx.price_per_unit;
+        break;
+      default:
+        continue;
+    }
+
+    if (amount !== 0) {
+      cashFlows.push({
+        amount,
+        date: new Date(tx.date)
+      });
+    }
+  }
+
+  // Add final portfolio value as positive cash flow
+  if (endValue > 0) {
+    cashFlows.push({
+      amount: endValue,
+      date: new Date(endDate)
+    });
+  }
+
+  // Need at least 2 cash flows
+  if (cashFlows.length < 2) return 0;
+
+  // Sort by date
+  cashFlows.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  const firstDate = cashFlows[0].date;
+
+  // Calculate days from start for each cash flow
+  const flows = cashFlows.map(cf => ({
+    amount: cf.amount,
+    days: (cf.date.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)
+  }));
+
+  // XIRR calculation using Newton's method
+  // Initial guess based on simple return
+  const totalIn = flows.filter(f => f.amount < 0).reduce((sum, f) => sum - f.amount, 0);
+  const totalOut = flows.filter(f => f.amount > 0).reduce((sum, f) => sum + f.amount, 0);
+  let rate = totalIn > 0 ? (totalOut / totalIn - 1) / (flows[flows.length - 1].days / 365.25) : 0.1;
+
+  for (let i = 0; i < maxIterations; i++) {
+    // Calculate NPV and its derivative
+    let npv = 0;
+    let dnpv = 0;
+
+    for (const flow of flows) {
+      const years = flow.days / 365.25;
+      const pv = flow.amount / Math.pow(1 + rate, years);
+      npv += pv;
+      dnpv -= years * pv / (1 + rate);
+    }
+
+    // Check convergence
+    if (Math.abs(npv) < tolerance) {
+      return rate;
+    }
+
+    // Newton's method update
+    if (dnpv === 0) break;
+    const newRate = rate - npv / dnpv;
+
+    // Bound the rate to prevent divergence
+    if (newRate < -0.99) {
+      rate = -0.99;
+    } else if (newRate > 10) {
+      rate = 10;
+    } else {
+      rate = newRate;
+    }
+  }
+
+  return rate;
 }
 
 /**
@@ -276,11 +388,22 @@ export class ReturnCalculationService {
       totalReturn = (v2Summary.totalPnL / v2Summary.totalInvested) * 100
     }
 
+    // Calculate XIRR for money-weighted return
+    // Get the final portfolio value from the last historical data point
+    const finalValue = Object.values(lastPoint.assetTypeValues).reduce((a, b) => a + b, 0)
+
+    // Filter transactions within the date range for XIRR
+    const xirrTransactions = transactions.filter(tx =>
+      tx.date >= actualStartDate && tx.date <= actualEndDate
+    )
+
+    const xirr = calculateXIRR(xirrTransactions, finalValue, actualEndDate)
+
     return {
       // V2 already provides TWR
       timeWeightedReturn: v2Summary.annualizedReturn * 100,
-      // Simplified: use same value
-      moneyWeightedReturn: v2Summary.annualizedReturn * 100,
+      // Use calculated XIRR for money-weighted return
+      moneyWeightedReturn: xirr * 100,
       totalReturn,
       annualizedVolatility: 0,
       startDate: firstPoint.date,
