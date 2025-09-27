@@ -343,6 +343,7 @@ export default function Dashboard({ user }: DashboardProps) {
             <PortfolioRepartitionChart
               data={repartitionData}
               timeRange={selectedTimeRange}
+              selectedCurrency={selectedCurrency}
             />
             <PortfolioRepartitionHistoryChart
               user={user}

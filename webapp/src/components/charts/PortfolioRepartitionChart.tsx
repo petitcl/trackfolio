@@ -11,12 +11,14 @@ import {
 import { Pie } from 'react-chartjs-2'
 import type { TimeRange } from '../TimeRangeSelector'
 import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
+import { currencyService, type SupportedCurrency } from '../../lib/services/currency.service'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
 interface PortfolioRepartitionChartProps {
   data: Array<{ assetType: string; value: number; percentage: number }>
   timeRange: TimeRange
+  selectedCurrency: SupportedCurrency
   className?: string
 }
 
@@ -29,10 +31,11 @@ const assetTypeLabels: Record<string, string> = {
   currency: 'Currency',
 }
 
-export default function PortfolioRepartitionChart({ 
-  data, 
-  timeRange, 
-  className = '' 
+export default function PortfolioRepartitionChart({
+  data,
+  timeRange,
+  selectedCurrency,
+  className = ''
 }: PortfolioRepartitionChartProps) {
   
   const getAssetTypeColor = (assetType: string): string => {
@@ -87,7 +90,8 @@ export default function PortfolioRepartitionChart({
             const label = context.label || ''
             const value = context.parsed
             const dataPoint = completeData[context.dataIndex]
-            return `${label}: ${value.toFixed(1)}% ($${dataPoint.value.toLocaleString()})`
+            const formattedValue = currencyService.formatCurrency(dataPoint.value, selectedCurrency)
+            return `${label}: ${value.toFixed(1)}% (${formattedValue})`
           }
         }
       }

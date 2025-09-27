@@ -23,7 +23,8 @@ Mark done item with ✅
 - [ ] Implement live price updates using Yahoo Finance API
 
 ## TODO P3
-- [ ] Use existing symbols instead of symbol search when adding symbols
+- [ ] Improve flow for creating new symbols: either autocomplete for existing symbols only, or create symbols on the fly
+- [ ] Add support for custom tags / labels on holdings + filtering by label
 - [ ] Improve support for cash positions
 - [ ] Implement automatic database backups
 - [ ] Add unit tests for portfolio services logic
