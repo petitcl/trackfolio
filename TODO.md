@@ -19,9 +19,9 @@ Mark done item with ✅
 - ✅ Toggle / switch component 
 - ✅ Mobile => fix header responsiveness
 - ✅ Optimization => don't refetch already fetched data
+- ✅ Portfolio Value Evolution - Use day as point legend instead of month
 - [ ] MAYBE -> fix "Annualized Return" - not sure how
 - [ ] MAYBE -> make timerange change correctly affect other metrics
-- [ ] Portfolio Value Evolution - Use day as point legend instead of month
 - [ ] Dashboard - We should show closed holdings, maybe not displayed by default
 - [ ] HoldingDetails - Weird rounding error on quantity => sometimes get 1.00 transformed to 0.99998 
 - [ ] Multi custom holding CSV import functionality from home page
@@ -33,6 +33,7 @@ Mark done item with ✅
 - [ ] Use existing symbols instead of symbol search when adding symbol
 - [ ] Cost Basis takes into account currency conversion
 - [ ] Creating a custom holding should redirect to holding detail page instead of homepage 
+- [ ] Don't reload page when changing "show closed positions"
 - [ ] Adding or editing a custom price or transaction in the the holding page should refresh the page
 - [ ] Infinite scrolling in Transaction History
 - [ ] Add cursor: pointer; hover on all buttons
@@ -41,8 +42,6 @@ Mark done item with ✅
 - [ ] Some way to see performance per period bucket (eg: ALL shows perf of 2024, 2025, etc..)
 - [ ] Better Support for cash positions
 - [ ] Allow to edit custom holding details
-- [ ] Responsive design improvements - don't show chart legend on mobile / small screens
-- [ ] Responsive design improvements - more
 - [ ] Portfolio P&L and Annualized Returns should show value depending on selected timeframe
 
 ## TODO P3

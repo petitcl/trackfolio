@@ -216,6 +216,16 @@ export default function ValueEvolutionChart({
         ...CHART_CONFIGS.tooltip,
         borderWidth: 1,
         callbacks: {
+          title: function(tooltipItems) {
+            // Show exact date for tooltip title instead of the chart label
+            const dataIndex = tooltipItems[0].dataIndex
+            const date = new Date(filteredData[dataIndex].date)
+            return date.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            })
+          },
           label: function(context) {
             const value = Number(context.parsed.y)
             return `${context.dataset.label}: ${formatCurrency(value)}`
