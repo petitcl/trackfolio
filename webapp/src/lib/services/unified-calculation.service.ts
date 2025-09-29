@@ -80,22 +80,7 @@ export class UnifiedCalculationService {
           existing.totalCost = existing.quantity * existing.avgCost
         }
       } else if (transaction.type === 'dividend') {
-        // Handle dividend transactions - distinguish between stock and cash dividends
-        if (transaction.quantity > 0 && transaction.price_per_unit === 0) {
-          // Stock dividend (reinvested) - add shares with cost
-          existing.quantity += transaction.quantity
-          existing.totalCost += transaction.quantity * transaction.price_per_unit
-          existing.avgCost = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
-        } else {
-          // Cash dividend - track income but don't change shares
-          // Handle two formats:
-          // 1. quantity > 0: dividend per share (quantity * price_per_unit)
-          // 2. quantity = 0: total dividend amount is in price_per_unit
-          const dividendAmount = transaction.quantity > 0
-            ? transaction.quantity * transaction.price_per_unit
-            : transaction.price_per_unit
-          existing.dividendIncome += dividendAmount
-        }
+        existing.dividendIncome += (transaction.amount || 0)
       } else if (transaction.type === 'bonus') {
         // Reinvested dividend or bonus shares - add to position
         existing.quantity += transaction.quantity

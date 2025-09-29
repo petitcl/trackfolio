@@ -108,7 +108,7 @@ function computePortfolioSummaryV2(
         break;
 
       case "dividend":
-        dividends += tx.amount || 0;
+        dividends += (tx.amount || 0);
         break;
 
       case "bonus":
@@ -411,7 +411,6 @@ export class ReturnCalculationService {
       periodYears
     }
   }
-
 
   /**
    * Calculate the difference in years between two dates
