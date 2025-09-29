@@ -11,6 +11,7 @@ interface AddTransactionFormProps {
   onDelete?: () => void
   symbol: string
   symbolName: string
+  symbolCurrency?: string
   isLoading?: boolean
   editMode?: boolean
   initialData?: TransactionFormData
@@ -45,6 +46,7 @@ export default function AddTransactionForm({
   onDelete,
   symbol,
   symbolName,
+  symbolCurrency = 'USD',
   isLoading = false,
   editMode = false,
   initialData,
@@ -58,7 +60,7 @@ export default function AddTransactionForm({
       date: new Date().toISOString().split('T')[0],
       fees: 0,
       broker: '',
-      currency: 'USD',
+      currency: symbolCurrency,
       notes: '',
       amount: undefined,
     }
@@ -216,13 +218,11 @@ export default function AddTransactionForm({
               <select
                 value={formData.currency}
                 onChange={(e) => handleChange('currency', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+                disabled={true}
+                title="Currency is set based on the holding's currency"
               >
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="GBP">GBP</option>
-                <option value="CAD">CAD</option>
-                <option value="JPY">JPY</option>
+                <option value={symbolCurrency}>{symbolCurrency}</option>
               </select>
             </div>
             <div>

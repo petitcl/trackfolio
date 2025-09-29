@@ -16,17 +16,19 @@ interface TransactionManagementProps {
   transactions: Transaction[]
   onTransactionUpdated?: () => void
   selectedCurrency?: SupportedCurrency
+  symbolCurrency?: string
 }
 
 type ViewMode = 'history' | 'addTransaction' | 'bulkImport'
 
-export default function TransactionManagement({ 
-  user, 
-  symbol, 
-  symbolName, 
-  transactions, 
+export default function TransactionManagement({
+  user,
+  symbol,
+  symbolName,
+  transactions,
   onTransactionUpdated,
-  selectedCurrency = 'USD'
+  selectedCurrency = 'USD',
+  symbolCurrency = 'USD'
 }: TransactionManagementProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('history')
   const [refreshKey, setRefreshKey] = useState(0)
@@ -130,6 +132,7 @@ export default function TransactionManagement({
             onSubmit={handleAddTransaction}
             symbol={symbol}
             symbolName={symbolName}
+            symbolCurrency={symbolCurrency}
             isLoading={isProcessingTransaction}
             isInline={true}
           />
@@ -153,6 +156,7 @@ export default function TransactionManagement({
             transactions={transactions}
             symbol={symbol}
             symbolName={symbolName}
+            symbolCurrency={symbolCurrency}
             user={user}
             onTransactionUpdated={handleTransactionUpdated}
             selectedCurrency={selectedCurrency}

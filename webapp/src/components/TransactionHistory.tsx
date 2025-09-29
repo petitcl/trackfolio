@@ -12,12 +12,13 @@ interface TransactionHistoryProps {
   transactions: Transaction[]
   symbol: string
   symbolName: string
+  symbolCurrency?: string
   user: AuthUser
   onTransactionUpdated?: () => void
   selectedCurrency?: SupportedCurrency
 }
 
-export default function TransactionHistory({ transactions, symbol, symbolName, user, onTransactionUpdated, selectedCurrency = 'USD' }: TransactionHistoryProps) {
+export default function TransactionHistory({ transactions, symbol, symbolName, symbolCurrency = 'USD', user, onTransactionUpdated, selectedCurrency = 'USD' }: TransactionHistoryProps) {
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -166,6 +167,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, u
                             onDelete={() => initiateDeleteTransaction(transaction.id)}
                             symbol={symbol}
                             symbolName={symbolName}
+                            symbolCurrency={symbolCurrency}
                             isLoading={isUpdating}
                             editMode={true}
                             initialData={getEditFormData(transaction)}

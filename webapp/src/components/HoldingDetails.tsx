@@ -426,6 +426,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
             symbolName={symbolData?.name || 'Unknown Asset'}
             transactions={transactions}
             selectedCurrency={selectedCurrency}
+            symbolCurrency={symbolData?.currency || 'USD'}
             onTransactionUpdated={() => {
               // Reload the holding data when transactions are updated
               window.location.reload() // Temporary solution - in production this should be more elegant
