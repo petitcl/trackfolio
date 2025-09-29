@@ -78,8 +78,18 @@ export default function AddTransactionForm({
     onSubmit(submitData)
   }
 
-  const handleChange = (field: keyof TransactionFormData, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+  const handleChange = (field: keyof TransactionFormData, value: string | number | undefined) => {
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value }
+
+      // When changing to bonus type, set price and amount to 0
+      if (field === 'type' && value === 'bonus') {
+        updated.pricePerUnit = 0
+        updated.amount = 0
+      }
+
+      return updated
+    })
   }
 
   if (!isOpen) return null
@@ -141,8 +151,8 @@ export default function AddTransactionForm({
               <input
                 type="number"
                 step="0.00001"
-                value={formData.quantity || ''}
-                onChange={(e) => handleChange('quantity', parseFloat(e.target.value) || 0)}
+                value={formData.quantity === 0 ? '0' : (formData.quantity || '')}
+                onChange={(e) => handleChange('quantity', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 required={formData.type !== 'dividend'}
                 min="0"
@@ -151,31 +161,30 @@ export default function AddTransactionForm({
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Price per Unit
-                {formData.type === 'bonus' && <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">(optional if amount provided)</span>}
               </label>
               <input
                 type="number"
                 step="0.00001"
-                value={formData.pricePerUnit || ''}
-                onChange={(e) => handleChange('pricePerUnit', parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                value={formData.pricePerUnit === 0 ? '0' : (formData.pricePerUnit || '')}
+                onChange={(e) => handleChange('pricePerUnit', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${formData.type === 'bonus' ? 'disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed' : ''}`}
                 required={formData.type !== 'bonus' || (!formData.amount || formData.amount <= 0)}
                 min="0"
+                disabled={formData.type === 'bonus'}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Amount
-                {formData.type === 'bonus' && <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">(replaces price × quantity)</span>}
               </label>
               <input
                 type="number"
                 step="0.00001"
-                value={formData.amount || ''}
-                onChange={(e) => handleChange('amount', e.target.value ? parseFloat(e.target.value) : '')}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                value={formData.amount === 0 ? '0' : (formData.amount || '')}
+                onChange={(e) => handleChange('amount', e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${formData.type === 'bonus' ? 'disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed' : ''}`}
                 min="0"
-                placeholder={formData.type === 'bonus' ? 'Total bonus amount' : 'Optional'}
+                disabled={formData.type === 'bonus'}
               />
             </div>
           </div>
@@ -201,8 +210,8 @@ export default function AddTransactionForm({
               <input
                 type="number"
                 step="0.00001"
-                value={formData.fees || ''}
-                onChange={(e) => handleChange('fees', parseFloat(e.target.value) || 0)}
+                value={formData.fees === 0 ? '0' : (formData.fees || '')}
+                onChange={(e) => handleChange('fees', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 min="0"
               />
