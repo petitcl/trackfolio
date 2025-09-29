@@ -19,6 +19,7 @@ CREATE TABLE transactions (
     price_per_unit DECIMAL(20,8) NOT NULL,
     currency TEXT DEFAULT 'USD' NOT NULL,
     fees DECIMAL(20,8) DEFAULT 0,
+    amount DECIMAL(20,8),
     notes TEXT,
     broker TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,

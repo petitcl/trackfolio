@@ -75,7 +75,8 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
       fees: transaction.fees || 0,
       broker: transaction.broker || '',
       currency: transaction.currency || 'USD',
-      notes: transaction.notes || ''
+      notes: transaction.notes || '',
+      amount: transaction.amount || undefined
     }
   }
 
@@ -151,7 +152,9 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {[...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((transaction) => {
-              const total = transaction.quantity * transaction.price_per_unit + (transaction.fees || 0)
+              const total = transaction.type === 'dividend'
+                ? transaction.amount || 0
+                : transaction.quantity * transaction.price_per_unit + (transaction.fees || 0)
               const isEditing = editingTransactionId === transaction.id
               
               if (isEditing) {

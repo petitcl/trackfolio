@@ -194,6 +194,7 @@ export class TransactionService {
     date: string
     notes?: string | null
     fees?: number
+    amount?: number | null
     currency?: string
     broker?: string | null
   }): Promise<{ success: boolean; transaction?: Transaction; error?: string }> {
@@ -207,6 +208,7 @@ export class TransactionService {
           pricePerUnit: transactionData.pricePerUnit,
           date: transactionData.date,
           fees: transactionData.fees,
+          amount: transactionData.amount,
           currency: transactionData.currency,
           broker: transactionData.broker,
           notes: transactionData.notes
@@ -229,6 +231,7 @@ export class TransactionService {
           date: transactionData.date,
           notes: transactionData.notes,
           fees: transactionData.fees,
+          amount: transactionData.amount,
           currency: transactionData.currency,
           broker: transactionData.broker
         })
@@ -262,6 +265,7 @@ export class TransactionService {
     date: string
     notes?: string | null
     fees?: number
+    amount?: number | null
     currency?: string
     broker?: string | null
   }): Promise<Transaction | null> {
@@ -277,6 +281,7 @@ export class TransactionService {
           date: transactionData.date,
           notes: transactionData.notes || null,
           fees: transactionData.fees || 0,
+          amount: transactionData.amount || null,
           currency: transactionData.currency || 'USD',
           broker: transactionData.broker || null
         })
@@ -306,6 +311,7 @@ export class TransactionService {
     date: string
     notes?: string | null
     fees?: number
+    amount?: number | null
     currency?: string
     broker?: string | null
   }): Promise<{ success: boolean; transaction?: Transaction; error?: string }> {
@@ -318,6 +324,7 @@ export class TransactionService {
           pricePerUnit: transactionData.pricePerUnit,
           date: transactionData.date,
           fees: transactionData.fees,
+          amount: transactionData.amount,
           currency: transactionData.currency,
           broker: transactionData.broker,
           notes: transactionData.notes
@@ -344,6 +351,7 @@ export class TransactionService {
             date: transactionData.date,
             notes: transactionData.notes,
             fees: transactionData.fees || 0,
+            amount: transactionData.amount || null,
             currency: transactionData.currency || 'USD',
             broker: transactionData.broker,
             updated_at: new Date().toISOString()

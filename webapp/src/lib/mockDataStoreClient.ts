@@ -103,6 +103,7 @@ class ClientMockDataStore {
     pricePerUnit: number
     date: string
     fees?: number
+    amount?: number | null
     currency?: string
     broker?: string | null
     notes?: string | null
@@ -123,6 +124,7 @@ class ClientMockDataStore {
       date: transaction.date,
       notes: transaction.notes || null,
       fees: transaction.fees || 0,
+      amount: transaction.amount || null,
       currency: transaction.currency || 'USD',
       broker: transaction.broker || null,
       created_at: new Date().toISOString(),
@@ -200,6 +202,7 @@ class ClientMockDataStore {
     pricePerUnit?: number
     date?: string
     fees?: number
+    amount?: number | null
     currency?: string
     broker?: string | null
     notes?: string | null
@@ -222,6 +225,7 @@ class ClientMockDataStore {
       price_per_unit: updates.pricePerUnit !== undefined ? updates.pricePerUnit : this.transactions[transactionIndex].price_per_unit,
       date: updates.date || this.transactions[transactionIndex].date,
       fees: updates.fees !== undefined ? updates.fees : this.transactions[transactionIndex].fees,
+      amount: updates.amount !== undefined ? updates.amount : this.transactions[transactionIndex].amount,
       currency: updates.currency || this.transactions[transactionIndex].currency,
       broker: updates.broker !== undefined ? updates.broker : this.transactions[transactionIndex].broker,
       notes: updates.notes !== undefined ? updates.notes : this.transactions[transactionIndex].notes,

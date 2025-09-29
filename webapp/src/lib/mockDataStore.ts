@@ -148,6 +148,7 @@ class MockDataStore {
       date: holding.purchaseDate,
       notes: holding.notes || null,
       fees: 0,
+      amount: null,
       currency: 'USD',
       broker: null,
       created_at: new Date().toISOString(),

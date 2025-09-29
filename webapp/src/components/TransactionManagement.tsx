@@ -56,6 +56,7 @@ export default function TransactionManagement({
         pricePerUnit: transactionData.pricePerUnit,
         date: transactionData.date,
         fees: transactionData.fees,
+        amount: transactionData.amount,
         currency: transactionData.currency,
         broker: transactionData.broker,
         notes: transactionData.notes

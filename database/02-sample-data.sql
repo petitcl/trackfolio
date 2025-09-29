@@ -30,59 +30,59 @@ INSERT INTO symbols (symbol, name, asset_type, currency, last_price, last_update
 
 -- Example transactions showing a realistic portfolio building over time:
 -- Starting with initial deposit
-INSERT INTO transactions (user_id, date, symbol, type, quantity, price_per_unit, currency, fees, notes) VALUES
+INSERT INTO transactions (user_id, date, symbol, type, quantity, price_per_unit, currency, fees, amount, notes) VALUES
     -- Initial cash deposit - March 2024
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-03-01', 'MY_CASH', 'deposit', 10000.00, 1.00, 'USD', 0, 'Initial portfolio funding'),
-    
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-03-01', 'MY_CASH', 'deposit', 10000.00, 1.00, 'USD', 0, NULL, 'Initial portfolio funding'),
+
     -- First stock purchases - March 2024
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-03-05', 'AAPL', 'buy', 50.00, 175.20, 'USD', 4.99, 'First Apple purchase'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-03-10', 'MSFT', 'buy', 25.00, 395.80, 'USD', 4.99, 'Microsoft position'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-03-15', 'VTI', 'buy', 20.00, 235.40, 'USD', 0, 'ETF diversification'),
-    
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-03-05', 'AAPL', 'buy', 50.00, 175.20, 'USD', 4.99, NULL, 'First Apple purchase'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-03-10', 'MSFT', 'buy', 25.00, 395.80, 'USD', 4.99, NULL, 'Microsoft position'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-03-15', 'VTI', 'buy', 20.00, 235.40, 'USD', 0, NULL, 'ETF diversification'),
+
     -- Additional purchases through the year
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-04-12', 'GOOGL', 'buy', 15.00, 138.50, 'USD', 4.99, 'Google buy on dip'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-05-20', 'AAPL', 'buy', 30.00, 182.40, 'USD', 4.99, 'Adding to Apple position'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-06-15', 'TSLA', 'buy', 40.00, 195.30, 'USD', 4.99, 'Tesla investment'),
-    
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-04-12', 'GOOGL', 'buy', 15.00, 138.50, 'USD', 4.99, NULL, 'Google buy on dip'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-05-20', 'AAPL', 'buy', 30.00, 182.40, 'USD', 4.99, NULL, 'Adding to Apple position'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-06-15', 'TSLA', 'buy', 40.00, 195.30, 'USD', 4.99, NULL, 'Tesla investment'),
+
     -- Crypto purchases - July 2024
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-07-10', 'BTC', 'buy', 0.15000000, 58000.00, 'USD', 25.00, 'Bitcoin allocation'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-07-12', 'ETH', 'buy', 2.50000000, 3200.00, 'USD', 15.00, 'Ethereum purchase'),
-    
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-07-10', 'BTC', 'buy', 0.15000000, 58000.00, 'USD', 25.00, NULL, 'Bitcoin allocation'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-07-12', 'ETH', 'buy', 2.50000000, 3200.00, 'USD', 15.00, NULL, 'Ethereum purchase'),
+
     -- Some selling activity - August 2024
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-08-05', 'TSLA', 'sell', 15.00, 225.80, 'USD', 4.99, 'Partial TSLA sale'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-08-20', 'VTI', 'buy', 15.00, 241.20, 'USD', 0, 'VTI dollar cost average'),
-    
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-08-05', 'TSLA', 'sell', 15.00, 225.80, 'USD', 4.99, NULL, 'Partial TSLA sale'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-08-20', 'VTI', 'buy', 15.00, 241.20, 'USD', 0, NULL, 'VTI dollar cost average'),
+
     -- Dividend payments - Quarterly
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-08-15', 'AAPL', 'dividend', 80.00, 0.25, 'USD', 0, 'Q3 2024 dividend'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-08-30', 'MSFT', 'dividend', 25.00, 0.83, 'USD', 0, 'Q3 2024 dividend'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-09-15', 'VTI', 'dividend', 35.00, 0.95, 'USD', 0, 'Q3 2024 dividend'),
-    
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-08-15', 'AAPL', 'dividend', 80.00, 0.25, 'USD', 0, 20.00, 'Q3 2024 dividend'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-08-30', 'MSFT', 'dividend', 25.00, 0.83, 'USD', 0, 20.75, 'Q3 2024 dividend'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-09-15', 'VTI', 'dividend', 35.00, 0.95, 'USD', 0, 33.25, 'Q3 2024 dividend'),
+
     -- Recent activity - November 2024
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-01', 'AAPL', 'buy', 25.00, 180.90, 'USD', 4.99, 'November purchase'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-15', 'BTC', 'buy', 0.05000000, 42000.00, 'USD', 15.00, 'Bitcoin DCA'),
-    
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-01', 'AAPL', 'buy', 25.00, 180.90, 'USD', 4.99, NULL, 'November purchase'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-15', 'BTC', 'buy', 0.05000000, 42000.00, 'USD', 15.00, NULL, 'Bitcoin DCA'),
+
     -- Bonus shares example - December 2024
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-01', 'GOOGL', 'bonus', 1.00, 0.00, 'USD', 0, 'Stock bonus from broker promotion'),
-    
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-01', 'GOOGL', 'bonus', 1.00, 0.00, 'USD', 0, NULL, 'Stock bonus from broker promotion'),
+
     -- Recent dividend - December 2024
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-15', 'AAPL', 'dividend', 105.00, 0.25, 'USD', 0, 'Q4 2024 dividend'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-15', 'AAPL', 'dividend', 105.00, 0.25, 'USD', 0, 26.25, 'Q4 2024 dividend'),
     
     -- Currency trading examples
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-10-05', 'EURUSD', 'buy', 10000.00, 1.0920, 'USD', 5.00, 'Euro long position - expecting rate cut'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-10-15', 'GBPUSD', 'buy', 5000.00, 1.2800, 'USD', 3.50, 'GBP position on Brexit news'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-10', 'USDJPY', 'buy', 15000.00, 148.50, 'USD', 7.50, 'USD/JPY carry trade'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-25', 'EURUSD', 'sell', 5000.00, 1.0880, 'USD', 2.50, 'Partial profit taking on EUR'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-05', 'AUDUSD', 'buy', 8000.00, 0.6620, 'USD', 4.00, 'AUD commodity play'),
-    
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-10-05', 'EURUSD', 'buy', 10000.00, 1.0920, 'USD', 5.00, NULL, 'Euro long position - expecting rate cut'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-10-15', 'GBPUSD', 'buy', 5000.00, 1.2800, 'USD', 3.50, NULL, 'GBP position on Brexit news'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-10', 'USDJPY', 'buy', 15000.00, 148.50, 'USD', 7.50, NULL, 'USD/JPY carry trade'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-25', 'EURUSD', 'sell', 5000.00, 1.0880, 'USD', 2.50, NULL, 'Partial profit taking on EUR'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-05', 'AUDUSD', 'buy', 8000.00, 0.6620, 'USD', 4.00, NULL, 'AUD commodity play'),
+
     -- Cash management
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-20', 'MY_CASH', 'deposit', 2000.00, 1.00, 'USD', 0, 'Additional funding for 2025'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-22', 'MY_CASH', 'withdrawal', 500.00, 1.00, 'USD', 0, 'Holiday expenses'),
-    
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-20', 'MY_CASH', 'deposit', 2000.00, 1.00, 'USD', 0, NULL, 'Additional funding for 2025'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-12-22', 'MY_CASH', 'withdrawal', 500.00, 1.00, 'USD', 0, NULL, 'Holiday expenses'),
+
     -- Custom investment transactions
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-01-15', 'MY_HOUSE', 'buy', 1.00, 110000.00, 'USD', 25000.00, 'House purchase - down payment and fees'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-06-10', 'VINTAGE_WATCH', 'buy', 1.00, 11800.00, 'USD', 200.00, 'Rolex Submariner - investment piece'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-09-05', 'STARTUP_XYZ', 'buy', 500.00, 45.00, 'USD', 50.00, 'Series A investment in startup'),
-    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-20', 'STARTUP_XYZ', 'buy', 200.00, 55.00, 'USD', 25.00, 'Series B follow-on investment');
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-01-15', 'MY_HOUSE', 'buy', 1.00, 110000.00, 'USD', 25000.00, NULL, 'House purchase - down payment and fees'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-06-10', 'VINTAGE_WATCH', 'buy', 1.00, 11800.00, 'USD', 200.00, NULL, 'Rolex Submariner - investment piece'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-09-05', 'STARTUP_XYZ', 'buy', 500.00, 45.00, 'USD', 50.00, NULL, 'Series A investment in startup'),
+    ('49c7a133-05b8-4175-927c-a406fcd78ff1', '2024-11-20', 'STARTUP_XYZ', 'buy', 200.00, 55.00, 'USD', 25.00, NULL, 'Series B follow-on investment');
 
 -- Add manual price overrides for some investments
 INSERT INTO user_symbol_prices (user_id, symbol, manual_price, price_date, notes) VALUES

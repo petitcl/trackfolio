@@ -108,7 +108,7 @@ function computePortfolioSummaryV2(
         break;
 
       case "dividend":
-        dividends += tx.price_per_unit;
+        dividends += tx.amount || 0;
         break;
 
       case "bonus":
@@ -178,7 +178,7 @@ function computeAnnualizedTWR(
             return acc - (tx.price_per_unit * tx.quantity - (tx.fees || 0));
           // dividend is inflow, reduce net outflow
           case "dividend":
-            return acc - tx.price_per_unit;
+            return acc - (tx.amount || 0);
           default:
             return acc;
         }
@@ -229,7 +229,7 @@ function calculateXIRR(
         break;
       case 'dividend':
         // Money in (positive)
-        amount = tx.price_per_unit;
+        amount = (tx.amount || 0);
         break;
       case 'deposit':
         // Money out (negative)
