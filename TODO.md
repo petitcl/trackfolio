@@ -2,16 +2,17 @@
 Mark done item with ✅
 
 ## TODO P1
+- ✅ Allow bonus transactions with price 0
 - [ ] Add infinite scrolling to transaction history
 - [ ] Add cursor pointer and hover states to all buttons
 - [ ] Update timerange changes to affect other metrics correctly
 - [ ] Fix annualized return calculation
 - [ ] Style delete buttons for holdings, prices, and transactions as red/danger
-- [ ] Allow bonus transactions with price 0
 - [ ] Update portfolio P&L and annualized returns to reflect selected timeframe
 - [ ] Prevent page reload when changing "show closed positions"
 - [ ] Redirect custom holding creation to holding detail page instead of homepage
 - [ ] Allow editing of custom holding details
+- [ ] Fix Annualized Return = -100% for some closed positions
 
 ## TODO P2
 - [ ] Add performance view per period bucket showing 2024, 2025 performance separately

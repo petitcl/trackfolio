@@ -1,12 +1,14 @@
 'use client'
 
-import React, { useState } from 'react'
-import type { Transaction } from '@/lib/supabase/types'
+import React, { useState, useEffect } from 'react'
+import type { Transaction, Symbol } from '@/lib/supabase/types'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import AddTransactionForm, { type TransactionFormData } from './AddTransactionForm'
 import { portfolioService } from '@/lib/services/portfolio.service'
 import ConfirmDialog from './ConfirmDialog'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
+import { transactionService } from '@/lib/services/transaction.service'
+import { historicalPriceService } from '@/lib/services/historical-price.service'
 
 interface TransactionHistoryProps {
   transactions: Transaction[]
@@ -24,6 +26,55 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [symbolData, setSymbolData] = useState<Symbol | null>(null)
+  const [bonusTransactionTotals, setBonusTransactionTotals] = useState<Map<string, number>>(new Map())
+
+  useEffect(() => {
+    const fetchSymbolData = async () => {
+      try {
+        const symbols = await transactionService.getSymbols(user)
+        const currentSymbol = symbols.find(s => s.symbol === symbol.toUpperCase())
+        setSymbolData(currentSymbol || null)
+      } catch (error) {
+        console.error('Error fetching symbol data:', error)
+      }
+    }
+
+    fetchSymbolData()
+  }, [symbol, user])
+
+  useEffect(() => {
+    const calculateBonusTransactionTotals = async () => {
+      if (!symbolData) return
+
+      const bonusTransactions = transactions.filter(tx => tx.type === 'bonus')
+      const totalsMap = new Map<string, number>()
+
+      for (const transaction of bonusTransactions) {
+        try {
+          const historicalPrice = await historicalPriceService.getHistoricalPriceForDate(
+            transaction.symbol,
+            transaction.date,
+            user,
+            symbolData
+          )
+
+          if (historicalPrice !== null) {
+            const total = transaction.quantity * historicalPrice
+            totalsMap.set(transaction.id, total)
+          }
+        } catch (error) {
+          console.error(`Error calculating bonus transaction total for ${transaction.id}:`, error)
+        }
+      }
+
+      setBonusTransactionTotals(totalsMap)
+    }
+
+    if (symbolData) {
+      calculateBonusTransactionTotals()
+    }
+  }, [symbolData, transactions, user])
 
   const handleEditTransaction = async (transactionData: TransactionFormData) => {
     if (!editingTransactionId) return
@@ -152,9 +203,16 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {[...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((transaction) => {
-              const total = transaction.type === 'dividend'
-                ? transaction.amount || 0
-                : transaction.quantity * transaction.price_per_unit + (transaction.fees || 0)
+              let total: number
+              if (transaction.type === 'dividend') {
+                total = transaction.amount || 0
+              } else if (transaction.type === 'bonus') {
+                // For bonus transactions, use quantity × historical price at bonus date
+                total = bonusTransactionTotals.get(transaction.id) || 0
+              } else {
+                // Regular transactions: quantity × price_per_unit + fees
+                total = transaction.quantity * transaction.price_per_unit + (transaction.fees || 0)
+              }
               const isEditing = editingTransactionId === transaction.id
               
               if (isEditing) {
