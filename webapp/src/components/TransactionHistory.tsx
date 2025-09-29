@@ -150,7 +150,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {transactions.map((transaction) => {
+            {[...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((transaction) => {
               const total = transaction.quantity * transaction.price_per_unit + (transaction.fees || 0)
               const isEditing = editingTransactionId === transaction.id
               
