@@ -88,6 +88,12 @@ export default function AddTransactionForm({
         updated.amount = 0
       }
 
+      // When changing to dividend type, set quantity and price to 0
+      if (field === 'type' && value === 'dividend') {
+        updated.quantity = 0
+        updated.pricePerUnit = 0
+      }
+
       return updated
     })
   }
@@ -153,9 +159,10 @@ export default function AddTransactionForm({
                 step="0.00001"
                 value={formData.quantity === 0 ? '0' : (formData.quantity || '')}
                 onChange={(e) => handleChange('quantity', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${(formData.type === 'dividend') ? 'disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed' : ''}`}
                 required={formData.type !== 'dividend'}
                 min="0"
+                disabled={formData.type === 'bonus' || formData.type === 'dividend'}
               />
             </div>
             <div>
@@ -167,10 +174,10 @@ export default function AddTransactionForm({
                 step="0.00001"
                 value={formData.pricePerUnit === 0 ? '0' : (formData.pricePerUnit || '')}
                 onChange={(e) => handleChange('pricePerUnit', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${formData.type === 'bonus' ? 'disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed' : ''}`}
-                required={formData.type !== 'bonus' || (!formData.amount || formData.amount <= 0)}
+                className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${(formData.type === 'bonus' || formData.type === 'dividend') ? 'disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed' : ''}`}
+                required={formData.type !== 'bonus' && formData.type !== 'dividend' || (!formData.amount || formData.amount <= 0)}
                 min="0"
-                disabled={formData.type === 'bonus'}
+                disabled={formData.type === 'bonus' || formData.type === 'dividend'}
               />
             </div>
             <div>

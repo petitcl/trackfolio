@@ -194,10 +194,10 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                    {transaction.quantity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 8 })}
+                    {(transaction.type === 'dividend') ? '-' : transaction.quantity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 8 })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                    {formatCurrency(transaction.price_per_unit)}
+                    {(transaction.type === 'dividend' || transaction.type === 'bonus') ? '-' : formatCurrency(transaction.price_per_unit)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                     {formatCurrency(transaction.fees || 0)}
