@@ -13,6 +13,7 @@ export interface PriceFormData {
 interface AddPriceFormProps {
   user: AuthUser
   symbol: string
+  symbolCurrency?: string
   onPriceAdded?: (priceData: PriceFormData) => void
   onCancel?: () => void
   onDelete?: () => void
@@ -22,11 +23,12 @@ interface AddPriceFormProps {
   isLoading?: boolean
 }
 
-export default function AddPriceForm({ 
-  user, 
-  symbol, 
-  onPriceAdded, 
-  onCancel, 
+export default function AddPriceForm({
+  user,
+  symbol,
+  symbolCurrency = 'USD',
+  onPriceAdded,
+  onCancel,
   onDelete,
   editMode = false,
   initialData,
@@ -147,7 +149,7 @@ export default function AddPriceForm({
 
           <div>
             <label htmlFor="price" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Price (USD) <span className="text-red-500">*</span>
+              Price ({symbolCurrency}) <span className="text-red-500">*</span>
             </label>
             <input
               type="number"

@@ -11,11 +11,12 @@ interface PriceManagementProps {
   user: AuthUser
   symbol: string
   selectedCurrency?: SupportedCurrency
+  symbolCurrency?: string
 }
 
 type ViewMode = 'history' | 'addPrice' | 'bulkImport'
 
-export default function PriceManagement({ user, symbol, selectedCurrency = 'USD' }: PriceManagementProps) {
+export default function PriceManagement({ user, symbol, selectedCurrency = 'USD', symbolCurrency = 'USD' }: PriceManagementProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('history')
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -86,6 +87,7 @@ export default function PriceManagement({ user, symbol, selectedCurrency = 'USD'
           <AddPriceForm
             user={user}
             symbol={symbol}
+            symbolCurrency={symbolCurrency}
             onPriceAdded={handlePriceAdded}
             onCancel={() => setViewMode('history')}
           />
@@ -110,6 +112,7 @@ export default function PriceManagement({ user, symbol, selectedCurrency = 'USD'
             symbol={symbol}
             onPriceUpdated={handlePriceUpdated}
             selectedCurrency={selectedCurrency}
+            symbolCurrency={symbolCurrency}
           />
         )
     }

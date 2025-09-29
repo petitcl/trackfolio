@@ -436,7 +436,12 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
         {/* Price Management (for custom assets only) */}
         {symbolData?.is_custom && (
           <div className="mb-8">
-            <PriceManagement user={user} symbol={symbol} selectedCurrency={selectedCurrency} />
+            <PriceManagement
+              user={user}
+              symbol={symbol}
+              selectedCurrency={selectedCurrency}
+              symbolCurrency={symbolData?.currency || 'USD'}
+            />
           </div>
         )}
 

@@ -13,9 +13,10 @@ interface ManualPriceHistoryProps {
   symbol: string
   onPriceUpdated?: () => void
   selectedCurrency?: SupportedCurrency
+  symbolCurrency?: string
 }
 
-export default function ManualPriceHistory({ user, symbol, onPriceUpdated, selectedCurrency = 'USD' }: ManualPriceHistoryProps) {
+export default function ManualPriceHistory({ user, symbol, onPriceUpdated, selectedCurrency = 'USD', symbolCurrency = 'USD' }: ManualPriceHistoryProps) {
   const [prices, setPrices] = useState<UserSymbolPrice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -204,6 +205,7 @@ export default function ManualPriceHistory({ user, symbol, onPriceUpdated, selec
                             <AddPriceForm
                               user={user}
                               symbol={symbol}
+                              symbolCurrency={symbolCurrency}
                               onPriceAdded={handleEditPrice}
                               onCancel={() => setEditingPriceId(null)}
                               onDelete={() => initiateDeletePrice(price.id)}
