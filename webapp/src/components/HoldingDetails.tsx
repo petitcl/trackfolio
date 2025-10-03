@@ -17,7 +17,7 @@ import TransactionManagement from './TransactionManagement'
 import { type SupportedCurrency } from '@/lib/services/currency.service'
 import DetailedHoldingReturns from './DetailedHoldingReturns'
 import Header from '@/components/Header'
-import { formatPercent, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
+import { formatPercent, getAssetTypeIcon, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -91,18 +91,6 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
   }, [user, symbol, selectedCurrency, timeRange])
 
   const formatCurrency = makeFormatCurrency(selectedCurrency)
-
-  const getAssetTypeIcon = (assetType: string) => {
-    const icons: Record<string, string> = {
-      stock: '📈',
-      etf: '📊',
-      crypto: '₿',
-      cash: '💵',
-      real_estate: '🏠',
-      other: '💎'
-    }
-    return icons[assetType] || '❓'
-  }
 
   const handleDeleteHolding = async () => {
     if (!holdingData) return

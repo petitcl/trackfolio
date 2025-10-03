@@ -1,23 +1,22 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import type { AssetType, Symbol } from '@/lib/supabase/types'
-import { clientAuthService, type AuthUser } from '@/lib/auth/client.auth.service'
-import { portfolioService, type PortfolioData, type EnhancedPortfolioData } from '@/lib/services/portfolio.service'
-import type { HistoricalDataPoint } from '@/lib/mockData'
-import TimeRangeSelector, { type TimeRange } from '@/components/TimeRangeSelector'
 import PortfolioRepartitionChart from '@/components/charts/PortfolioRepartitionChart'
 import PortfolioRepartitionHistoryChart from '@/components/charts/PortfolioRepartitionHistoryChart'
 import PortfolioValueEvolutionChart from '@/components/charts/PortfolioValueEvolutionChart'
-import QuickActions from '@/components/QuickActions'
 import DemoModeBanner from '@/components/DemoModeBanner'
-import CurrencySelector from '@/components/CurrencySelector'
-import MultiBulkImportModal from '@/components/MultiBulkImportModal'
-import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 import EnhancedPortfolioOverview from '@/components/EnhancedPortfolioOverview'
 import Header from '@/components/Header'
-import { formatPercent, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
+import MultiBulkImportModal from '@/components/MultiBulkImportModal'
+import QuickActions from '@/components/QuickActions'
+import TimeRangeSelector, { type TimeRange } from '@/components/TimeRangeSelector'
+import { type AuthUser } from '@/lib/auth/client.auth.service'
+import type { HistoricalDataPoint } from '@/lib/mockData'
+import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
+import { portfolioService, type EnhancedPortfolioData, type PortfolioData } from '@/lib/services/portfolio.service'
+import type { AssetType, Symbol } from '@/lib/supabase/types'
+import { formatPercent, getAssetTypeIcon, getAssetTypeLabel, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
+import { useRouter } from 'next/navigation'
+import React, { useCallback, useEffect, useState } from 'react'
 
 interface DashboardProps {
   user: AuthUser
@@ -134,29 +133,6 @@ export default function Dashboard({ user }: DashboardProps) {
     return ((unrealizedPnL + dividendIncome) / totalCost) * 100
   }
 
-  const getAssetTypeIcon = (assetType: string) => {
-    const icons: Record<string, string> = {
-      stock: '📈',
-      crypto: '₿',
-      cash: '💵',
-      currency: '💱',
-      real_estate: '🏠',
-      other: '💎'
-    }
-    return icons[assetType] || '❓'
-  }
-
-  const getAssetTypeLabel = (assetType: string) => {
-    const labels: Record<string, string> = {
-      stock: 'Stocks',
-      crypto: 'Crypto',
-      cash: 'Cash',
-      currency: 'Currency',
-      real_estate: 'Real Estate',
-      other: 'Other Assets'
-    }
-    return labels[assetType] || 'Unknown'
-  }
 
   // Show loading state
   if (dataLoading) {
@@ -442,7 +418,6 @@ export default function Dashboard({ user }: DashboardProps) {
 
                     // Calculate totals for this asset type (only include active positions in totals)
                     const activePositions = positions.filter(pos => pos.quantity > 0)
-                    const closedPositions = positions.filter(pos => pos.quantity === 0)
                     const typeTotalValue = activePositions.reduce((sum, pos) => sum + pos.value, 0)
                     const typeTotalPnL = activePositions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
                     const typeTotalDividends = activePositions.reduce((sum, pos) => sum + pos.dividendIncome, 0)
@@ -479,7 +454,7 @@ export default function Dashboard({ user }: DashboardProps) {
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-300'}`}>
                             <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
-                              {position.quantity.toLocaleString()}
+                              {isClosed ? '-' : position.quantity.toLocaleString()}
                             </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-300'}`}>
