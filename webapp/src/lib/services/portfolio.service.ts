@@ -291,7 +291,7 @@ export class PortfolioService {
 
   async getHoldingDetailedReturns(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<HoldingReturnsData | null> {
     try {
-      console.log('📊 Calculating detailed returns for holding:', symbol)
+      console.log('📊 Calculating detailed returns for holding:', symbol, 'timeRange:', timeRange)
 
       // Get data specific to this holding
       const [transactions, symbols, historicalData] = await Promise.all([
@@ -337,17 +337,7 @@ export class PortfolioService {
         startDate = filterStartDate.toISOString().split('T')[0]
       }
 
-      // DEBUG: Log actual transactions being used for calculation
-      if (symbol === 'DHER.DE') {
-        console.log('🔍 DHER.DE DEBUG: Actual transactions from database:', transactions.length)
-        transactions.forEach((tx, i) => {
-          console.log(`  ${i+1}. ${tx.date}: ${tx.type} ${tx.quantity} @ €${tx.price_per_unit} (fees: €${tx.fees || 0})`)
-        })
-
-        const totalBought = transactions.filter(t => t.type === 'buy').reduce((sum, t) => sum + t.quantity, 0)
-        const totalSold = transactions.filter(t => t.type === 'sell').reduce((sum, t) => sum + t.quantity, 0)
-        console.log(`🔍 DHER.DE: Total bought ${totalBought}, sold ${totalSold}, remaining ${totalBought - totalSold}`)
-      }
+      console.log('📊 Calling calculatePortfolioSummaryV2 with startDate:', startDate)
 
       const summaryV2 = returnCalculationService.calculatePortfolioSummaryV2(
         transactions,
@@ -355,10 +345,6 @@ export class PortfolioService {
         startDate
       )
 
-      // DEBUG: Log the calculation result
-      if (symbol === 'DHER.DE') {
-        console.log('🔍 DHER.DE DEBUG: SummaryV2 result:', summaryV2)
-      }
 
       const annualizedReturns = returnCalculationService.calculateAnnualizedReturns(
         transactions,
@@ -367,13 +353,13 @@ export class PortfolioService {
         { startDate }
       )
 
-      console.log('📊 Calculated returns for', symbol, ':', {
-        capitalGains: summaryV2.capitalGains,
-        dividends: summaryV2.dividends,
-        realized: summaryV2.realizedPnL,
-        unrealized: summaryV2.unrealizedPnL,
-        totalPnL: summaryV2.totalPnL
-      })
+      // console.log('📊 Calculated returns for', symbol, ':', {
+      //   capitalGains: summaryV2.capitalGains,
+      //   dividends: summaryV2.dividends,
+      //   realized: summaryV2.realizedPnL,
+      //   unrealized: summaryV2.unrealizedPnL,
+      //   totalPnL: summaryV2.totalPnL
+      // })
 
       return {
         summaryV2,

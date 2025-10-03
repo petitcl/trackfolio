@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/types'
-import { portfolioService, type PortfolioPosition, type PortfolioData, type AnnualizedReturnMetrics } from '@/lib/services/portfolio.service'
+import { portfolioService, type PortfolioPosition, type PortfolioData, type AnnualizedReturnMetrics, HoldingReturnsData } from '@/lib/services/portfolio.service'
 import ValueEvolutionChart from './charts/ValueEvolutionChart'
 import TimeRangeSelector, { type TimeRange } from './TimeRangeSelector'
 import type { HistoricalDataPoint } from '@/lib/mockData'
@@ -30,9 +30,8 @@ interface HoldingData {
   symbol: Symbol | null
   transactions: Transaction[]
   historicalData: HistoricalDataPoint[]
-  portfolioData: PortfolioData
   annualizedReturns: AnnualizedReturnMetrics | null
-  detailedReturns: any | null
+  detailedReturns: HoldingReturnsData | null
 }
 
 export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD', onCurrencyChange }: HoldingDetailsProps) {
@@ -63,14 +62,6 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
         const symbolData = symbols.find(s => s.symbol === symbol)
         const symbolTransactions = transactions.filter(t => t.symbol === symbol)
         const position = portfolioData.positions.find(p => p.symbol === symbol) || null
-        
-        const lastHistoricalDataPoint = historicalData.at(-1);
-        console.log('HoldingDetails - symbolData', symbolData);
-        console.log('HoldingDetails - portfolioData', portfolioData);
-        console.log('HoldingDetails - lastHistoricalDataPoint', lastHistoricalDataPoint);
-        console.log('HoldingDetails - position', position);
-        console.log('HoldingDetails - annualizedReturns', annualizedReturns);
-        console.log('HoldingDetails - detailedReturns', detailedReturns);
 
         if (!symbolData && !position) {
           setError(`Holding "${symbol}" not found`)
@@ -82,7 +73,6 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
           symbol: symbolData || null,
           transactions: symbolTransactions,
           historicalData,
-          portfolioData,
           annualizedReturns,
           detailedReturns
         })
@@ -107,10 +97,6 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
     return `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`
   }
 
-  const formatPercentageOnly = (percent: number) => {
-    return `${percent.toFixed(2)}%`
-  }
-
   const getAssetTypeIcon = (assetType: string) => {
     const icons: Record<string, string> = {
       stock: '📈',
@@ -123,17 +109,23 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
     return icons[assetType] || '❓'
   }
 
-  const getTransactionTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      buy: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20',
-      sell: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20',
-      dividend: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20',
-      bonus: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20',
-      deposit: 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/20',
-      withdrawal: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20'
+  const getReturnColorClass = (value: number | undefined) => {
+    // Handle case when data doesn't exist
+    if (!value) {
+      return 'text-gray-600 dark:text-gray-400';
     }
-    return colors[type] || 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/20'
-  }
+  
+    // Determine the case based on the return value
+    
+    switch (true) {
+      case value >= 0:
+        return 'text-green-600 dark:text-green-400';
+      case value < 0:
+        return 'text-red-600 dark:text-red-400';
+      default:
+        return 'text-gray-600 dark:text-gray-400';
+    }
+  };
 
   const handleDeleteHolding = async () => {
     if (!holdingData) return
@@ -156,7 +148,6 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
       setIsDeleting(false)
     }
   }
-
 
   if (loading) {
     return (
@@ -189,39 +180,28 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
     return null
   }
 
-  const { position, symbol: symbolData, transactions, portfolioData, detailedReturns } = holdingData
+  const { position, symbol: symbolData, transactions, detailedReturns } = holdingData
 
-  // Use detailed returns data for consistent calculations
+  console.log('HoldingDetails - position', position);
+  console.log('HoldingDetails - symbolData', symbolData);
+  console.log('HoldingDetails - symbolData', transactions);
+  console.log('HoldingDetails - detailedReturns', detailedReturns);
+
   const currentValue = detailedReturns?.summaryV2
     ? detailedReturns.summaryV2.costBasis + detailedReturns.summaryV2.unrealizedPnL
     : position?.value || 0
-
   const costBasis = detailedReturns?.summaryV2?.costBasis || (position ? position.quantity * position.avgCost : 0)
   const currentPrice = currentValue && position?.quantity ? currentValue / position.quantity : position?.currentPrice || 0
   const quantity = position?.quantity || 0
-
-  // Use detailed returns data for P&L calculations
   const realizedPnL = detailedReturns?.summaryV2?.realizedPnL || 0
   const unrealizedPnL = detailedReturns?.summaryV2?.unrealizedPnL || 0
   const totalReturn = detailedReturns?.summaryV2?.totalPnL || (unrealizedPnL + realizedPnL)
   const totalInvested = detailedReturns?.summaryV2?.totalInvested || 0
-
-  // Calculate portfolio weight using consistent current value
-  const portfolioWeight = currentValue && portfolioData.totalValue > 0
-    ? (currentValue / portfolioData.totalValue) * 100
-    : 0
-
-  // Calculate time-range specific performance metrics
-  const calculateTimeRangeMetrics = () => {
-    // Now using time-range specific detailed returns data
-    return {
-      realizedPnL,
-      unrealizedPnL,
-      totalReturn
-    }
-  }
-
-  const timeRangeMetrics = calculateTimeRangeMetrics()
+  const averageCostBasis = quantity > 0 ? costBasis / quantity : 0
+  const annualizedReturn = holdingData?.annualizedReturns?.timeWeightedReturn ?? 0
+  const holdingPeriod = holdingData.annualizedReturns && holdingData.annualizedReturns.periodYears > 0 ? (holdingData.annualizedReturns.periodYears < 1 ? 
+  `${Math.round(holdingData.annualizedReturns.periodYears * 365)} days` :
+  `${holdingData.annualizedReturns.periodYears.toFixed(1)} years`) : null
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -326,7 +306,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                       {formatCurrency(costBasis)}
                     </dd>
                     <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {quantity > 0 ? `Avg: ${formatCurrency(costBasis / quantity)}` : 'Position closed'}
+                      {quantity > 0 ? `Avg: ${formatCurrency(averageCostBasis)}` : 'Position closed'}
                     </dd>
                   </dl>
                 </div>
@@ -344,12 +324,12 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Performance</dt>
-                    <dd className={`text-lg font-medium ${timeRangeMetrics.totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                      {formatCurrency(timeRangeMetrics.totalReturn)}
+                    <dd className={`text-lg font-medium ${getReturnColorClass(totalReturn)}`}>
+                      {formatCurrency(totalReturn)}
                     </dd>
-                    {timeRange === 'all' && (costBasis > 0 || totalInvested > 0) && (
-                      <dd className={`text-xs ${timeRangeMetrics.totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mt-1`}>
-                        {formatPercent((timeRangeMetrics.totalReturn / (costBasis > 0 ? costBasis : totalInvested)) * 100)}
+                    {timeRange === 'all' && totalInvested > 0 && (
+                      <dd className={`text-xs ${totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mt-1`}>
+                        {formatPercent((totalReturn / totalInvested) * 100)}
                       </dd>
                     )}
                   </dl>
@@ -368,21 +348,12 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
-                    <dd className={`text-lg font-medium ${holdingData.annualizedReturns ? 
-                      (holdingData.annualizedReturns.timeWeightedReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400') :
-                      'text-gray-600 dark:text-gray-400'
-                    }`}>
-                      {holdingData.annualizedReturns ? 
-                        formatPercent(holdingData.annualizedReturns.timeWeightedReturn) :
-                        'Calculating...'
-                      }
+                    <dd className={`text-lg font-medium ${getReturnColorClass(holdingData.annualizedReturns?.timeWeightedReturn)}`}>
+                      {formatPercent(annualizedReturn)}
                     </dd>
-                    {holdingData.annualizedReturns && holdingData.annualizedReturns.periodYears > 0 && (
+                    {holdingPeriod && (
                       <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {holdingData.annualizedReturns.periodYears < 1 ? 
-                          `${Math.round(holdingData.annualizedReturns.periodYears * 365)} days` :
-                          `${holdingData.annualizedReturns.periodYears.toFixed(1)} years`
-                        }
+                        {holdingPeriod}
                       </dd>
                     )}
                   </dl>

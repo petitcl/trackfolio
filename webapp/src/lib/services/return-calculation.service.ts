@@ -5,7 +5,6 @@ export interface AnnualizedReturnMetrics {
   timeWeightedReturn: number // TWR - pure investment performance
   moneyWeightedReturn: number // XIRR - investor experience with cash flow timing
   totalReturn: number // Absolute return percentage
-  annualizedVolatility?: number // Risk metric (optional)
   startDate: string
   endDate: string
   periodYears: number
@@ -74,16 +73,30 @@ function computePortfolioSummaryV2(
   const histStart = histSorted.find(d => d.date >= startDate) ?? histSorted[0];
   const histEnd = histSorted.slice().reverse().find(d => d.date <= endDate) ?? histSorted[histSorted.length - 1];
 
-  // Filter transactions within range
-  const txs = transactions.filter(tx => tx.date >= startDate && tx.date <= endDate);
+  // console.log(`🔍 computePortfolioSummaryV2:`, {
+  //   startDate,
+  //   endDate,
+  //   histStartDate: histStart.date,
+  //   histStartCostBasis: histStart.costBasis,
+  //   histEndDate: histEnd.date,
+  //   histEndCostBasis: histEnd.costBasis,
+  //   histEndValue: Object.values(histEnd.assetTypeValues).reduce((a, b) => a + b, 0)
+  // })
+
+  // IMPORTANT: For FIFO lot tracking, we need to process ALL transactions from the beginning,
+  // not just those in the date range. This ensures lots are built correctly for closed positions.
+  const allTxs = transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // For TWR calculation, we still need transactions within the date range
+  const txs = allTxs.filter(tx => tx.date >= startDate && tx.date <= endDate);
 
   const lotsBySymbol: Record<string, Lot[]> = {};
   let realizedPnL = 0;
   let dividends = 0;
   let totalInvested = 0;
 
-  // Process transactions
-  for (const tx of txs) {
+  // Process ALL transactions for FIFO lot tracking
+  for (const tx of allTxs) {
     if (!lotsBySymbol[tx.symbol]) lotsBySymbol[tx.symbol] = [];
 
     switch (tx.type) {
@@ -161,6 +174,42 @@ function computeAnnualizedTWR(
 
   if (histSorted.length < 2) return 0;
 
+  // Check if this is a closed position (final value is 0)
+  const finalValue = Object.values(histSorted[histSorted.length - 1].assetTypeValues).reduce((a, b) => a + b, 0);
+  const isClosedPosition = finalValue === 0;
+
+  // For closed positions, use realized return calculation instead of TWR
+  if (isClosedPosition) {
+    // Calculate total invested (all buys)
+    let totalInvested = 0;
+    let totalProceeds = 0;
+
+    for (const tx of transactions) {
+      switch (tx.type) {
+        case "buy":
+          totalInvested += tx.price_per_unit * tx.quantity + (tx.fees || 0);
+          break;
+        case "sell":
+          totalProceeds += tx.price_per_unit * tx.quantity - (tx.fees || 0);
+          break;
+      }
+    }
+
+    if (totalInvested === 0) return 0;
+
+    // Simple annualized return: ((proceeds / invested) ^ (1/years)) - 1
+    const years =
+      (new Date(histSorted[histSorted.length - 1].date).getTime() -
+        new Date(histSorted[0].date).getTime()) /
+      (1000 * 3600 * 24 * 365.25);
+
+    if (years <= 0) return 0;
+
+    const totalReturn = totalProceeds / totalInvested;
+    return Math.pow(totalReturn, 1 / years) - 1;
+  }
+
+  // Standard TWR calculation for open positions
   let twr = 1;
 
   for (let i = 0; i < histSorted.length - 1; i++) {
@@ -379,14 +428,41 @@ export class ReturnCalculationService {
       return this.getEmptyMetrics()
     }
 
+    const lastHistPoint = filteredData[filteredData.length - 1]
+    const lastPointValue = Object.values(lastHistPoint.assetTypeValues).reduce((a, b) => a + b, 0)
+
+    // console.log(`🔍 Calculating annualized returns:`, {
+    //   actualStartDate,
+    //   actualEndDate,
+    //   transactionCount: transactions.length,
+    //   filteredDataPoints: filteredData.length,
+    //   lastPointDate: lastHistPoint.date,
+    //   lastPointValue,
+    //   lastPointCostBasis: lastHistPoint.costBasis
+    // })
+
     // Use V2 calculation as the primary source
     const v2Summary = this.calculatePortfolioSummaryV2(transactions, filteredData, actualStartDate, actualEndDate)
+
+    // console.log(`🔍 V2 Summary for return calculation:`, {
+    //   totalPnL: v2Summary.totalPnL,
+    //   totalInvested: v2Summary.totalInvested,
+    //   realizedPnL: v2Summary.realizedPnL,
+    //   unrealizedPnL: v2Summary.unrealizedPnL,
+    //   costBasis: v2Summary.costBasis
+    // })
 
     // Calculate total return percentage
     let totalReturn = 0
     if (v2Summary.totalInvested > 0) {
       totalReturn = (v2Summary.totalPnL / v2Summary.totalInvested) * 100
     }
+
+    // console.log(`🔍 Total return calculation:`, {
+    //   totalPnL: v2Summary.totalPnL,
+    //   totalInvested: v2Summary.totalInvested,
+    //   totalReturn
+    // })
 
     // Calculate XIRR for money-weighted return
     // Get the final portfolio value from the last historical data point
@@ -399,17 +475,20 @@ export class ReturnCalculationService {
 
     const xirr = calculateXIRR(xirrTransactions, finalValue, actualEndDate)
 
-    return {
+    const result = {
       // V2 already provides TWR
       timeWeightedReturn: v2Summary.annualizedReturn * 100,
       // Use calculated XIRR for money-weighted return
       moneyWeightedReturn: xirr * 100,
       totalReturn,
-      annualizedVolatility: 0,
       startDate: firstPoint.date,
       endDate: lastPoint.date,
       periodYears
     }
+
+    // console.log(`🔍 Returning annualized metrics:`, result)
+
+    return result
   }
 
   /**
