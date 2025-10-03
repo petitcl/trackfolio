@@ -1,8 +1,7 @@
 'use client'
 
+import { getTimeRanges, TimeRange } from '@/lib/utils/timeranges'
 import React from 'react'
-
-export type TimeRange = '5d' | '1m' | '6m' | 'ytd' | '1y' | '5y' | 'all'
 
 interface TimeRangeSelectorProps {
   selectedRange: TimeRange
@@ -10,15 +9,7 @@ interface TimeRangeSelectorProps {
   className?: string
 }
 
-const timeRanges: { key: TimeRange; label: string }[] = [
-  { key: '5d', label: '5D' },
-  { key: '1m', label: '1M' },
-  { key: '6m', label: '6M' },
-  { key: 'ytd', label: 'YTD' },
-  { key: '1y', label: '1Y' },
-  { key: '5y', label: '5Y' },
-  { key: 'all', label: 'ALL' },
-]
+const timeRanges: { key: TimeRange; label: string }[] = getTimeRanges()
 
 export default function TimeRangeSelector({ 
   selectedRange, 

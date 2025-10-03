@@ -17,6 +17,7 @@ import type { TimeRange } from '../TimeRangeSelector'
 import type { HistoricalDataPoint } from '../../lib/mockData'
 import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
 import { type SupportedCurrency, CURRENCY_SYMBOLS } from '../../lib/services/currency.service'
+import { getStartDateForTimeRange } from '@/lib/utils/timeranges'
 
 ChartJS.register(
   CategoryScale,
@@ -55,32 +56,7 @@ export default function ValueEvolutionChart({
   
   // Filter data based on time range
   const filterDataByTimeRange = (data: HistoricalDataPoint[], range: TimeRange) => {
-    const now = new Date()
-    let startDate: Date
-    
-    switch (range) {
-      case '5d':
-        startDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
-        break
-      case '1m':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        break
-      case '6m':
-        startDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000)
-        break
-      case 'ytd':
-        startDate = new Date(now.getFullYear(), 0, 1)
-        break
-      case '1y':
-        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
-        break
-      case '5y':
-        startDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000)
-        break
-      case 'all':
-      default:
-        return data
-    }
+    const startDate: Date = getStartDateForTimeRange(range)
     
     return data.filter(point => new Date(point.date) >= startDate)
   }

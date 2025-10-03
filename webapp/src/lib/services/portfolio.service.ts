@@ -7,6 +7,7 @@ import { historicalDataService } from './historical-data.service'
 import { transactionService } from './transaction.service'
 import { currencyService, type SupportedCurrency } from './currency.service'
 import { returnCalculationService, type PortfolioReturnMetrics } from './return-calculation.service'
+import { getStartDateForTimeRange } from '../utils/timeranges'
 
 // Re-export types for external components
 export type { PortfolioPosition, PortfolioReturnMetrics }
@@ -156,31 +157,7 @@ export class PortfolioService {
       // Apply time range filter if specified
       let startDate: string | undefined
       if (timeRange && timeRange !== 'all') {
-        const now = new Date()
-        let filterStartDate: Date
-
-        switch (timeRange) {
-          case '5d':
-            filterStartDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
-            break
-          case '1m':
-            filterStartDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-            break
-          case '6m':
-            filterStartDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000)
-            break
-          case 'ytd':
-            filterStartDate = new Date(now.getFullYear(), 0, 1)
-            break
-          case '1y':
-            filterStartDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
-            break
-          case '5y':
-            filterStartDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000)
-            break
-          default:
-            filterStartDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000)
-        }
+        const filterStartDate: Date = getStartDateForTimeRange(timeRange)
 
         startDate = filterStartDate.toISOString().split('T')[0]
       }

@@ -4,6 +4,7 @@ import type { HistoricalDataPoint } from '@/lib/mockData'
 import type { TimeRange } from '@/components/TimeRangeSelector'
 import { unifiedCalculationService } from './unified-calculation.service'
 import type { SupportedCurrency } from './currency.service'
+import { getGroupByTimePeriodForTimeRange, getStartDateForTimeRange, getTimePeriodBucketsForTimePeriod } from '../utils/timeranges'
 
 /**
  * Service responsible for generating historical data time series
@@ -59,33 +60,8 @@ export class HistoricalDataService {
    * Filter historical data based on time range
    */
   filterDataByTimeRange(data: HistoricalDataPoint[], range: TimeRange): HistoricalDataPoint[] {
-    const now = new Date()
-    let startDate: Date
-    
-    switch (range) {
-      case '5d':
-        startDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
-        break
-      case '1m':
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        break
-      case '6m':
-        startDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000)
-        break
-      case 'ytd':
-        startDate = new Date(now.getFullYear(), 0, 1)
-        break
-      case '1y':
-        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
-        break
-      case '5y':
-        startDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000)
-        break
-      case 'all':
-      default:
-        return data
-    }
-    
+    const startDate: Date = getStartDateForTimeRange(range)
+
     return data.filter(point => new Date(point.date) >= startDate)
   }
 
@@ -95,65 +71,13 @@ export class HistoricalDataService {
   aggregateDataByTimeRange(data: HistoricalDataPoint[], range: TimeRange): HistoricalDataPoint[] {
     if (data.length === 0) return data
     
-    let groupBy: 'day' | 'week' | 'month' | 'quarter' | 'year'
-    
-    switch (range) {
-      case '5d':
-        groupBy = 'day'
-        break
-      case '1m':
-        groupBy = 'week'
-        break
-      case '6m':
-      case 'ytd':
-      case '1y':
-        groupBy = 'month'
-        break
-      case '5y':
-        groupBy = 'quarter'
-        break
-      case 'all':
-      default:
-        groupBy = 'year'
-        break
-    }
-    
+    const groupByPeriod = getGroupByTimePeriodForTimeRange(range)
+
     // First, determine all time periods that should be displayed
     const startDate = new Date(data[0].date)
     const endDate = new Date(data[data.length - 1].date)
-    const allPeriods = new Set<string>()
-    
-    // Generate all periods between start and end date
-    for (let d = new Date(startDate); d <= endDate; ) {
-      let key: string
-      
-      switch (groupBy) {
-        case 'day':
-          key = d.toISOString().split('T')[0]
-          d.setDate(d.getDate() + 1)
-          break
-        case 'week':
-          const weekStart = new Date(d)
-          weekStart.setDate(d.getDate() - d.getDay())
-          key = weekStart.toISOString().split('T')[0]
-          d.setDate(d.getDate() + 7)
-          break
-        case 'month':
-          key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-          d.setMonth(d.getMonth() + 1)
-          break
-        case 'quarter':
-          key = `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`
-          d.setMonth(d.getMonth() + 3)
-          break
-        case 'year':
-          key = `${d.getFullYear()}`
-          d.setFullYear(d.getFullYear() + 1)
-          break
-      }
-      
-      allPeriods.add(key)
-    }
+
+    const allPeriods = getTimePeriodBucketsForTimePeriod(startDate, endDate, groupByPeriod)
     
     // Group data points by time period
     const grouped = new Map<string, HistoricalDataPoint[]>()
@@ -162,7 +86,7 @@ export class HistoricalDataService {
       const date = new Date(point.date)
       let key: string
       
-      switch (groupBy) {
+      switch (groupByPeriod) {
         case 'day':
           key = date.toISOString().split('T')[0]
           break
