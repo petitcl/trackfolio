@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { portfolioService, type HoldingReturnsData } from '@/lib/services/portfolio.service'
+import { portfolioService, type PortfolioReturnMetrics } from '@/lib/services/portfolio.service'
 import { type AuthUser } from '@/lib/auth/client.auth.service'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 import { type TimeRange } from '@/components/TimeRangeSelector'
@@ -21,7 +21,7 @@ export default function DetailedHoldingReturns({
   timeRange = 'all',
   className = ''
 }: DetailedHoldingReturnsProps) {
-  const [detailedReturns, setDetailedReturns] = useState<HoldingReturnsData | null>(null)
+  const [detailedReturns, setDetailedReturns] = useState<PortfolioReturnMetrics | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -115,8 +115,8 @@ export default function DetailedHoldingReturns({
               <span className="text-sm text-gray-600 dark:text-gray-400">Capital Gains</span>
             </div>
             <div className="text-right">
-              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.capitalGains)}`}>
-                {formatCurrency(detailedReturns.summaryV2.capitalGains)}
+              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.capitalGains)}`}>
+                {formatCurrency(detailedReturns.capitalGains)}
               </div>
             </div>
           </div>
@@ -128,8 +128,8 @@ export default function DetailedHoldingReturns({
               <span className="text-sm text-gray-600 dark:text-gray-400">Dividends</span>
             </div>
             <div className="text-right">
-              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.dividends)}`}>
-                {formatCurrency(detailedReturns.summaryV2.dividends)}
+              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.dividends)}`}>
+                {formatCurrency(detailedReturns.dividends)}
               </div>
             </div>
           </div>
@@ -138,14 +138,14 @@ export default function DetailedHoldingReturns({
           <div className="border-t border-gray-200 dark:border-gray-600 pt-4 space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 dark:text-gray-400">Realized P&L</span>
-              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.realizedPnL)}`}>
-                {formatCurrency(detailedReturns.summaryV2.realizedPnL)}
+              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.realizedPnL)}`}>
+                {formatCurrency(detailedReturns.realizedPnL)}
               </div>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 dark:text-gray-400">Unrealized P&L</span>
-              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.summaryV2.unrealizedPnL)}`}>
-                {formatCurrency(detailedReturns.summaryV2.unrealizedPnL)}
+              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.unrealizedPnL)}`}>
+                {formatCurrency(detailedReturns.unrealizedPnL)}
               </div>
             </div>
           </div>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/types'
-import { portfolioService, type PortfolioPosition, type PortfolioData, type AnnualizedReturnMetrics, HoldingReturnsData } from '@/lib/services/portfolio.service'
+import { portfolioService, type PortfolioPosition, type PortfolioData, type PortfolioReturnMetrics } from '@/lib/services/portfolio.service'
 import ValueEvolutionChart from './charts/ValueEvolutionChart'
 import TimeRangeSelector, { type TimeRange } from './TimeRangeSelector'
 import type { HistoricalDataPoint } from '@/lib/mockData'
@@ -31,8 +31,7 @@ interface HoldingData {
   symbol: Symbol | null
   transactions: Transaction[]
   historicalData: HistoricalDataPoint[]
-  annualizedReturns: AnnualizedReturnMetrics | null
-  detailedReturns: HoldingReturnsData | null
+  detailedReturns: PortfolioReturnMetrics | null
 }
 
 export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD', onCurrencyChange }: HoldingDetailsProps) {
@@ -53,12 +52,11 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
 
         // Get all portfolio data and filter for this symbol
         const apiStartTime = performance.now()
-        const [portfolioData, symbols, transactions, historicalData, annualizedReturns, detailedReturns] = await Promise.all([
+        const [portfolioData, symbols, transactions, historicalData, detailedReturns] = await Promise.all([
           portfolioService.getPortfolioData(user, selectedCurrency),
           portfolioService.getSymbols(user),
           portfolioService.getTransactions(user),
           portfolioService.getHoldingHistoricalData(user, symbol, selectedCurrency),
-          portfolioService.getHoldingAnnualizedReturns(user, symbol, selectedCurrency, timeRange),
           portfolioService.getHoldingDetailedReturns(user, symbol, selectedCurrency, timeRange)
         ])
         const apiEndTime = performance.now()
@@ -78,7 +76,6 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
           symbol: symbolData || null,
           transactions: symbolTransactions,
           historicalData,
-          annualizedReturns,
           detailedReturns
         })
         const calculationEndTime = performance.now()
@@ -165,21 +162,21 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
   console.log('HoldingDetails - symbolData', transactions);
   console.log('HoldingDetails - detailedReturns', detailedReturns);
 
-  const currentValue = detailedReturns?.summaryV2
-    ? detailedReturns.summaryV2.costBasis + detailedReturns.summaryV2.unrealizedPnL
+  const currentValue = detailedReturns
+    ? detailedReturns.costBasis + detailedReturns.unrealizedPnL
     : position?.value || 0
-  const costBasis = detailedReturns?.summaryV2?.costBasis || (position ? position.quantity * position.avgCost : 0)
+  const costBasis = detailedReturns?.costBasis || (position ? position.quantity * position.avgCost : 0)
   const currentPrice = currentValue && position?.quantity ? currentValue / position.quantity : position?.currentPrice || 0
   const quantity = position?.quantity || 0
-  const realizedPnL = detailedReturns?.summaryV2?.realizedPnL || 0
-  const unrealizedPnL = detailedReturns?.summaryV2?.unrealizedPnL || 0
-  const totalReturn = detailedReturns?.summaryV2?.totalPnL || (unrealizedPnL + realizedPnL)
-  const totalInvested = detailedReturns?.summaryV2?.totalInvested || 0
+  const realizedPnL = detailedReturns?.realizedPnL || 0
+  const unrealizedPnL = detailedReturns?.unrealizedPnL || 0
+  const totalReturn = detailedReturns?.totalPnL || (unrealizedPnL + realizedPnL)
+  const totalInvested = detailedReturns?.totalInvested || 0
   const averageCostBasis = quantity > 0 ? costBasis / quantity : 0
-  const annualizedReturn = holdingData?.annualizedReturns?.timeWeightedReturn ?? 0
-  const holdingPeriod = holdingData.annualizedReturns && holdingData.annualizedReturns.periodYears > 0 ? (holdingData.annualizedReturns.periodYears < 1 ? 
-  `${Math.round(holdingData.annualizedReturns.periodYears * 365)} days` :
-  `${holdingData.annualizedReturns.periodYears.toFixed(1)} years`) : null
+  const annualizedReturn = detailedReturns?.timeWeightedReturn ?? 0
+  const holdingPeriod = detailedReturns && detailedReturns.periodYears > 0 ? (detailedReturns.periodYears < 1 ?
+  `${Math.round(detailedReturns.periodYears * 365)} days` :
+  `${detailedReturns.periodYears.toFixed(1)} years`) : null
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -326,7 +323,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
-                    <dd className={`text-lg font-medium ${getPnLColor(holdingData.annualizedReturns?.timeWeightedReturn)}`}>
+                    <dd className={`text-lg font-medium ${getPnLColor(detailedReturns?.timeWeightedReturn)}`}>
                       {formatPercent(annualizedReturn)}
                     </dd>
                     {holdingPeriod && (

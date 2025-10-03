@@ -6,10 +6,10 @@ import { unifiedCalculationService, type PortfolioPosition } from './unified-cal
 import { historicalDataService } from './historical-data.service'
 import { transactionService } from './transaction.service'
 import { currencyService, type SupportedCurrency } from './currency.service'
-import { returnCalculationService, type AnnualizedReturnMetrics, type PortfolioSummaryV2 } from './return-calculation.service'
+import { returnCalculationService, type PortfolioReturnMetrics } from './return-calculation.service'
 
 // Re-export types for external components
-export type { PortfolioPosition, AnnualizedReturnMetrics, PortfolioSummaryV2 }
+export type { PortfolioPosition, PortfolioReturnMetrics }
 
 export interface PortfolioData {
   totalValue: number
@@ -21,17 +21,7 @@ export interface PortfolioData {
     total: number
     totalPercentage: number
   }
-  annualizedReturns?: AnnualizedReturnMetrics
-}
-
-export interface EnhancedPortfolioData extends Omit<PortfolioData, 'annualizedReturns'> {
-  summaryV2?: PortfolioSummaryV2
-  annualizedReturns?: AnnualizedReturnMetrics
-}
-
-export interface HoldingReturnsData {
-  summaryV2: PortfolioSummaryV2
-  annualizedReturns: AnnualizedReturnMetrics
+  returns: PortfolioReturnMetrics
 }
 
 /**
@@ -56,12 +46,12 @@ export class PortfolioService {
 
   async getPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', includeClosedPositions: boolean = false): Promise<PortfolioData> {
     console.log('🔄 Fetching portfolio data for user:', user.email)
-    
+
     try {
       // Fetch transactions and symbols using transaction service
       const transactions = await transactionService.getTransactions(user)
       const symbols = await transactionService.getSymbols(user)
-      
+
       if (transactions.length === 0) {
         console.log('📈 No transactions found for user, returning empty portfolio')
         return this.getEmptyPortfolio()
@@ -74,31 +64,24 @@ export class PortfolioService {
       const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
       const totalCostBasis = positions.reduce((sum, pos) => sum + (pos.quantity * pos.avgCost), 0)
       const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
-      
+
       // Calculate total percentage P&L
       const totalPercentage = totalCostBasis > 0 ? (totalUnrealizedPnL / totalCostBasis) * 100 : 0
 
-      // Calculate annualized returns if we have sufficient data
-      let annualizedReturns: AnnualizedReturnMetrics | undefined
+      // Calculate unified return metrics (always present, defaults to zeros if insufficient data)
+      let returns: PortfolioReturnMetrics
       let realizedPnL = 0
       try {
         const historicalData = await historicalDataService.buildHistoricalData(user, transactions, symbols, targetCurrency)
-        if (historicalData.length >= 2) {
-          annualizedReturns = returnCalculationService.calculateAnnualizedReturns(
-            transactions,
-            historicalData,
-            symbols
-          )
-
-          // Calculate realized P&L from V2 summary (realized + dividends)
-          const v2Summary = returnCalculationService.calculatePortfolioSummaryV2(
-            transactions,
-            historicalData
-          )
-          realizedPnL = v2Summary.realizedPnL + v2Summary.dividends
-        }
+        returns = returnCalculationService.calculatePortfolioReturnMetrics(
+          transactions,
+          historicalData,
+          symbols
+        )
+        realizedPnL = returns.realizedPnL + returns.dividends
       } catch (error) {
-        console.warn('Could not calculate annualized returns:', error)
+        console.warn('Could not calculate return metrics:', error)
+        returns = returnCalculationService.getEmptyReturnMetrics()
       }
 
       return {
@@ -111,74 +94,10 @@ export class PortfolioService {
           total: totalUnrealizedPnL + realizedPnL,
           totalPercentage
         },
-        annualizedReturns
+        returns
       }
     } catch (error) {
       return this.handleError('fetching portfolio data', error, this.getEmptyPortfolio())
-    }
-  }
-
-  async getEnhancedPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', includeClosedPositions: boolean = false): Promise<EnhancedPortfolioData> {
-    console.log('🔄 Fetching enhanced portfolio data with detailed returns for user:', user.email)
-
-    try {
-      // Fetch transactions and symbols using transaction service
-      const transactions = await transactionService.getTransactions(user)
-      const symbols = await transactionService.getSymbols(user)
-
-      if (transactions.length === 0) {
-        console.log('📈 No transactions found for user, returning empty portfolio')
-        return this.getEmptyEnhancedPortfolio()
-      }
-
-      // Calculate positions using unified calculation service (already in target currency)
-      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency, includeClosedPositions)
-
-      // Calculate totals in target currency (no additional conversion needed)
-      const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
-      const totalCostBasis = positions.reduce((sum, pos) => sum + (pos.quantity * pos.avgCost), 0)
-      const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
-
-      // Calculate total percentage P&L
-      const totalPercentage = totalCostBasis > 0 ? (totalUnrealizedPnL / totalCostBasis) * 100 : 0
-
-      // Calculate V2 summary and annualized returns if we have sufficient data
-      let summaryV2: PortfolioSummaryV2 | undefined
-      let annualizedReturns: AnnualizedReturnMetrics | undefined
-      let realizedPnL = 0
-      try {
-        const historicalData = await historicalDataService.buildHistoricalData(user, transactions, symbols, targetCurrency)
-        if (historicalData.length >= 2) {
-          summaryV2 = returnCalculationService.calculatePortfolioSummaryV2(
-            transactions,
-            historicalData
-          )
-          annualizedReturns = returnCalculationService.calculateAnnualizedReturns(
-            transactions,
-            historicalData,
-            symbols
-          )
-          realizedPnL = summaryV2.realizedPnL + summaryV2.dividends
-        }
-      } catch (error) {
-        console.warn('Could not calculate returns:', error)
-      }
-
-      return {
-        totalValue,
-        totalCostBasis,
-        positions: positions,
-        totalPnL: {
-          realized: realizedPnL,
-          unrealized: totalUnrealizedPnL,
-          total: totalUnrealizedPnL + realizedPnL,
-          totalPercentage
-        },
-        summaryV2,
-        annualizedReturns
-      }
-    } catch (error) {
-      return this.handleError('fetching enhanced portfolio data', error, this.getEmptyEnhancedPortfolio())
     }
   }
 
@@ -218,76 +137,7 @@ export class PortfolioService {
     return transactionService.getHoldingTransactions(user, symbol)
   }
 
-  async getHoldingAnnualizedReturns(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<AnnualizedReturnMetrics | null> {
-    try {
-      console.log('📊 Calculating annualized returns for holding:', symbol)
-      
-      // Get data specific to this holding
-      const [transactions, symbols, historicalData] = await Promise.all([
-        transactionService.getHoldingTransactions(user, symbol),
-        transactionService.getSymbols(user),
-        this.getHoldingHistoricalData(user, symbol, targetCurrency)
-      ])
-
-      if (transactions.length === 0 || historicalData.length < 2) {
-        console.log('📊 Insufficient data for annualized return calculation')
-        return null
-      }
-
-      // Apply time range filter if specified
-      let options = {}
-      if (timeRange && timeRange !== 'all') {
-        const now = new Date()
-        let startDate: Date
-        
-        switch (timeRange) {
-          case '5d':
-            startDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000)
-            break
-          case '1m':
-            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-            break
-          case '6m':
-            startDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000)
-            break
-          case 'ytd':
-            startDate = new Date(now.getFullYear(), 0, 1)
-            break
-          case '1y':
-            startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
-            break
-          case '5y':
-            startDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000)
-            break
-          default:
-            startDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000)
-        }
-        
-        options = {
-          startDate: startDate.toISOString().split('T')[0]
-        }
-      }
-
-      const annualizedReturns = returnCalculationService.calculateAnnualizedReturns(
-        transactions,
-        historicalData,
-        symbols,
-        options
-      )
-
-      // console.log('📊 Calculated annualized returns for', symbol, ':', {
-      //   twr: annualizedReturns.timeWeightedReturn.toFixed(2) + '%',
-      //   mwr: annualizedReturns.moneyWeightedReturn.toFixed(2) + '%'
-      // })
-
-      return annualizedReturns
-    } catch (error) {
-      console.error('❌ Error calculating holding annualized returns:', error)
-      return null
-    }
-  }
-
-  async getHoldingDetailedReturns(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<HoldingReturnsData | null> {
+  async getHoldingDetailedReturns(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<PortfolioReturnMetrics | null> {
     try {
       console.log('📊 Calculating detailed returns for holding:', symbol, 'timeRange:', timeRange)
 
@@ -335,34 +185,15 @@ export class PortfolioService {
         startDate = filterStartDate.toISOString().split('T')[0]
       }
 
-      console.log('📊 Calling calculatePortfolioSummaryV2 with startDate:', startDate)
-
-      const summaryV2 = returnCalculationService.calculatePortfolioSummaryV2(
-        transactions,
-        historicalData,
-        startDate
-      )
-
-
-      const annualizedReturns = returnCalculationService.calculateAnnualizedReturns(
+      // Calculate unified return metrics
+      const returns = returnCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
         symbols,
         { startDate }
       )
 
-      // console.log('📊 Calculated returns for', symbol, ':', {
-      //   capitalGains: summaryV2.capitalGains,
-      //   dividends: summaryV2.dividends,
-      //   realized: summaryV2.realizedPnL,
-      //   unrealized: summaryV2.unrealizedPnL,
-      //   totalPnL: summaryV2.totalPnL
-      // })
-
-      return {
-        summaryV2,
-        annualizedReturns
-      }
+      return returns
     } catch (error) {
       console.error('❌ Error calculating holding detailed returns:', error)
       return null
@@ -425,16 +256,8 @@ export class PortfolioService {
       totalValue: 0,
       totalCostBasis: 0,
       positions: [],
-      totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
-    }
-  }
-
-  private getEmptyEnhancedPortfolio(): EnhancedPortfolioData {
-    return {
-      totalValue: 0,
-      totalCostBasis: 0,
-      positions: [],
-      totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
+      totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 },
+      returns: returnCalculationService.getEmptyReturnMetrics()
     }
   }
 

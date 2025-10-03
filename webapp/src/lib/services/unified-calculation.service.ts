@@ -289,7 +289,7 @@ export class UnifiedCalculationService {
         const symbolCurrency = symbolData?.currency
         const fromCurrency = (symbolCurrency || 'USD') as SupportedCurrency
 
-        let result = {
+        const result = {
           costBasis: position.totalCost,
           dividendIncome: position.dividendIncome,
           validPrice: false,

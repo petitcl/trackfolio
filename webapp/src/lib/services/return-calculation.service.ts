@@ -1,15 +1,32 @@
 import type { Transaction, Symbol } from '@/lib/supabase/types'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 
-export interface AnnualizedReturnMetrics {
-  timeWeightedReturn: number // TWR - pure investment performance
-  moneyWeightedReturn: number // XIRR - investor experience with cash flow timing
-  totalReturn: number // Absolute return percentage
+/**
+ * Unified portfolio return metrics - flat structure, always present
+ * Combines P&L breakdown, cost basis, and annualized returns
+ */
+export interface PortfolioReturnMetrics {
+  // P&L Breakdown
+  totalPnL: number
+  realizedPnL: number
+  unrealizedPnL: number
+  capitalGains: number
+  dividends: number
+
+  // Cost Basis
+  costBasis: number
+  totalInvested: number
+
+  // Annualized Returns
+  timeWeightedReturn: number  // TWR - pure investment performance (%)
+  moneyWeightedReturn: number // XIRR - investor experience with cash flow timing (%)
+  totalReturn: number         // Absolute return percentage (%)
+
+  // Time Period
   startDate: string
   endDate: string
   periodYears: number
 }
-
 
 export interface ReturnCalculationOptions {
   startDate?: string
@@ -17,16 +34,14 @@ export interface ReturnCalculationOptions {
   includeVolatility?: boolean
 }
 
-
-export interface PortfolioSummaryV2 {
-  totalPnL: number;
-  realizedPnL: number;
-  unrealizedPnL: number;
-  capitalGains: number;
-  dividends: number;
-  costBasis: number;
-  totalInvested: number;
-  annualizedReturn: number;
+// Legacy interface - kept for tests, use PortfolioReturnMetrics instead
+interface AnnualizedReturnMetrics {
+  timeWeightedReturn: number
+  moneyWeightedReturn: number
+  totalReturn: number
+  startDate: string
+  endDate: string
+  periodYears: number
 }
 
 // FIFO lot
@@ -369,15 +384,121 @@ function calculateXIRR(
 export class ReturnCalculationService {
 
   /**
-   * Calculate portfolio summary using the V2 algorithm
+   * Calculate unified portfolio return metrics
    * This is the primary calculation method that should be used for all return calculations
+   * Returns sensible defaults (zeros) when insufficient data is available
+   */
+  calculatePortfolioReturnMetrics(
+    transactions: Transaction[],
+    historicalData: HistoricalDataPoint[],
+    symbols: Symbol[],
+    options: ReturnCalculationOptions = {}
+  ): PortfolioReturnMetrics {
+    // Return empty metrics if insufficient data
+    if (historicalData.length < 2) {
+      return this.getEmptyReturnMetrics()
+    }
+
+    const { startDate: optionsStartDate, endDate: optionsEndDate } = options
+
+    // Filter historical data by date range if specified
+    let filteredData = historicalData
+    if (optionsStartDate || optionsEndDate) {
+      filteredData = historicalData.filter(point => {
+        const pointDate = point.date
+        if (optionsStartDate && pointDate < optionsStartDate) return false
+        if (optionsEndDate && pointDate > optionsEndDate) return false
+        return true
+      })
+    }
+
+    if (filteredData.length < 2) {
+      return this.getEmptyReturnMetrics()
+    }
+
+    const firstPoint = filteredData[0]
+    const lastPoint = filteredData[filteredData.length - 1]
+    const periodYears = this.calculateYearsDifference(firstPoint.date, lastPoint.date)
+
+    // Use actual data range for calculation
+    const actualStartDate = optionsStartDate || firstPoint.date
+    const actualEndDate = optionsEndDate || lastPoint.date
+
+    if (periodYears <= 0) {
+      return this.getEmptyReturnMetrics()
+    }
+
+    // Calculate V2 summary for P&L breakdown
+    const v2Summary = computePortfolioSummaryV2(transactions, filteredData, actualStartDate, actualEndDate)
+
+    // Calculate total return percentage
+    let totalReturn = 0
+    if (v2Summary.totalInvested > 0) {
+      totalReturn = (v2Summary.totalPnL / v2Summary.totalInvested) * 100
+    }
+
+    // Calculate XIRR for money-weighted return
+    const finalValue = Object.values(lastPoint.assetTypeValues).reduce((a, b) => a + b, 0)
+    const xirrTransactions = transactions.filter(tx =>
+      tx.date >= actualStartDate && tx.date <= actualEndDate
+    )
+    const xirr = calculateXIRR(xirrTransactions, finalValue, actualEndDate)
+
+    return {
+      // P&L Breakdown
+      totalPnL: v2Summary.totalPnL,
+      realizedPnL: v2Summary.realizedPnL,
+      unrealizedPnL: v2Summary.unrealizedPnL,
+      capitalGains: v2Summary.capitalGains,
+      dividends: v2Summary.dividends,
+
+      // Cost Basis
+      costBasis: v2Summary.costBasis,
+      totalInvested: v2Summary.totalInvested,
+
+      // Annualized Returns
+      timeWeightedReturn: v2Summary.annualizedReturn * 100,
+      moneyWeightedReturn: xirr * 100,
+      totalReturn,
+
+      // Time Period
+      startDate: firstPoint.date,
+      endDate: lastPoint.date,
+      periodYears
+    }
+  }
+
+  /**
+   * Return empty metrics structure (all zeros)
+   */
+  getEmptyReturnMetrics(): PortfolioReturnMetrics {
+    return {
+      totalPnL: 0,
+      realizedPnL: 0,
+      unrealizedPnL: 0,
+      capitalGains: 0,
+      dividends: 0,
+      costBasis: 0,
+      totalInvested: 0,
+      timeWeightedReturn: 0,
+      moneyWeightedReturn: 0,
+      totalReturn: 0,
+      startDate: '',
+      endDate: '',
+      periodYears: 0
+    }
+  }
+
+  /**
+   * Calculate portfolio summary using the V2 algorithm
+   * @deprecated Use calculatePortfolioReturnMetrics instead
    */
   calculatePortfolioSummaryV2(
     transactions: Transaction[],
     historicalData: HistoricalDataPoint[],
     startDate?: string,
     endDate?: string
-  ): PortfolioSummaryV2 {
+  ): PortfolioSummary {
     // Set default date range if not provided
     const defaultStartDate = startDate || '2000-01-01'
     const defaultEndDate = endDate || new Date().toISOString().split('T')[0]

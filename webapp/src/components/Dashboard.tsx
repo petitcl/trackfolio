@@ -12,7 +12,7 @@ import TimeRangeSelector, { type TimeRange } from '@/components/TimeRangeSelecto
 import { type AuthUser } from '@/lib/auth/client.auth.service'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
-import { portfolioService, type EnhancedPortfolioData, type PortfolioData } from '@/lib/services/portfolio.service'
+import { portfolioService, type PortfolioData } from '@/lib/services/portfolio.service'
 import type { AssetType, Symbol } from '@/lib/supabase/types'
 import { formatPercent, getAssetTypeIcon, getAssetTypeLabel, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
 import { useRouter } from 'next/navigation'
@@ -22,18 +22,32 @@ interface DashboardProps {
   user: AuthUser
 }
 
-const defaultPortfolioData = ()=> ({
+const defaultPortfolioData = (): PortfolioData => ({
   totalValue: 0,
   totalCostBasis: 0,
   positions: [],
-  totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
+  totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 },
+  returns: {
+    totalPnL: 0,
+    realizedPnL: 0,
+    unrealizedPnL: 0,
+    capitalGains: 0,
+    dividends: 0,
+    costBasis: 0,
+    totalInvested: 0,
+    timeWeightedReturn: 0,
+    moneyWeightedReturn: 0,
+    totalReturn: 0,
+    startDate: '',
+    endDate: '',
+    periodYears: 0
+  }
 })
 
 export default function Dashboard({ user }: DashboardProps) {
   const [dataLoading, setDataLoading] = useState(true)
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('all')
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null)
-  const [enhancedPortfolioData, setEnhancedPortfolioData] = useState<EnhancedPortfolioData | null>(null)
   const [symbols, setSymbols] = useState<Symbol[]>([])
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
   const [repartitionData, setRepartitionData] = useState<Array<{ assetType: string; value: number; percentage: number }>>([])
@@ -52,9 +66,8 @@ export default function Dashboard({ user }: DashboardProps) {
       console.log('📊 Loading portfolio data for user:', user.email, 'currency:', currency)
 
       const apiStartTime = performance.now()
-      const [portfolio, enhancedPortfolio, symbolsData, historical, repartition] = await Promise.all([
+      const [portfolio, symbolsData, historical, repartition] = await Promise.all([
         portfolioService.getPortfolioData(user, currency, true),
-        portfolioService.getEnhancedPortfolioData(user, currency, true),
         portfolioService.getSymbols(user),
         portfolioService.getPortfolioHistoricalData(user, currency),
         portfolioService.getPortfolioRepartitionData(user, currency, selectedTimeRange)
@@ -63,14 +76,12 @@ export default function Dashboard({ user }: DashboardProps) {
 
       const calculationStartTime = performance.now()
       setPortfolioData(portfolio)
-      setEnhancedPortfolioData(enhancedPortfolio)
       setSymbols(symbolsData)
       setHistoricalData(historical)
       setRepartitionData(repartition)
       const calculationEndTime = performance.now()
 
       console.log("portfolio", portfolio);
-      console.log("enhancedPortfolio", enhancedPortfolio);
       console.log("historical last point", historical.at(-1));
       console.log("repartition", repartition);
 
@@ -86,12 +97,6 @@ export default function Dashboard({ user }: DashboardProps) {
     } catch (error) {
       console.error('❌ Error loading portfolio data:', error)
       setPortfolioData(defaultPortfolioData())
-      setEnhancedPortfolioData({
-        totalValue: 0,
-        totalCostBasis: 0,
-        positions: [],
-        totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 }
-      })
       setSymbols([])
       setHistoricalData([])
       setRepartitionData([])
@@ -169,9 +174,9 @@ export default function Dashboard({ user }: DashboardProps) {
     )
   }
 
-  const holdingPeriod = portfolioData.annualizedReturns && portfolioData.annualizedReturns.periodYears > 0  ? (portfolioData.annualizedReturns.periodYears < 1 ?
-    `${Math.round(portfolioData.annualizedReturns.periodYears * 365)} days` :
-    `${portfolioData.annualizedReturns.periodYears.toFixed(1)} years`) : null
+  const holdingPeriod = portfolioData.returns.periodYears > 0 ? (portfolioData.returns.periodYears < 1 ?
+    `${Math.round(portfolioData.returns.periodYears * 365)} days` :
+    `${portfolioData.returns.periodYears.toFixed(1)} years`) : null
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -202,13 +207,12 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
         </div>
         {/* Portfolio Overview */}
-        {(enhancedPortfolioData?.summaryV2 || enhancedPortfolioData?.annualizedReturns) ? (
+        {portfolioData.returns.periodYears > 0 ? (
           <div className="mb-8">
             <EnhancedPortfolioOverview
-              summaryV2={enhancedPortfolioData.summaryV2}
-              annualizedReturns={enhancedPortfolioData.annualizedReturns}
-              totalValue={enhancedPortfolioData.totalValue}
-              totalCostBasis={enhancedPortfolioData.totalCostBasis}
+              returns={portfolioData.returns}
+              totalValue={portfolioData.totalValue}
+              totalCostBasis={portfolioData.totalCostBasis}
               selectedCurrency={selectedCurrency}
             />
           </div>
@@ -245,7 +249,7 @@ export default function Dashboard({ user }: DashboardProps) {
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Cost Basis</dt>
                       <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(enhancedPortfolioData?.totalCostBasis ?? 0)}
+                        {formatCurrency(portfolioData.totalCostBasis)}
                       </dd>
                     </dl>
                   </div>
@@ -293,9 +297,9 @@ export default function Dashboard({ user }: DashboardProps) {
                   <div className="ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
-                      <dd className={`text-lg font-medium ${portfolioData.annualizedReturns ? getPnLColor(portfolioData.annualizedReturns.timeWeightedReturn) : 'text-gray-600 dark:text-gray-400'}`}>
-                        {portfolioData.annualizedReturns ?
-                          `${formatPercent(portfolioData.annualizedReturns.timeWeightedReturn)}` :
+                      <dd className={`text-lg font-medium ${portfolioData.returns.periodYears > 0 ? getPnLColor(portfolioData.returns.timeWeightedReturn) : 'text-gray-600 dark:text-gray-400'}`}>
+                        {portfolioData.returns.periodYears > 0 ?
+                          `${formatPercent(portfolioData.returns.timeWeightedReturn)}` :
                           'Calculating...'
                         }
                       </dd>
