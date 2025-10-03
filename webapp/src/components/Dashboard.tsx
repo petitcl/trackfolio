@@ -46,7 +46,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const router = useRouter()
 
   // Unified loader for portfolio data
-  const loadPortfolioData = useCallback(async (currency: SupportedCurrency, includeClosedPositions?: boolean) => {
+  const loadPortfolioData = useCallback(async (currency: SupportedCurrency) => {
     try {
       setDataLoading(true)
       console.log('📊 Loading portfolio data for user:', user.email, 'currency:', currency)
@@ -89,8 +89,8 @@ export default function Dashboard({ user }: DashboardProps) {
   }, [user, selectedTimeRange])
 
   useEffect(() => {
-    loadPortfolioData(selectedCurrency, showClosedPositions)
-  }, [loadPortfolioData, selectedCurrency, showClosedPositions])
+    loadPortfolioData(selectedCurrency)
+  }, [loadPortfolioData, selectedCurrency])
 
   const handleCurrencyChange = (newCurrency: SupportedCurrency) => {
     setSelectedCurrency(newCurrency)
@@ -415,16 +415,21 @@ export default function Dashboard({ user }: DashboardProps) {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {(() => {
                   // Group positions by asset type
-                  const positionsByType = portfolioData.positions.reduce((groups, position) => {
-                    // Find the asset type from symbols
-                    const symbol = symbols.find(s => s.symbol === position.symbol)
-                    const assetType = symbol?.asset_type || 'other'
-                    if (!groups[assetType]) {
-                      groups[assetType] = []
-                    }
-                    groups[assetType].push(position)
-                    return groups
-                  }, {} as Record<string, typeof portfolioData.positions>)
+                  const positionsByType = portfolioData.positions
+                      .filter(p => {
+                          if (showClosedPositions) return true
+                          return p.quantity > 0
+                      })
+                      .reduce((groups, position) => {
+                        // Find the asset type from symbols
+                        const symbol = symbols.find(s => s.symbol === position.symbol)
+                        const assetType = symbol?.asset_type || 'other'
+                        if (!groups[assetType]) {
+                          groups[assetType] = []
+                        }
+                        groups[assetType].push(position)
+                        return groups
+                      }, {} as Record<string, typeof portfolioData.positions>)
 
                   const rows: React.ReactElement[] = []
 

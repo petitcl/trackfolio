@@ -3,9 +3,9 @@ Mark done item with ✅
 
 ## TODO P1
 - ✅ Fix Annualized Return = -100% for some closed positions
-- [ ] Prevent page reload when changing "show closed positions"
-- [ ] Add infinite scrolling to transaction history
+- ✅ Prevent page reload when changing "show closed positions"
 - [ ] Implement portfolio export and backup functionality
+- [ ] Add infinite scrolling to transaction history
 - [ ] Update timerange changes to affect other metrics correctly
 - [ ] Fix annualized return calculation
 - [ ] Style delete buttons for holdings, prices, and transactions as red/danger
