@@ -190,7 +190,6 @@ export class UnifiedCalculationService {
     )
   }
 
-
   /**
    * Unified historical data calculation for both portfolio and individual holdings
    * This replaces both portfolio and holding-specific calculations
@@ -275,7 +274,8 @@ export class UnifiedCalculationService {
         other: 0
       }
 
-      for (const position of positions) {
+      // Process all positions in parallel
+      const positionResults = await Promise.all(positions.map(async (position) => {
         const symbolPriceMap = priceMapCache.get(position.symbol)
         const historicalPrice = await this.getUnifiedHistoricalPrice(
           position.symbol,
@@ -285,25 +285,31 @@ export class UnifiedCalculationService {
           symbolPriceMap
         )
 
-        // Always include cost basis and dividend income for positions that exist on this date
-        totalCostBasis += position.totalCost
-        totalDividendIncome += position.dividendIncome
+        const symbolData = symbols.find(s => s.symbol === position.symbol)
+        const symbolCurrency = symbolData?.currency
+        const fromCurrency = (symbolCurrency || 'USD') as SupportedCurrency
+
+        let result = {
+          costBasis: position.totalCost,
+          dividendIncome: position.dividendIncome,
+          validPrice: false,
+          positionValue: 0,
+          convertedPositionValue: 0,
+          convertedDividendIncome: 0,
+          assetType: symbolData?.asset_type || 'other',
+          isTargetSymbol: targetSymbol === position.symbol
+        }
 
         if (historicalPrice !== null) {
-          validPriceCount++
+          result.validPrice = true
           const positionValue = position.quantity * historicalPrice
-          
-          // Get symbol currency and convert to target currency
-          const symbolData = symbols.find(s => s.symbol === position.symbol)
-          const symbolCurrency = symbolData?.currency
-          
+          result.positionValue = positionValue
+
           // Add console warning for implicit USD fallback
           if (!symbolCurrency) {
             console.warn(`⚠️  Symbol ${position.symbol} has no currency specified, implicitly treating as USD`)
           }
-          
-          const fromCurrency = (symbolCurrency || 'USD') as SupportedCurrency
-          
+
           let convertedPositionValue = positionValue
           if (fromCurrency !== targetCurrency) {
             try {
@@ -314,28 +320,11 @@ export class UnifiedCalculationService {
               convertedPositionValue = positionValue
             }
           }
-
-          totalValue += positionValue  // Keep for allocation calculations (in original currencies)
-          convertedTotalValue += convertedPositionValue
-
-          // Track target symbol value separately
-          if (targetSymbol && position.symbol === targetSymbol) {
-            targetSymbolValue = positionValue // Original currency for allocation calculation
-            convertedTargetSymbolValue = convertedPositionValue
-          }
-
-          // Add to asset type allocation (use converted values)
-          const assetType = symbolData?.asset_type || 'other'
-          assetTypeValues[assetType] += positionValue // For allocation % calculation
-          convertedAssetTypeValues[assetType] += convertedPositionValue
+          result.convertedPositionValue = convertedPositionValue
         }
-        
+
         // Convert dividend income to target currency
         if (position.dividendIncome > 0) {
-          const symbolData = symbols.find(s => s.symbol === position.symbol)
-          const symbolCurrency = symbolData?.currency
-          const fromCurrency = (symbolCurrency || 'USD') as SupportedCurrency
-          
           let convertedDividendIncome = position.dividendIncome
           if (fromCurrency !== targetCurrency) {
             try {
@@ -346,12 +335,32 @@ export class UnifiedCalculationService {
               convertedDividendIncome = position.dividendIncome
             }
           }
-          
-          convertedTotalDividendIncome += convertedDividendIncome
+          result.convertedDividendIncome = convertedDividendIncome
         }
-        
-        // If no price found, the position still contributes to cost basis
-        // but contributes zero to market value - this shows realistic P&L
+
+        return result
+      }))
+
+      // Aggregate results
+      for (const result of positionResults) {
+        totalCostBasis += result.costBasis
+        totalDividendIncome += result.dividendIncome
+
+        if (result.validPrice) {
+          validPriceCount++
+          totalValue += result.positionValue
+          convertedTotalValue += result.convertedPositionValue
+
+          if (result.isTargetSymbol) {
+            targetSymbolValue = result.positionValue
+            convertedTargetSymbolValue = result.convertedPositionValue
+          }
+
+          assetTypeValues[result.assetType] += result.positionValue
+          convertedAssetTypeValues[result.assetType] += result.convertedPositionValue
+        }
+
+        convertedTotalDividendIncome += result.convertedDividendIncome
       }
 
       // Skip this date only if we have no valid prices at all
@@ -363,19 +372,19 @@ export class UnifiedCalculationService {
       // Note: We use symbol.currency instead of transaction.currency for simplicity.
       // This assumes all transactions for a symbol are in the symbol's base currency,
       // which is the most common case and avoids complex per-transaction currency tracking.
-      let convertedCostBasis = 0
-      
-      for (const position of positions) {
+
+      // Process cost basis conversions in parallel
+      const costBasisResults = await Promise.all(positions.map(async (position) => {
         const symbolData = symbols.find(s => s.symbol === position.symbol)
         const symbolCurrency = symbolData?.currency
-        
+
         // Add console warning for implicit USD fallback on cost basis
         if (!symbolCurrency) {
           console.warn(`⚠️  Cost basis for symbol ${position.symbol} has no currency specified, implicitly treating as USD`)
         }
-        
+
         const fromCurrency = (symbolCurrency || 'USD') as SupportedCurrency
-        
+
         let convertedPositionCostBasis = position.totalCost
         if (fromCurrency !== targetCurrency) {
           try {
@@ -386,9 +395,11 @@ export class UnifiedCalculationService {
             convertedPositionCostBasis = position.totalCost
           }
         }
-        
-        convertedCostBasis += convertedPositionCostBasis
-      }
+
+        return convertedPositionCostBasis
+      }))
+
+      const convertedCostBasis = costBasisResults.reduce((sum, value) => sum + value, 0)
 
       // Calculate allocations
       const assetTypeAllocations: Record<string, number> = {}
@@ -458,10 +469,8 @@ export class UnifiedCalculationService {
       return []
     }
 
-    // Convert to PortfolioPosition format with current prices
-    const portfolioPositions: PortfolioPosition[] = []
-
-    for (const position of unifiedPositions) {
+    // Convert to PortfolioPosition format with current prices - process in parallel
+    const portfolioPositions = await Promise.all(unifiedPositions.map(async (position) => {
       const symbolData = symbols.find(s => s.symbol === position.symbol)
 
       // Get current price - handle custom vs market symbols differently
@@ -532,7 +541,7 @@ export class UnifiedCalculationService {
         realizedCostBasis = realizedData.costBasis
       }
 
-      portfolioPositions.push({
+      return {
         symbol: position.symbol,
         quantity: position.quantity,
         avgCost: position.avgCost,
@@ -543,8 +552,8 @@ export class UnifiedCalculationService {
         realizedCostBasis: realizedCostBasis,
         isCustom: symbolData?.is_custom || false,
         dividendIncome: convertedDividendIncome // Tracked separately
-      })
-    }
+      }
+    }))
 
     return portfolioPositions
   }
@@ -589,8 +598,8 @@ export class UnifiedCalculationService {
     user: AuthUser,
     symbols: Symbol[]
   ): Promise<number | null> {
-    let totalValue = 0
-    for (const position of positions) {
+    // Process all positions in parallel
+    const priceResults = await Promise.all(positions.map(async (position) => {
       const symbolData = symbols.find(s => s.symbol === position.symbol) || null
       const historicalPrice = await historicalPriceService.getHistoricalPriceForDate(
         position.symbol,
@@ -599,13 +608,22 @@ export class UnifiedCalculationService {
         symbolData
       )
 
-      // If ANY symbol lacks historical data, skip the entire date
-      if (historicalPrice === null) {
-        return null
+      return {
+        price: historicalPrice,
+        quantity: position.quantity
       }
+    }))
 
-      totalValue += position.quantity * historicalPrice
+    // If ANY symbol lacks historical data, skip the entire date
+    if (priceResults.some(result => result.price === null)) {
+      return null
     }
+
+    // Calculate total value
+    const totalValue = priceResults.reduce((sum, result) => {
+      return sum + (result.quantity * (result.price || 0))
+    }, 0)
+
     return totalValue
   }
 
@@ -631,7 +649,8 @@ export class UnifiedCalculationService {
       other: 0
     }
 
-    for (const position of positions) {
+    // Process all positions in parallel
+    const results = await Promise.all(positions.map(async (position) => {
       const symbolData = symbols.find(s => s.symbol === position.symbol)
       const assetType = symbolData?.asset_type || 'other'
       const historicalPrice = await historicalPriceService.getHistoricalPriceForDate(
@@ -641,13 +660,22 @@ export class UnifiedCalculationService {
         symbolData || null
       )
 
-      // If ANY symbol lacks historical data, skip the entire date
-      if (historicalPrice === null) {
-        return null
+      return {
+        assetType,
+        price: historicalPrice,
+        quantity: position.quantity
       }
+    }))
 
-      const historicalValue = position.quantity * historicalPrice
-      assetTypeValues[assetType] += historicalValue
+    // If ANY symbol lacks historical data, skip the entire date
+    if (results.some(result => result.price === null)) {
+      return null
+    }
+
+    // Aggregate results
+    for (const result of results) {
+      const historicalValue = result.quantity * (result.price || 0)
+      assetTypeValues[result.assetType] += historicalValue
     }
 
     const totalPortfolioValue = Object.values(assetTypeValues).reduce((sum, value) => (sum || 0) + (value || 0), 0)

@@ -4,16 +4,17 @@ Mark done item with ✅
 ## TODO P1
 - ✅ Fix Annualized Return = -100% for some closed positions
 - ✅ Prevent page reload when changing "show closed positions"
+- [ ] Improve page load speed
 - [ ] Implement portfolio export and backup functionality
 - [ ] Add infinite scrolling to transaction history
 - [ ] Update timerange changes to affect other metrics correctly
-- [ ] Fix annualized return calculation
-- [ ] Style delete buttons for holdings, prices, and transactions as red/danger
+- [ ] Fix annualized return calculation (use money weighted?)
 - [ ] Update portfolio P&L and annualized returns to reflect selected timeframe
 - [ ] Redirect custom holding creation to holding detail page instead of homepage
 - [ ] Allow editing of custom holding details
 
 ## TODO P2
+- [ ] Style delete buttons for holdings, prices, and transactions as red/danger
 - [ ] Add performance view per period bucket showing 2024, 2025 performance separately
 - [ ] Remove requirement for price = 0 transactions and simplify custom holding creation
 - [ ] Fix holding details quantity rounding error transforming 1.00 to 0.99998

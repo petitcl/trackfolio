@@ -48,9 +48,11 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
     const loadHoldingData = async () => {
       try {
         setLoading(true)
+        const startTime = performance.now()
         console.log(`🔍 Loading holding data for symbol: ${symbol}`)
 
         // Get all portfolio data and filter for this symbol
+        const apiStartTime = performance.now()
         const [portfolioData, symbols, transactions, historicalData, annualizedReturns, detailedReturns] = await Promise.all([
           portfolioService.getPortfolioData(user, selectedCurrency),
           portfolioService.getSymbols(user),
@@ -59,7 +61,9 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
           portfolioService.getHoldingAnnualizedReturns(user, symbol, selectedCurrency, timeRange),
           portfolioService.getHoldingDetailedReturns(user, symbol, selectedCurrency, timeRange)
         ])
+        const apiEndTime = performance.now()
 
+        const calculationStartTime = performance.now()
         const symbolData = symbols.find(s => s.symbol === symbol)
         const symbolTransactions = transactions.filter(t => t.symbol === symbol)
         const position = portfolioData.positions.find(p => p.symbol === symbol) || null
@@ -77,7 +81,16 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
           annualizedReturns,
           detailedReturns
         })
+        const calculationEndTime = performance.now()
 
+        const totalTime = performance.now() - startTime
+        const apiTime = apiEndTime - apiStartTime
+        const calculationTime = calculationEndTime - calculationStartTime
+
+        console.log('⏱️ Performance metrics:')
+        console.log(`  - API fetch time: ${apiTime.toFixed(2)}ms`)
+        console.log(`  - Data processing/calculation time: ${calculationTime.toFixed(2)}ms`)
+        console.log(`  - Total loading time: ${totalTime.toFixed(2)}ms`)
         console.log(`✅ Loaded ${symbolTransactions.length} transactions for ${symbol}`)
       } catch (err) {
         console.error('Error loading holding data:', err)

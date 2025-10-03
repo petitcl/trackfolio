@@ -48,8 +48,10 @@ export default function Dashboard({ user }: DashboardProps) {
   const loadPortfolioData = useCallback(async (currency: SupportedCurrency) => {
     try {
       setDataLoading(true)
+      const startTime = performance.now()
       console.log('📊 Loading portfolio data for user:', user.email, 'currency:', currency)
 
+      const apiStartTime = performance.now()
       const [portfolio, enhancedPortfolio, symbolsData, historical, repartition] = await Promise.all([
         portfolioService.getPortfolioData(user, currency, true),
         portfolioService.getEnhancedPortfolioData(user, currency, true),
@@ -57,18 +59,29 @@ export default function Dashboard({ user }: DashboardProps) {
         portfolioService.getPortfolioHistoricalData(user, currency),
         portfolioService.getPortfolioRepartitionData(user, currency, selectedTimeRange)
       ])
+      const apiEndTime = performance.now()
 
+      const calculationStartTime = performance.now()
       setPortfolioData(portfolio)
       setEnhancedPortfolioData(enhancedPortfolio)
       setSymbols(symbolsData)
       setHistoricalData(historical)
       setRepartitionData(repartition)
+      const calculationEndTime = performance.now()
 
       console.log("portfolio", portfolio);
       console.log("enhancedPortfolio", enhancedPortfolio);
       console.log("historical last point", historical.at(-1));
       console.log("repartition", repartition);
 
+      const totalTime = performance.now() - startTime
+      const apiTime = apiEndTime - apiStartTime
+      const calculationTime = calculationEndTime - calculationStartTime
+
+      console.log('⏱️ Performance metrics:')
+      console.log(`  - API fetch time: ${apiTime.toFixed(2)}ms`)
+      console.log(`  - Calculation/setState time: ${calculationTime.toFixed(2)}ms`)
+      console.log(`  - Total loading time: ${totalTime.toFixed(2)}ms`)
       console.log('✅ Portfolio data loaded successfully')
     } catch (error) {
       console.error('❌ Error loading portfolio data:', error)
@@ -156,6 +169,9 @@ export default function Dashboard({ user }: DashboardProps) {
     )
   }
 
+  const holdingPeriod = portfolioData.annualizedReturns && portfolioData.annualizedReturns.periodYears > 0  ? (portfolioData.annualizedReturns.periodYears < 1 ?
+    `${Math.round(portfolioData.annualizedReturns.periodYears * 365)} days` :
+    `${portfolioData.annualizedReturns.periodYears.toFixed(1)} years`) : null
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -283,12 +299,9 @@ export default function Dashboard({ user }: DashboardProps) {
                           'Calculating...'
                         }
                       </dd>
-                      {portfolioData.annualizedReturns && portfolioData.annualizedReturns.periodYears > 0 && (
+                      {holdingPeriod && (
                         <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {portfolioData.annualizedReturns.periodYears < 1 ?
-                            `${Math.round(portfolioData.annualizedReturns.periodYears * 365)} days` :
-                            `${portfolioData.annualizedReturns.periodYears.toFixed(1)} years`
-                          }
+                          {holdingPeriod}
                         </dd>
                       )}
                     </dl>

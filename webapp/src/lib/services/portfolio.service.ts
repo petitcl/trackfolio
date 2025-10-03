@@ -70,8 +70,6 @@ export class PortfolioService {
       // Calculate positions using unified calculation service (already in target currency)
       const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency, includeClosedPositions)
 
-
-
       // Calculate totals in target currency (no additional conversion needed)
       const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
       const totalCostBasis = positions.reduce((sum, pos) => sum + (pos.quantity * pos.avgCost), 0)
