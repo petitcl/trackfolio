@@ -434,6 +434,8 @@ export interface HistoricalDataPoint {
   assetTypeValues: Record<string, number>
   // cumulative invested amount (optional for backward compatibility)
   costBasis?: number
+  // cumulative dividends received (not reinvested)
+  cumulativeDividends?: number
 }
 
 // Mock symbol price history data that mirrors the supabase symbol_price_history table

@@ -402,7 +402,7 @@ export class UnifiedCalculationService {
       if (targetSymbol && positions.length === 1) {
         const symbolData = symbols.find(s => s.symbol === targetSymbol)
         const assetType = symbolData?.asset_type || 'other'
-        
+
         // Reset allocations and set to 100% for this asset type
         Object.keys(assetTypeAllocations).forEach(key => {
           assetTypeAllocations[key] = 0
@@ -417,17 +417,21 @@ export class UnifiedCalculationService {
       }
 
       // For single holdings, use the individual holding value instead of total portfolio value
-      // Add dividend income to the total value (this represents cash dividends received)
-      const finalTotalValue = targetSymbol 
-        ? convertedTargetSymbolValue + convertedTotalDividendIncome 
-        : convertedTotalValue + convertedTotalDividendIncome
-      
+      // DO NOT add dividends to totalValue - track them separately
+      // This prevents double-counting since dividends are either:
+      // - Withdrawn (not part of portfolio value)
+      // - Reinvested as new positions (already counted in market value)
+      const finalTotalValue = targetSymbol
+        ? convertedTargetSymbolValue
+        : convertedTotalValue
+
       historicalData.push({
         date: currentDate,
         totalValue: finalTotalValue,
         assetTypeAllocations,
         assetTypeValues: convertedAssetTypeValues,
-        costBasis: convertedCostBasis
+        costBasis: convertedCostBasis,
+        cumulativeDividends: convertedTotalDividendIncome
       })
     }
 

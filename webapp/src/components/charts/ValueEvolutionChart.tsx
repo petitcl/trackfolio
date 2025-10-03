@@ -107,36 +107,56 @@ export default function ValueEvolutionChart({
 
   const values = filteredData.map(point => point.totalValue)
   const cumulativeInvested = showInvested ? calculateCumulativeInvested(filteredData) : []
+  const totalReturnValues = filteredData.map(point => {
+    const dividends = point.cumulativeDividends || 0
+    return point.totalValue + dividends
+  })
 
-  const datasets: any[] = [
-    {
-      label: `${valueLabel} (${currency})`,
-      data: values,
-      borderColor: CHART_CONFIGS.lineChart.primaryLine.borderColor,
-      backgroundColor: CHART_CONFIGS.lineChart.primaryLine.backgroundColor,
-      pointBackgroundColor: CHART_CONFIGS.lineChart.primaryLine.pointBackgroundColor,
-      pointBorderColor: CHART_CONFIGS.lineChart.primaryLine.pointBorderColor,
-      fill: false,
-      tension: 0.1,
-      pointRadius: 0,
-      pointHoverRadius: 5,
-    }
-  ]
+  const datasets: any[] = []
 
+  // Line 1: Cost Basis (Gray)
   if (showInvested) {
     datasets.push({
       label: `${investedLabel} (${currency})`,
       data: cumulativeInvested,
-      borderColor: CHART_CONFIGS.lineChart.secondaryLine.borderColor,
-      backgroundColor: CHART_CONFIGS.lineChart.secondaryLine.backgroundColor,
-      pointBackgroundColor: CHART_CONFIGS.lineChart.secondaryLine.pointBackgroundColor,
-      pointBorderColor: CHART_CONFIGS.lineChart.secondaryLine.pointBorderColor,
+      borderColor: 'rgb(156, 163, 175)', // gray-400
+      backgroundColor: 'rgba(156, 163, 175, 0.1)',
+      pointBackgroundColor: 'rgb(156, 163, 175)',
+      pointBorderColor: '#fff',
       fill: false,
       tension: 0.1,
       pointRadius: 0,
       pointHoverRadius: 5,
     })
   }
+
+  // Line 2: Market Value (Blue) - excludes dividends
+  datasets.push({
+    label: `${valueLabel} (${currency})`,
+    data: values,
+    borderColor: CHART_CONFIGS.lineChart.primaryLine.borderColor,
+    backgroundColor: CHART_CONFIGS.lineChart.primaryLine.backgroundColor,
+    pointBackgroundColor: CHART_CONFIGS.lineChart.primaryLine.pointBackgroundColor,
+    pointBorderColor: CHART_CONFIGS.lineChart.primaryLine.pointBorderColor,
+    fill: false,
+    tension: 0.1,
+    pointRadius: 0,
+    pointHoverRadius: 5,
+  })
+
+  // Line 3: Total Return (Red) - includes dividends
+  datasets.push({
+    label: `Total Return (${currency})`,
+    data: totalReturnValues,
+    borderColor: 'rgb(239, 68, 68)', // red-500
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    pointBackgroundColor: 'rgb(239, 68, 68)',
+    pointBorderColor: '#fff',
+    fill: false,
+    tension: 0.1,
+    pointRadius: 0,
+    pointHoverRadius: 5,
+  })
 
   const chartData = {
     labels: filteredData.map(point => {
@@ -232,13 +252,20 @@ export default function ValueEvolutionChart({
           },
           afterBody: function(tooltipItems) {
             if (showInvested && tooltipItems.length >= 2) {
-              const portfolioValue = Number(tooltipItems[0].parsed.y)
-              const invested = Number(tooltipItems[1].parsed.y)
-              const pnl = portfolioValue - invested
-              const pnlPercentage = invested > 0 ? (pnl / invested) * 100 : 0
+              // tooltipItems order: [0] = Cost Basis, [1] = Market Value, [2] = Total Return
+              const invested = Number(tooltipItems[0].parsed.y)
+              const marketValue = Number(tooltipItems[1].parsed.y)
+              const totalReturn = tooltipItems.length >= 3 ? Number(tooltipItems[2].parsed.y) : marketValue
+
+              const unrealizedPnL = marketValue - invested
+              const dividends = totalReturn - marketValue
+              const totalPnL = totalReturn - invested
+              const totalPnLPercentage = invested > 0 ? (totalPnL / invested) * 100 : 0
+
               return [
-                `P&L: ${formatCurrency(pnl)}`,
-                `Return: ${pnlPercentage >= 0 ? '+' : ''}${pnlPercentage.toFixed(2)}%`
+                `Unrealized P&L: ${formatCurrency(unrealizedPnL)}`,
+                `Dividends: ${formatCurrency(dividends)}`,
+                `Total P&L: ${formatCurrency(totalPnL)} (${totalPnLPercentage >= 0 ? '+' : ''}${totalPnLPercentage.toFixed(2)}%)`
               ]
             }
             return []
@@ -251,8 +278,11 @@ export default function ValueEvolutionChart({
   // Calculate current metrics
   const currentValue = values[values.length - 1] || 0
   const currentInvested = showInvested ? (cumulativeInvested[cumulativeInvested.length - 1] || 0) : 0
-  const currentPnL = showInvested ? (currentValue - currentInvested) : 0
-  const currentPnLPercentage = showInvested && currentInvested > 0 ? (currentPnL / currentInvested) * 100 : 0
+  const currentTotalReturn = totalReturnValues[totalReturnValues.length - 1] || 0
+  const currentDividends = currentTotalReturn - currentValue
+  const unrealizedPnL = currentValue - currentInvested
+  const totalPnL = currentTotalReturn - currentInvested
+  const totalPnLPercentage = showInvested && currentInvested > 0 ? (totalPnL / currentInvested) * 100 : 0
 
   return (
     <div className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow border dark:border-gray-700 ${className}`}>
@@ -266,18 +296,27 @@ export default function ValueEvolutionChart({
           </p>
         )}
         <div className="flex flex-wrap gap-4 mt-2 text-sm">
+          {showInvested && (
+            <div className="flex items-center">
+              <div className="w-3 h-0.5 mr-2" style={{backgroundColor: 'rgb(156, 163, 175)'}}></div>
+              <span className="text-gray-600 dark:text-gray-300">Invested: {formatCurrency(currentInvested)}</span>
+            </div>
+          )}
           <div className="flex items-center">
             <div className="w-3 h-0.5 mr-2" style={{backgroundColor: CHART_COLORS.primary}}></div>
-            <span className="text-gray-300">Current {valueLabel}: {formatCurrency(currentValue)}</span>
+            <span className="text-gray-900 dark:text-gray-300">Market Value: {formatCurrency(currentValue)}</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-0.5 mr-2" style={{backgroundColor: 'rgb(239, 68, 68)'}}></div>
+            <span className="text-gray-900 dark:text-gray-300">Total Return: {formatCurrency(currentTotalReturn)}</span>
           </div>
           {showInvested && (
             <>
               <div className="flex items-center">
-                <div className="w-3 h-0.5 mr-2" style={{backgroundColor: CHART_COLORS.secondary}}></div>
-                <span className="text-gray-300">Invested: {formatCurrency(currentInvested)}</span>
+                <span className="text-gray-600 dark:text-gray-400">Dividends: {formatCurrency(currentDividends)}</span>
               </div>
-              <div className={`font-medium ${currentPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                P&L: {formatCurrency(currentPnL)} ({currentPnLPercentage >= 0 ? '+' : ''}{currentPnLPercentage.toFixed(2)}%)
+              <div className={`font-medium ${totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                Total P&L: {formatCurrency(totalPnL)} ({totalPnLPercentage >= 0 ? '+' : ''}{totalPnLPercentage.toFixed(2)}%)
               </div>
             </>
           )}

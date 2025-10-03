@@ -28,7 +28,8 @@
       "Bash(npx jest:*)",
       "mcp__chrome-devtools__*",
       "mcp__chrome-devtools__list_pages",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "WebFetch(domain:investor.vanguard.com)"
     ],
     "deny": [],
     "ask": [],
