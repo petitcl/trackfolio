@@ -14,9 +14,10 @@ import DemoModeBanner from './DemoModeBanner'
 import ConfirmDialog from './ConfirmDialog'
 import PriceManagement from './PriceManagement'
 import TransactionManagement from './TransactionManagement'
-import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
+import { type SupportedCurrency } from '@/lib/services/currency.service'
 import DetailedHoldingReturns from './DetailedHoldingReturns'
 import Header from '@/components/Header'
+import { formatPercent, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -89,13 +90,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
     loadHoldingData()
   }, [user, symbol, selectedCurrency, timeRange])
 
-  const formatCurrency = (amount: number) => {
-    return currencyService.formatCurrency(amount, selectedCurrency)
-  }
-
-  const formatPercent = (percent: number) => {
-    return `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`
-  }
+  const formatCurrency = makeFormatCurrency(selectedCurrency)
 
   const getAssetTypeIcon = (assetType: string) => {
     const icons: Record<string, string> = {
@@ -108,24 +103,6 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
     }
     return icons[assetType] || '❓'
   }
-
-  const getReturnColorClass = (value: number | undefined) => {
-    // Handle case when data doesn't exist
-    if (!value) {
-      return 'text-gray-600 dark:text-gray-400';
-    }
-  
-    // Determine the case based on the return value
-    
-    switch (true) {
-      case value >= 0:
-        return 'text-green-600 dark:text-green-400';
-      case value < 0:
-        return 'text-red-600 dark:text-red-400';
-      default:
-        return 'text-gray-600 dark:text-gray-400';
-    }
-  };
 
   const handleDeleteHolding = async () => {
     if (!holdingData) return
@@ -324,7 +301,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Performance</dt>
-                    <dd className={`text-lg font-medium ${getReturnColorClass(totalReturn)}`}>
+                    <dd className={`text-lg font-medium ${getPnLColor(totalReturn)}`}>
                       {formatCurrency(totalReturn)}
                     </dd>
                     {timeRange === 'all' && totalInvested > 0 && (
@@ -348,7 +325,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
-                    <dd className={`text-lg font-medium ${getReturnColorClass(holdingData.annualizedReturns?.timeWeightedReturn)}`}>
+                    <dd className={`text-lg font-medium ${getPnLColor(holdingData.annualizedReturns?.timeWeightedReturn)}`}>
                       {formatPercent(annualizedReturn)}
                     </dd>
                     {holdingPeriod && (

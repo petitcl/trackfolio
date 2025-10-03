@@ -17,6 +17,7 @@ import MultiBulkImportModal from '@/components/MultiBulkImportModal'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 import EnhancedPortfolioOverview from '@/components/EnhancedPortfolioOverview'
 import Header from '@/components/Header'
+import { formatPercent, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
 
 interface DashboardProps {
   user: AuthUser
@@ -30,7 +31,6 @@ const defaultPortfolioData = ()=> ({
 })
 
 export default function Dashboard({ user }: DashboardProps) {
-  const [isLoading, setIsLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('all')
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null)
@@ -52,8 +52,8 @@ export default function Dashboard({ user }: DashboardProps) {
       console.log('📊 Loading portfolio data for user:', user.email, 'currency:', currency)
 
       const [portfolio, enhancedPortfolio, symbolsData, historical, repartition] = await Promise.all([
-        portfolioService.getPortfolioData(user, currency, includeClosedPositions ?? false),
-        portfolioService.getEnhancedPortfolioData(user, currency, includeClosedPositions ?? false),
+        portfolioService.getPortfolioData(user, currency, true),
+        portfolioService.getEnhancedPortfolioData(user, currency, true),
         portfolioService.getSymbols(user),
         portfolioService.getPortfolioHistoricalData(user, currency),
         portfolioService.getPortfolioRepartitionData(user, currency, selectedTimeRange)
@@ -111,14 +111,7 @@ export default function Dashboard({ user }: DashboardProps) {
     setShowBulkImport(false)
   }
 
-  const formatCurrency = (amount: number) => {
-    // Data is already pre-converted to the selected currency by the services
-    return currencyService.formatCurrency(amount, selectedCurrency)
-  }
-
-  const formatPercent = (percent: number) => {
-    return `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`
-  }
+  const formatCurrency = makeFormatCurrency(selectedCurrency)
 
   const calculatePnLPercentage = (unrealizedPnL: number, avgCost: number, quantity: number) => {
     const totalCost = avgCost * quantity
@@ -163,12 +156,6 @@ export default function Dashboard({ user }: DashboardProps) {
       other: 'Other Assets'
     }
     return labels[assetType] || 'Unknown'
-  }
-
-  const getPnLColor = (pnl: number) => {
-    if (pnl > 0) return 'text-green-600 dark:text-green-400'
-    if (pnl < 0) return 'text-red-600 dark:text-red-400'
-    return 'text-gray-600 dark:text-gray-400'
   }
 
   // Show loading state

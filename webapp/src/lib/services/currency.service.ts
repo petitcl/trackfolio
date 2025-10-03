@@ -95,7 +95,6 @@ export class CurrencyService {
    */
   formatCurrency(amount: number, currency?: SupportedCurrency): string {
     const targetCurrency = currency || this.getPreferredCurrency()
-    const symbol = CURRENCY_SYMBOLS[targetCurrency]
     
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
