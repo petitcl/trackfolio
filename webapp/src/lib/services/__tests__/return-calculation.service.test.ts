@@ -612,6 +612,9 @@ describe('computePortfolioSummaryV2', () => {
     quantity: 100,
     price_per_unit: 10,
     fees: 0,
+    amount: null,
+    broker: null,
+    currency: 'USD',
     date: '2024-01-01',
     notes: null,
     created_at: '2024-01-01T10:00:00Z',
@@ -750,7 +753,8 @@ describe('computePortfolioSummaryV2', () => {
           symbol: 'REIT',
           type: 'dividend',
           quantity: 0, // Dividends don't affect quantity
-          price_per_unit: 50, // Total dividend amount
+          price_per_unit: 0,
+          amount: 50, // Total dividend amount
           fees: 0,
           date: '2024-06-15'
         })
@@ -1083,7 +1087,8 @@ describe('computePortfolioSummaryV2', () => {
           symbol: 'MIXED',
           type: 'dividend',
           quantity: 0,
-          price_per_unit: 25,
+          price_per_unit: 0,
+          amount: 25,
           fees: 0,
           date: '2024-03-15'
         }),
@@ -1141,14 +1146,14 @@ describe('computePortfolioSummaryV2', () => {
       // SCENARIO: Reproducing the DHER.DE bug where closed position shows 99.61% instead of ~-3%
       const dherTransactions: Transaction[] = [
         // Simulate some of the DHER.DE buy transactions
-        { id: 'tx-1', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 37, price_per_unit: 38.48, fees: 0, date: '2022-12-15', notes: null, created_at: '2022-12-15T10:00:00Z', updated_at: '2022-12-15T10:00:00Z' },
-        { id: 'tx-2', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 68, price_per_unit: 38.40, fees: 0, date: '2023-06-28', notes: null, created_at: '2023-06-28T10:00:00Z', updated_at: '2023-06-28T10:00:00Z' },
-        { id: 'tx-3', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 92, price_per_unit: 38.29, fees: 0, date: '2024-11-13', notes: null, created_at: '2024-11-13T10:00:00Z', updated_at: '2024-11-13T10:00:00Z' },
-        { id: 'tx-4', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 120, price_per_unit: 24.23, fees: 0, date: '2025-02-06', notes: null, created_at: '2025-02-06T10:00:00Z', updated_at: '2025-02-06T10:00:00Z' },
-        { id: 'tx-5', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 28, price_per_unit: 23.44, fees: 0, date: '2025-06-09', notes: null, created_at: '2025-06-09T10:00:00Z', updated_at: '2025-06-09T10:00:00Z' },
+        { id: 'tx-1', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 37, price_per_unit: 38.48, fees: 0, amount: null, broker: null, currency: 'EUR', date: '2022-12-15', notes: null, created_at: '2022-12-15T10:00:00Z', updated_at: '2022-12-15T10:00:00Z' },
+        { id: 'tx-2', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 68, price_per_unit: 38.40, fees: 0, amount: null, broker: null, currency: 'EUR', date: '2023-06-28', notes: null, created_at: '2023-06-28T10:00:00Z', updated_at: '2023-06-28T10:00:00Z' },
+        { id: 'tx-3', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 92, price_per_unit: 38.29, fees: 0, amount: null, broker: null, currency: 'EUR', date: '2024-11-13', notes: null, created_at: '2024-11-13T10:00:00Z', updated_at: '2024-11-13T10:00:00Z' },
+        { id: 'tx-4', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 120, price_per_unit: 24.23, fees: 0, amount: null, broker: null, currency: 'EUR', date: '2025-02-06', notes: null, created_at: '2025-02-06T10:00:00Z', updated_at: '2025-02-06T10:00:00Z' },
+        { id: 'tx-5', user_id: mockUserId, symbol: 'DHER.DE', type: 'buy', quantity: 28, price_per_unit: 23.44, fees: 0, amount: null, broker: null, currency: 'EUR', date: '2025-06-09', notes: null, created_at: '2025-06-09T10:00:00Z', updated_at: '2025-06-09T10:00:00Z' },
 
         // Final sale that closes the position
-        { id: 'tx-sale', user_id: mockUserId, symbol: 'DHER.DE', type: 'sell', quantity: 345, price_per_unit: 27.18, fees: 44, date: '2025-07-24', notes: null, created_at: '2025-07-24T10:00:00Z', updated_at: '2025-07-24T10:00:00Z' }
+        { id: 'tx-sale', user_id: mockUserId, symbol: 'DHER.DE', type: 'sell', quantity: 345, price_per_unit: 27.18, fees: 44, amount: null, broker: null, currency: 'EUR', date: '2025-07-24', notes: null, created_at: '2025-07-24T10:00:00Z', updated_at: '2025-07-24T10:00:00Z' }
       ]
 
       // Calculate expected values

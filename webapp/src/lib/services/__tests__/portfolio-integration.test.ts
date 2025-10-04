@@ -242,6 +242,7 @@ const testScenarios = [
         type: 'buy' as const,
         quantity: 100,
         price_per_unit: 100.00,
+        amount: null,
         date: '2022-01-01',
         fees: 10.00,
         currency: 'USD',
@@ -255,8 +256,9 @@ const testScenarios = [
         user_id: 'test-user-3',
         symbol: 'AAPL',
         type: 'dividend' as const,
-        quantity: 25.00, // Cash dividend
-        price_per_unit: 1.00,
+        quantity: 0, // Cash dividend (no shares added)
+        price_per_unit: 0,
+        amount: 25.00, // $25 cash dividend
         date: '2022-06-01',
         fees: 0.00,
         currency: 'USD',
@@ -272,6 +274,7 @@ const testScenarios = [
         type: 'sell' as const,
         quantity: 25,
         price_per_unit: 150.00,
+        amount: null,
         date: '2023-01-01',
         fees: 10.00,
         currency: 'USD',
@@ -286,7 +289,8 @@ const testScenarios = [
         symbol: 'AAPL',
         type: 'bonus' as const,
         quantity: 5, // Stock split/bonus shares
-        price_per_unit: 1.00,
+        price_per_unit: 0.00, // Bonus shares have no cost
+        amount: null,
         date: '2023-06-01',
         fees: 0.00,
         currency: 'USD',
@@ -318,10 +322,10 @@ const testScenarios = [
       // Final: 100 + 25 - 25 + 5 = 105 shares
       // Average cost stays $100 (bonus/dividend shares don't affect cost basis)
       appleQuantity: 80, // Updated to match UnifiedCalculationService results
-      appleAvgCost: 93.81, // Updated to match UnifiedCalculationService results
+      appleAvgCost: 93.75, // Updated: 7500 / 80 shares
       totalValue: 14840, // Updated to match UnifiedCalculationService results
-      totalCostBasis: 7505, // Updated to match UnifiedCalculationService results
-      totalUnrealizedPnL: 14840 - 7505 // 7335.00
+      totalCostBasis: 7500, // Updated: With bonus shares having 0 cost
+      totalUnrealizedPnL: 14840 - 7500 // 7340.00
     }
   }
 ]

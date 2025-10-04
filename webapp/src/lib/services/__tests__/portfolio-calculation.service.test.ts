@@ -84,7 +84,10 @@ describe('PortfolioCalculationService', () => {
           fees: 5.00,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -125,7 +128,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -137,7 +143,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-02',
           created_at: '2024-01-02T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -172,7 +181,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -184,7 +196,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-02',
           created_at: '2024-01-02T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -217,7 +232,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -229,7 +247,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-02',
           created_at: '2024-01-02T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -258,7 +279,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -270,7 +294,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-02',
           created_at: '2024-01-02T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -306,7 +333,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -318,7 +348,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-02',
           created_at: '2024-01-02T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -351,7 +384,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -384,7 +420,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -417,7 +456,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -429,7 +471,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-02',
           created_at: '2024-01-02T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -465,7 +510,10 @@ describe('PortfolioCalculationService', () => {
           fees: 5000.00,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -504,7 +552,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -516,7 +567,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx3',
@@ -528,7 +582,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -573,7 +630,10 @@ describe('PortfolioCalculationService', () => {
           fees: 10.00,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         // Additional AAPL purchase at higher price
         {
@@ -586,7 +646,10 @@ describe('PortfolioCalculationService', () => {
           fees: 5.00,
           date: '2024-01-05',
           created_at: '2024-01-05T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         // Sell some shares
         {
@@ -599,7 +662,10 @@ describe('PortfolioCalculationService', () => {
           fees: 8.00,
           date: '2024-01-10',
           created_at: '2024-01-10T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         // Receive dividend shares
         {
@@ -612,7 +678,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-15',
           created_at: '2024-01-15T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -656,7 +725,10 @@ describe('PortfolioCalculationService', () => {
           fees: 5.00,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -668,7 +740,10 @@ describe('PortfolioCalculationService', () => {
           fees: 2.50,
           date: '2024-01-02',
           created_at: '2024-01-02T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -690,7 +765,10 @@ describe('PortfolioCalculationService', () => {
           fees: 10.00,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -702,7 +780,10 @@ describe('PortfolioCalculationService', () => {
           fees: 5.00,
           date: '2024-01-02',
           created_at: '2024-01-02T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -726,7 +807,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -738,7 +822,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-02',
           created_at: '2024-01-02T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -762,7 +849,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -770,11 +860,14 @@ describe('PortfolioCalculationService', () => {
           symbol: 'AAPL',
           type: 'dividend',
           quantity: 2,
-          price_per_unit: 5.00,
+          price_per_unit: 0,
           fees: null,
           date: '2024-01-02',
           created_at: '2024-01-02T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: 5.00,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx3',
@@ -786,7 +879,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-03',
           created_at: '2024-01-03T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -808,7 +904,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-01',
           created_at: '2024-01-01T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx2',
@@ -820,7 +919,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-05',
           created_at: '2024-01-05T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         },
         {
           id: 'tx3',
@@ -832,7 +934,10 @@ describe('PortfolioCalculationService', () => {
           fees: null,
           date: '2024-01-10',
           created_at: '2024-01-10T00:00:00Z',
-          notes: null
+          notes: null,
+          amount: null,
+          broker: null,
+          currency: 'USD'
         }
       ];
 
@@ -881,7 +986,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Initial purchase',
           broker: null,
           created_at: '2021-01-01T00:00:00Z',
-          updated_at: '2021-01-01T00:00:00Z'
+          updated_at: '2021-01-01T00:00:00Z',
+          amount: null
         }
       ]
 
@@ -958,7 +1064,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Initial purchase',
           broker: null,
           created_at: '2021-01-01T00:00:00Z',
-          updated_at: '2021-01-01T00:00:00Z'
+          updated_at: '2021-01-01T00:00:00Z',
+          amount: null
         }
       ]
 
@@ -1036,7 +1143,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Initial purchase',
           broker: null,
           created_at: '2021-01-01T00:00:00Z',
-          updated_at: '2021-01-01T00:00:00Z'
+          updated_at: '2021-01-01T00:00:00Z',
+          amount: null
         },
         // Add a hypothetical transaction that might cause the issue
         {
@@ -1052,7 +1160,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Partial sale',
           broker: null,
           created_at: '2022-01-01T00:00:00Z',
-          updated_at: '2022-01-01T00:00:00Z'
+          updated_at: '2022-01-01T00:00:00Z',
+          amount: null
         }
       ]
 
@@ -1125,7 +1234,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Initial purchase',
           broker: null,
           created_at: '2021-01-01T00:00:00Z',
-          updated_at: '2021-01-01T00:00:00Z'
+          updated_at: '2021-01-01T00:00:00Z',
+          amount: null
         }
       ]
 
@@ -1221,7 +1331,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Initial purchase',
           broker: null,
           created_at: '2022-01-18T00:00:00Z',
-          updated_at: '2022-01-18T00:00:00Z'
+          updated_at: '2022-01-18T00:00:00Z',
+          amount: null
         },
         {
           id: 'etf-2',
@@ -1236,7 +1347,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Second purchase',
           broker: null,
           created_at: '2023-06-15T00:00:00Z',
-          updated_at: '2023-06-15T00:00:00Z'
+          updated_at: '2023-06-15T00:00:00Z',
+          amount: null
         },
         {
           id: 'etf-dividend-1',
@@ -1245,13 +1357,14 @@ describe('PortfolioCalculationService', () => {
           symbol: 'TEST_ETF',
           type: 'dividend',
           quantity: 0, // Cash dividend (no shares)
-          price_per_unit: 5000.00, // $5000 total dividend
+          price_per_unit: 0,
           currency: 'USD',
           fees: 0,
           notes: 'Annual dividend payment',
           broker: null,
           created_at: '2024-03-15T00:00:00Z',
-          updated_at: '2024-03-15T00:00:00Z'
+          updated_at: '2024-03-15T00:00:00Z',
+          amount: 5000.00
         },
         {
           id: 'etf-dividend-2',
@@ -1260,13 +1373,14 @@ describe('PortfolioCalculationService', () => {
           symbol: 'TEST_ETF',
           type: 'dividend',
           quantity: 0, // Cash dividend (no shares)
-          price_per_unit: 7500.00, // $7500 total dividend
+          price_per_unit: 0,
           currency: 'USD',
           fees: 0,
           notes: 'Annual dividend payment',
           broker: null,
           created_at: '2025-03-15T00:00:00Z',
-          updated_at: '2025-03-15T00:00:00Z'
+          updated_at: '2025-03-15T00:00:00Z',
+          amount: 7500.00
         }
       ]
 
@@ -1372,7 +1486,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Initial purchase',
           broker: null,
           created_at: '2022-01-18T00:00:00Z',
-          updated_at: '2022-01-18T00:00:00Z'
+          updated_at: '2022-01-18T00:00:00Z',
+          amount: null
         }
       ]
 
@@ -1453,7 +1568,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Initial purchase',
           broker: null,
           created_at: '2021-01-01T00:00:00Z',
-          updated_at: '2021-01-01T00:00:00Z'
+          updated_at: '2021-01-01T00:00:00Z',
+          amount: null
         }
       ]
 
@@ -1555,7 +1671,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'ETF purchase',
           broker: null,
           created_at: '2022-01-18T00:00:00Z',
-          updated_at: '2022-01-18T00:00:00Z'
+          updated_at: '2022-01-18T00:00:00Z',
+          amount: null
         },
         {
           id: 'perco-1',
@@ -1570,7 +1687,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Custom asset purchase',
           broker: null,
           created_at: '2021-01-01T00:00:00Z',
-          updated_at: '2021-01-01T00:00:00Z'
+          updated_at: '2021-01-01T00:00:00Z',
+          amount: null
         }
       ]
 
@@ -1686,7 +1804,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Market symbol without current price',
           broker: null,
           created_at: '2022-01-01T00:00:00Z',
-          updated_at: '2022-01-01T00:00:00Z'
+          updated_at: '2022-01-01T00:00:00Z',
+          amount: null
         },
         {
           id: 'custom-1',
@@ -1701,7 +1820,8 @@ describe('PortfolioCalculationService', () => {
           notes: 'Custom symbol without manual price',
           broker: null,
           created_at: '2021-01-01T00:00:00Z',
-          updated_at: '2021-01-01T00:00:00Z'
+          updated_at: '2021-01-01T00:00:00Z',
+          amount: null
         }
       ]
 

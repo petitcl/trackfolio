@@ -80,7 +80,18 @@ export class UnifiedCalculationService {
           existing.totalCost = existing.quantity * existing.avgCost
         }
       } else if (transaction.type === 'dividend') {
-        existing.dividendIncome += (transaction.amount || 0)
+        // Dividends can be either:
+        // 1. Cash dividends (amount > 0, quantity = 0) - tracked as income
+        // 2. Stock dividends/DRIP (quantity > 0) - adds shares to position
+        if (transaction.quantity > 0) {
+          // Stock dividend - add shares (like bonus shares)
+          existing.quantity += transaction.quantity
+          existing.totalCost += transaction.quantity * transaction.price_per_unit
+          existing.avgCost = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
+        } else {
+          // Cash dividend - track as income
+          existing.dividendIncome += (transaction.amount || 0)
+        }
       } else if (transaction.type === 'bonus') {
         // Reinvested dividend or bonus shares - add to position
         existing.quantity += transaction.quantity

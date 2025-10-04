@@ -4,12 +4,12 @@ Mark done item with ✅
 ## TODO P1
 - ✅ Fix Annualized Return = -100% for some closed positions
 - ✅ Prevent page reload when changing "show closed positions"
-- [ ] Improve page load speed
+- [ ] Improve page load speed - time latency of service layer 
+- [ ] Move dashboard positions calculations to service layer
+- [ ] Update timerange changes to affect all metrics correctly
+- [ ] Fix annualized return calculation (use money weighted?)
 - [ ] Implement portfolio export and backup functionality
 - [ ] Add infinite scrolling to transaction history
-- [ ] Update timerange changes to affect other metrics correctly
-- [ ] Fix annualized return calculation (use money weighted?)
-- [ ] Update portfolio P&L and annualized returns to reflect selected timeframe
 - [ ] Redirect custom holding creation to holding detail page instead of homepage
 - [ ] Allow editing of custom holding details
 
