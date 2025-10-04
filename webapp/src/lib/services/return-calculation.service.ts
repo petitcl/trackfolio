@@ -2,10 +2,13 @@ import type { Transaction, Symbol } from '@/lib/supabase/types'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 
 /**
- * Unified portfolio return metrics - flat structure, always present
+ * Unified return metrics interface
+ * Used for both portfolio-level and symbol-level calculations
  * Combines P&L breakdown, cost basis, and annualized returns
+ *
+ * TODO: Add symbol-level TWR/XIRR calculation (currently only portfolio-level)
  */
-export interface PortfolioReturnMetrics {
+export interface ReturnMetrics {
   // Portfolio Value
   totalValue: number  // current total portfolio value
 
@@ -20,7 +23,7 @@ export interface PortfolioReturnMetrics {
   costBasis: number  // how much money was invested, taking into account shares sold
   totalInvested: number  // how much money was invested in total
 
-  // Annualized Returns
+  // Annualized Returns (portfolio-level, zeros for symbol-level)
   timeWeightedReturn: number     // TWR - pure investment performance (%)
   moneyWeightedReturn: number    // XIRR - investor experience with cash flow timing (%)
   totalReturnPercentage: number  // Absolute return percentage (%)
@@ -31,20 +34,15 @@ export interface PortfolioReturnMetrics {
   periodYears: number
 }
 
+// Legacy alias for backward compatibility
+export type PortfolioReturnMetrics = ReturnMetrics
+export type SymbolReturnMetrics = ReturnMetrics
+
 export interface ReturnCalculationOptions {
   startDate?: string
   endDate?: string
 }
 
-// Legacy interface - kept for tests, use PortfolioReturnMetrics instead
-interface AnnualizedReturnMetrics {
-  timeWeightedReturn: number
-  moneyWeightedReturn: number
-  totalReturn: number
-  startDate: string
-  endDate: string
-  periodYears: number
-}
 
 // FIFO lot
 interface Lot {
@@ -371,7 +369,7 @@ export class ReturnCalculationService {
     historicalData: HistoricalDataPoint[],
     symbols: Symbol[],
     options: ReturnCalculationOptions = {}
-  ): PortfolioReturnMetrics {
+  ): ReturnMetrics {
     // Return empty metrics if insufficient data
     if (historicalData.length < 2) {
       return this.getEmptyReturnMetrics()
@@ -452,7 +450,7 @@ export class ReturnCalculationService {
   /**
    * Return empty metrics structure (all zeros)
    */
-  getEmptyReturnMetrics(): PortfolioReturnMetrics {
+  getEmptyReturnMetrics(): ReturnMetrics {
     return {
       totalValue: 0,
       totalPnL: 0,
@@ -469,6 +467,87 @@ export class ReturnCalculationService {
       endDate: '',
       periodYears: 0
     }
+  }
+
+  /**
+   * Calculate return metrics for a specific symbol
+   * This is the single source of truth for per-symbol calculations
+   * Note: Annualized returns (TWR/XIRR) are currently set to 0 for symbol-level
+   * TODO: Implement symbol-level TWR/XIRR calculation
+   */
+  calculateSymbolPnLMetrics(
+    symbol: string,
+    transactions: Transaction[],
+    historicalData: HistoricalDataPoint[]
+  ): ReturnMetrics {
+    // Filter transactions for this symbol
+    const symbolTransactions = transactions.filter(t => t.symbol === symbol)
+
+    if (symbolTransactions.length === 0 || historicalData.length < 2) {
+      return this.getEmptyReturnMetrics()
+    }
+
+    // Use V2 summary to calculate P&L breakdown
+    const firstPoint = historicalData[0]
+    const lastPoint = historicalData[historicalData.length - 1]
+
+    const summary = computePortfolioSummaryV2(
+      symbolTransactions,
+      historicalData,
+      firstPoint.date,
+      lastPoint.date
+    )
+
+    // Calculate total return percentage
+    let totalReturnPercentage = 0
+    if (summary.totalInvested > 0) {
+      totalReturnPercentage = (summary.totalPnL / summary.totalInvested) * 100
+    }
+
+    return {
+      // Portfolio Value
+      totalValue: summary.totalValue,
+
+      // P&L Breakdown
+      totalPnL: summary.totalPnL,
+      realizedPnL: summary.realizedPnL + summary.dividends, // Realized = capital gains + dividends
+      unrealizedPnL: summary.unrealizedPnL,
+      capitalGains: summary.capitalGains,
+      dividends: summary.dividends,
+
+      // Cost Basis
+      costBasis: summary.costBasis,
+      totalInvested: summary.totalInvested,
+
+      // Annualized Returns (TODO: implement for symbol-level)
+      timeWeightedReturn: 0,
+      moneyWeightedReturn: 0,
+      totalReturnPercentage,
+
+      // Time Period
+      startDate: firstPoint.date,
+      endDate: lastPoint.date,
+      periodYears: this.calculateYearsDifference(firstPoint.date, lastPoint.date)
+    }
+  }
+
+  /**
+   * Calculate return metrics for all symbols in the portfolio
+   * Returns a map of symbol -> return metrics
+   */
+  calculateAllSymbolPnLMetrics(
+    transactions: Transaction[],
+    historicalData: HistoricalDataPoint[]
+  ): Map<string, ReturnMetrics> {
+    const symbolsSet = new Set(transactions.map(t => t.symbol))
+    const metricsMap = new Map<string, ReturnMetrics>()
+
+    for (const symbol of symbolsSet) {
+      const metrics = this.calculateSymbolPnLMetrics(symbol, transactions, historicalData)
+      metricsMap.set(symbol, metrics)
+    }
+
+    return metricsMap
   }
 
   /**
@@ -489,112 +568,6 @@ export class ReturnCalculationService {
   }
 
   /**
-   * Calculate comprehensive annualized return metrics for a portfolio or holding
-   * Now simplified to use V2 calculation internally
-   */
-  calculateAnnualizedReturns(
-    transactions: Transaction[],
-    historicalData: HistoricalDataPoint[],
-    symbols: Symbol[],
-    options: ReturnCalculationOptions = {}
-  ): AnnualizedReturnMetrics {
-    if (historicalData.length === 0) {
-      return this.getEmptyMetrics()
-    }
-
-    const { startDate: optionsStartDate, endDate: optionsEndDate } = options
-
-    // Filter historical data by date range if specified
-    let filteredData = historicalData
-    if (optionsStartDate || optionsEndDate) {
-      filteredData = historicalData.filter(point => {
-        const pointDate = point.date
-        if (optionsStartDate && pointDate < optionsStartDate) return false
-        if (optionsEndDate && pointDate > optionsEndDate) return false
-        return true
-      })
-    }
-
-    if (filteredData.length < 2) {
-      return this.getEmptyMetrics()
-    }
-
-    const firstPoint = filteredData[0]
-    const lastPoint = filteredData[filteredData.length - 1]
-    const periodYears = this.calculateYearsDifference(firstPoint.date, lastPoint.date)
-
-    // Use actual data range for calculation
-    const actualStartDate = optionsStartDate || firstPoint.date
-    const actualEndDate = optionsEndDate || lastPoint.date
-
-    if (periodYears <= 0) {
-      return this.getEmptyMetrics()
-    }
-
-    const lastHistPoint = filteredData[filteredData.length - 1]
-    const lastPointValue = Object.values(lastHistPoint.assetTypeValues).reduce((a, b) => a + b, 0)
-
-    // console.log(`🔍 Calculating annualized returns:`, {
-    //   actualStartDate,
-    //   actualEndDate,
-    //   transactionCount: transactions.length,
-    //   filteredDataPoints: filteredData.length,
-    //   lastPointDate: lastHistPoint.date,
-    //   lastPointValue,
-    //   lastPointCostBasis: lastHistPoint.costBasis
-    // })
-
-    // Use V2 calculation as the primary source
-    const v2Summary = this.calculatePortfolioSummaryV2(transactions, filteredData, actualStartDate, actualEndDate)
-
-    // console.log(`🔍 V2 Summary for return calculation:`, {
-    //   totalPnL: v2Summary.totalPnL,
-    //   totalInvested: v2Summary.totalInvested,
-    //   realizedPnL: v2Summary.realizedPnL,
-    //   unrealizedPnL: v2Summary.unrealizedPnL,
-    //   costBasis: v2Summary.costBasis
-    // })
-
-    // Calculate total return percentage
-    let totalReturn = 0
-    if (v2Summary.totalInvested > 0) {
-      totalReturn = (v2Summary.totalPnL / v2Summary.totalInvested) * 100
-    }
-
-    // console.log(`🔍 Total return calculation:`, {
-    //   totalPnL: v2Summary.totalPnL,
-    //   totalInvested: v2Summary.totalInvested,
-    //   totalReturn
-    // })
-
-    // Calculate XIRR for money-weighted return
-    // Get the final portfolio value from the last historical data point
-    const finalValue = Object.values(lastPoint.assetTypeValues).reduce((a, b) => a + b, 0)
-
-    // Filter transactions within the date range for XIRR
-    const xirrTransactions = transactions.filter(tx =>
-      tx.date >= actualStartDate && tx.date <= actualEndDate
-    )
-
-    const xirr = calculateXIRR(xirrTransactions, finalValue, actualEndDate)
-
-    const result = {
-      // V2 already provides TWR
-      timeWeightedReturn: v2Summary.annualizedReturn * 100,
-      // Use calculated XIRR for money-weighted return
-      moneyWeightedReturn: xirr * 100,
-      totalReturn,
-      startDate: firstPoint.date,
-      endDate: lastPoint.date,
-      periodYears
-    }
-
-    // console.log(`🔍 Returning annualized metrics:`, result)
-
-    return result
-  }
-
-  /**
    * Calculate the difference in years between two dates
    */
   private calculateYearsDifference(startDate: string, endDate: string): number {
@@ -603,66 +576,6 @@ export class ReturnCalculationService {
     return (end - start) / (365.25 * 24 * 60 * 60 * 1000)
   }
 
-  /**
-   * Return empty metrics structure
-   */
-  private getEmptyMetrics(): AnnualizedReturnMetrics {
-    return {
-      timeWeightedReturn: 0,
-      moneyWeightedReturn: 0,
-      totalReturn: 0,
-      startDate: '',
-      endDate: '',
-      periodYears: 0
-    }
-  }
-
-  /**
-   * Format return percentage for display
-   */
-  formatReturnPercentage(returnValue: number, decimals: number = 2): string {
-    const sign = returnValue >= 0 ? '+' : ''
-    return `${sign}${returnValue.toFixed(decimals)}%`
-  }
-
-  /**
-   * Get display color class based on return value
-   */
-  getReturnColorClass(returnValue: number): string {
-    if (returnValue > 0) return 'text-green-600 dark:text-green-400'
-    if (returnValue < 0) return 'text-red-600 dark:text-red-400'
-    return 'text-gray-600 dark:text-gray-400'
-  }
-
-
-  /**
-   * Calculate simple annualized return for quick estimates
-   * Simplified to work with basic inputs when V2 data isn't available
-   */
-  calculateSimpleAnnualizedReturn(
-    currentValue: number,
-    totalInvested: number,
-    firstTransactionDate: string
-  ): number {
-    if (totalInvested <= 0) return 0
-
-    const years = this.calculateYearsDifference(
-      firstTransactionDate,
-      new Date().toISOString().split('T')[0]
-    )
-
-    if (years <= 0) return 0
-
-    const totalReturn = (currentValue / totalInvested) - 1
-
-    // For periods less than 1 year, return simple return
-    if (years < 1) {
-      return totalReturn * 100
-    }
-
-    // Annualized return
-    return (Math.pow(1 + totalReturn, 1 / years) - 1) * 100
-  }
 }
 
 // Singleton instance

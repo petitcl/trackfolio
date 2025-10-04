@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { portfolioService, type PortfolioReturnMetrics } from '@/lib/services/portfolio.service'
+import { portfolioService, type ReturnMetrics } from '@/lib/services/portfolio.service'
 import { type AuthUser } from '@/lib/auth/client.auth.service'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 import { type TimeRange } from '@/lib/utils/timeranges'
@@ -21,7 +21,7 @@ export default function DetailedHoldingReturns({
   timeRange = 'all',
   className = ''
 }: DetailedHoldingReturnsProps) {
-  const [detailedReturns, setDetailedReturns] = useState<PortfolioReturnMetrics | null>(null)
+  const [detailedReturns, setDetailedReturns] = useState<ReturnMetrics | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

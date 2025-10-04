@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/types'
-import { portfolioService, type PortfolioPosition, type PortfolioData, type PortfolioReturnMetrics } from '@/lib/services/portfolio.service'
+import { portfolioService, type PortfolioPosition, type PortfolioData, type ReturnMetrics } from '@/lib/services/portfolio.service'
 import ValueEvolutionChart from './charts/ValueEvolutionChart'
 import TimeRangeSelector from './TimeRangeSelector'
 import type { HistoricalDataPoint } from '@/lib/mockData'
@@ -32,7 +32,7 @@ interface HoldingData {
   symbol: Symbol | null
   transactions: Transaction[]
   historicalData: HistoricalDataPoint[]
-  detailedReturns: PortfolioReturnMetrics | null
+  detailedReturns: ReturnMetrics | null
 }
 
 export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD', onCurrencyChange }: HoldingDetailsProps) {

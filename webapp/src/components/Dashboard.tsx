@@ -12,7 +12,7 @@ import TimeRangeSelector from '@/components/TimeRangeSelector'
 import { type AuthUser } from '@/lib/auth/client.auth.service'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
-import { portfolioService, type PortfolioData } from '@/lib/services/portfolio.service'
+import { portfolioService, type PortfolioData, type ReturnMetrics } from '@/lib/services/portfolio.service'
 import type { AssetType, Symbol } from '@/lib/supabase/types'
 import { formatPercent, getAssetTypeIcon, getAssetTypeLabel, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
 import { type TimeRange } from '@/lib/utils/timeranges'
@@ -50,6 +50,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [symbols, setSymbols] = useState<Symbol[]>([])
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
   const [repartitionData, setRepartitionData] = useState<Array<{ assetType: string; value: number; percentage: number }>>([])
+  const [symbolMetrics, setSymbolMetrics] = useState<Map<string, ReturnMetrics>>(new Map())
   const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>(
     currencyService.getPreferredCurrency()
   )
@@ -65,11 +66,12 @@ export default function Dashboard({ user }: DashboardProps) {
       console.log('📊 Loading portfolio data for user:', user.email, 'currency:', currency)
 
       const apiStartTime = performance.now()
-      const [portfolio, symbolsData, historical, repartition] = await Promise.all([
+      const [portfolio, symbolsData, historical, repartition, metrics] = await Promise.all([
         portfolioService.getPortfolioData(user, currency, true),
         portfolioService.getSymbols(user),
         portfolioService.getPortfolioHistoricalData(user, currency),
-        portfolioService.getPortfolioRepartitionData(user, currency, selectedTimeRange)
+        portfolioService.getPortfolioRepartitionData(user, currency, selectedTimeRange),
+        portfolioService.getAllSymbolPnLMetrics(user, currency)
       ])
       const apiEndTime = performance.now()
 
@@ -78,6 +80,7 @@ export default function Dashboard({ user }: DashboardProps) {
       setSymbols(symbolsData)
       setHistoricalData(historical)
       setRepartitionData(repartition)
+      setSymbolMetrics(metrics)
       const calculationEndTime = performance.now()
 
       console.log("portfolio", portfolio);
@@ -99,6 +102,7 @@ export default function Dashboard({ user }: DashboardProps) {
       setSymbols([])
       setHistoricalData([])
       setRepartitionData([])
+      setSymbolMetrics(new Map())
     } finally {
       setDataLoading(false)
     }
@@ -128,25 +132,28 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const formatCurrency = makeFormatCurrency(selectedCurrency)
 
-  const calculatePnLPercentage = (unrealizedPnL: number, avgCost: number, quantity: number) => {
-    const totalCost = avgCost * quantity
-    if (totalCost === 0) return 0
-    return (unrealizedPnL / totalCost) * 100
-  }
+  // Helper to get symbol metrics with fallback
+  const getSymbolMetrics = (symbol: string): { unrealizedPnL: number; realizedPnL: number; totalPnL: number; totalReturnPercentage: number } => {
+    const metrics = symbolMetrics.get(symbol)
+    if (!metrics) {
+      // Fallback calculation if metrics not available
+      const position = portfolioData?.positions.find(p => p.symbol === symbol)
+      if (!position) return { unrealizedPnL: 0, realizedPnL: 0, totalPnL: 0, totalReturnPercentage: 0 }
 
-  const calculateRealizedPnLPercentage = (realizedPnL: number, realizedCostBasis: number) => {
-    if (realizedCostBasis === 0) return 0
-    return (realizedPnL / realizedCostBasis) * 100
-  }
+      const unrealizedPnL = (position.currentPrice - position.avgCost) * position.quantity
+      const totalPnL = unrealizedPnL + position.dividendIncome
+      const totalCost = position.avgCost * position.quantity
+      const totalReturnPercentage = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
 
-  const calculateTotalReturn = (unrealizedPnL: number, dividendIncome: number) => {
-    return unrealizedPnL + dividendIncome
-  }
+      return { unrealizedPnL, realizedPnL: 0, totalPnL, totalReturnPercentage }
+    }
 
-  const calculateTotalReturnPercentage = (unrealizedPnL: number, dividendIncome: number, avgCost: number, quantity: number) => {
-    const totalCost = avgCost * quantity
-    if (totalCost === 0) return 0
-    return ((unrealizedPnL + dividendIncome) / totalCost) * 100
+    return {
+      unrealizedPnL: metrics.unrealizedPnL,
+      realizedPnL: metrics.realizedPnL,
+      totalPnL: metrics.totalPnL,
+      totalReturnPercentage: metrics.totalReturnPercentage
+    }
   }
 
 
@@ -432,21 +439,22 @@ export default function Dashboard({ user }: DashboardProps) {
                     // Calculate totals for this asset type (only include active positions in totals)
                     const activePositions = positions.filter(pos => pos.quantity > 0)
                     const typeTotalValue = activePositions.reduce((sum, pos) => sum + pos.value, 0)
-                    const typeTotalPnL = activePositions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
+                    const typeTotalUnrealizedPnL = activePositions.reduce((sum, pos) => sum + getSymbolMetrics(pos.symbol).unrealizedPnL, 0)
                     const typeTotalDividends = activePositions.reduce((sum, pos) => sum + pos.dividendIncome, 0)
-                    const typeTotalReturn = typeTotalPnL + typeTotalDividends
-                    const typeTotalRealizedPnL = positions.reduce((sum, pos) => sum + (pos.realizedPnL || 0), 0)
-                    const typeTotalRealizedCostBasis = positions.reduce((sum, pos) => sum + (pos.realizedCostBasis || 0), 0)
+                    const typeTotalReturn = typeTotalUnrealizedPnL + typeTotalDividends
+                    const typeTotalRealizedPnL = positions.reduce((sum, pos) => sum + getSymbolMetrics(pos.symbol).realizedPnL, 0)
                     const typeTotalCost = activePositions.reduce((sum, pos) => sum + (pos.avgCost * pos.quantity), 0)
-                    const typePnLPercentage = typeTotalCost > 0 ? (typeTotalPnL / typeTotalCost) * 100 : 0
+                    const typePnLPercentage = typeTotalCost > 0 ? (typeTotalUnrealizedPnL / typeTotalCost) * 100 : 0
                     const typeTotalReturnPercentage = typeTotalCost > 0 ? (typeTotalReturn / typeTotalCost) * 100 : 0
-                    const typeRealizedPnLPercentage = typeTotalRealizedCostBasis > 0 ? (typeTotalRealizedPnL / typeTotalRealizedCostBasis) * 100 : 0
 
                     // Add individual positions
                     positions.forEach(position => {
-                      const pnlPercentage = calculatePnLPercentage(position.unrealizedPnL, position.avgCost, position.quantity)
-                      const realizedPnLPercentage = calculateRealizedPnLPercentage(position.realizedPnL, position.realizedCostBasis)
+                      const metrics = getSymbolMetrics(position.symbol)
                       const isClosed = position.quantity === 0
+                      const totalCost = position.avgCost * position.quantity
+                      const pnlPercentage = totalCost > 0 ? (metrics.unrealizedPnL / totalCost) * 100 : 0
+                      const totalReturn = metrics.unrealizedPnL + position.dividendIncome
+                      const totalReturnPercentage = totalCost > 0 ? (totalReturn / totalCost) * 100 : 0
                       rows.push(
                         <tr key={position.symbol} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${isClosed ? 'opacity-60' : ''}`}>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -485,16 +493,16 @@ export default function Dashboard({ user }: DashboardProps) {
                               {isClosed ? '-' : formatCurrency(position.value)}
                             </a>
                           </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? 'text-gray-500 dark:text-gray-400' : getPnLColor(position.unrealizedPnL)}`}>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? 'text-gray-500 dark:text-gray-400' : getPnLColor(metrics.unrealizedPnL)}`}>
                             <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
-                              <div>{isClosed ? '-' : formatCurrency(position.unrealizedPnL)}</div>
+                              <div>{isClosed ? '-' : formatCurrency(metrics.unrealizedPnL)}</div>
                               <div className="text-xs">{isClosed ? '-' : formatPercent(pnlPercentage)}</div>
                             </a>
                           </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? getPnLColor(position.realizedPnL) : getPnLColor(calculateTotalReturn(position.unrealizedPnL, position.dividendIncome))}`}>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? getPnLColor(metrics.realizedPnL) : getPnLColor(totalReturn)}`}>
                             <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
-                              <div>{isClosed ? formatCurrency(position.realizedPnL) : formatCurrency(calculateTotalReturn(position.unrealizedPnL, position.dividendIncome))}</div>
-                              <div className="text-xs">{isClosed ? formatPercent(realizedPnLPercentage) : formatPercent(calculateTotalReturnPercentage(position.unrealizedPnL, position.dividendIncome, position.avgCost, position.quantity))}</div>
+                              <div>{isClosed ? formatCurrency(metrics.realizedPnL) : formatCurrency(totalReturn)}</div>
+                              <div className="text-xs">{isClosed ? formatPercent(metrics.totalReturnPercentage) : formatPercent(totalReturnPercentage)}</div>
                             </a>
                           </td>
                         </tr>
@@ -526,9 +534,9 @@ export default function Dashboard({ user }: DashboardProps) {
                           <td className="px-6 py-2 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
                             {activePositions.length > 0 ? formatCurrency(typeTotalValue) : '-'}
                           </td>
-                          <td className={`px-6 py-2 whitespace-nowrap text-sm font-bold ${activePositions.length > 0 ? getPnLColor(typeTotalPnL) : 'text-gray-500 dark:text-gray-400'}`}>
+                          <td className={`px-6 py-2 whitespace-nowrap text-sm font-bold ${activePositions.length > 0 ? getPnLColor(typeTotalUnrealizedPnL) : 'text-gray-500 dark:text-gray-400'}`}>
                             <div>
-                              {activePositions.length > 0 ? formatCurrency(typeTotalPnL) : '-'}
+                              {activePositions.length > 0 ? formatCurrency(typeTotalUnrealizedPnL) : '-'}
                             </div>
                             <div className="text-xs">
                               {activePositions.length > 0 ? formatPercent(typePnLPercentage) : '-'}
@@ -541,7 +549,7 @@ export default function Dashboard({ user }: DashboardProps) {
                             </div>
                             <div className="text-xs">
                               {activePositions.length > 0 ? formatPercent(typeTotalReturnPercentage) :
-                               (typeTotalRealizedPnL !== 0 ? formatPercent(typeRealizedPnLPercentage) : 'No Activity')}
+                               (typeTotalRealizedPnL !== 0 ? `${formatPercent(typeTotalRealizedPnL > 0 ? 100 : -100)} (closed)` : 'No Activity')}
                             </div>
                           </td>
                         </tr>

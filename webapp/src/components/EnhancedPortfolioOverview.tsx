@@ -1,11 +1,11 @@
 'use client'
 
 import React from 'react'
-import { type PortfolioReturnMetrics } from '@/lib/services/portfolio.service'
+import { type ReturnMetrics } from '@/lib/services/portfolio.service'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 
 interface EnhancedPortfolioOverviewProps {
-  returns: PortfolioReturnMetrics
+  returns: ReturnMetrics
   selectedCurrency: SupportedCurrency
 }
 

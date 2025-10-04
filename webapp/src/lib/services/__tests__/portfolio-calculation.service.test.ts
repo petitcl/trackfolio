@@ -108,11 +108,8 @@ describe('PortfolioCalculationService', () => {
         avgCost: 100.00,
         currentPrice: 150.00,
         value: 1500.00,
-        unrealizedPnL: 500.00, // (10 * 150) - (10 * 100)
         isCustom: false,
         dividendIncome: 0,
-        realizedCostBasis: 0,
-        realizedPnL: 0
       });
     });
 
@@ -166,7 +163,6 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].avgCost).toBeCloseTo(113.33, 2);
       expect(positions[0].currentPrice).toBe(150.00);
       expect(positions[0].value).toBe(4500.00); // 30 * 150
-      expect(positions[0].unrealizedPnL).toBeCloseTo(1100.00, 2); // 4500 - 3400
     });
 
     it('should handle sell transactions correctly', async () => {
@@ -217,7 +213,6 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].quantity).toBe(15);
       expect(positions[0].avgCost).toBe(100.00); // Original cost basis remains
       expect(positions[0].value).toBe(2250.00); // 15 * 150
-      expect(positions[0].unrealizedPnL).toBe(750.00); // 2250 - (15 * 100)
     });
 
     it('should remove position when completely sold', async () => {
@@ -318,7 +313,6 @@ describe('PortfolioCalculationService', () => {
       // P&L calculation: 1800 - (12 * 100) = 1800 - 1200 = 600
       // But since 2 shares were free (dividends), actual cost was only 10 * 100 = 1000
       // So unrealized P&L should be 1800 - 1000 = 800
-      expect(positions[0].unrealizedPnL).toBeCloseTo(800.00, 2); // 1800 - 1000 = 800
     });
 
     it('should handle bonus shares without changing cost basis', async () => {
@@ -369,7 +363,6 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].quantity).toBe(15);
       expect(positions[0].avgCost).toBeCloseTo(66.67, 2); // $1000/15 shares = $66.67
       expect(positions[0].value).toBe(2250.00); // 15 * 150
-      expect(positions[0].unrealizedPnL).toBeCloseTo(1250.00, 2); // 2250 - 1000 = 1250
     });
 
     it('should handle dividend-only positions (no initial purchase)', async () => {
@@ -405,7 +398,6 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].quantity).toBe(5);
       expect(positions[0].avgCost).toBe(0.00); // No cost for dividend shares
       expect(positions[0].value).toBe(750.00); // 5 * 150
-      expect(positions[0].unrealizedPnL).toBe(750.00); // All profit since cost is 0
     });
 
     it('should handle deposit transactions (cash)', async () => {
@@ -441,7 +433,6 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].quantity).toBe(1000);
       expect(positions[0].avgCost).toBe(1.00);
       expect(positions[0].value).toBe(1000.00); // 1000 * 1
-      expect(positions[0].unrealizedPnL).toBe(0.00); // No change for cash
     });
 
     it('should handle withdrawal transactions (cash)', async () => {
@@ -492,7 +483,6 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].quantity).toBe(700);
       expect(positions[0].avgCost).toBe(1.00);
       expect(positions[0].value).toBe(700.00);
-      expect(positions[0].unrealizedPnL).toBe(0.00);
     });
 
     it('should handle custom assets correctly', async () => {
@@ -533,7 +523,6 @@ describe('PortfolioCalculationService', () => {
       expect(positions[0].avgCost).toBe(400000.00);
       expect(positions[0].currentPrice).toBe(500000.00);
       expect(positions[0].value).toBe(500000.00);
-      expect(positions[0].unrealizedPnL).toBe(100000.00);
       expect(positions[0].isCustom).toBe(true);
 
       // Clean up mock
@@ -609,12 +598,10 @@ describe('PortfolioCalculationService', () => {
       const btcPosition = positions.find(p => p.symbol === 'BTC');
       expect(btcPosition?.quantity).toBe(0.5);
       expect(btcPosition?.value).toBe(25000.00); // 0.5 * 50000
-      expect(btcPosition?.unrealizedPnL).toBe(5000.00); // 25000 - (0.5 * 40000)
 
       const cashPosition = positions.find(p => p.symbol === 'USD');
       expect(cashPosition?.quantity).toBe(5000);
       expect(cashPosition?.value).toBe(5000.00);
-      expect(cashPosition?.unrealizedPnL).toBe(0.00);
     });
 
     it('should handle complex transaction history with multiple operations', async () => {
@@ -708,7 +695,6 @@ describe('PortfolioCalculationService', () => {
       expect(position.avgCost).toBeCloseTo(88.61, 2);
       expect(position.currentPrice).toBe(150.00);
       expect(position.value).toBe(3600.00); // 24 * 150
-      expect(position.unrealizedPnL).toBeCloseTo(1473.33, 2); // 3600 - (24 * 88.61)
     });
   });
 
@@ -1018,7 +1004,6 @@ describe('PortfolioCalculationService', () => {
         expect(position.currentPrice).toBe(1024.885)
         expect(position.value).toBe(1024.885) // Should NOT be 741.059 (the bug value)
         expect(position.quantity * position.avgCost).toBe(870.40) // Cost basis should NOT be 741.059
-        expect(position.unrealizedPnL).toBeCloseTo(154.485, 2)
 
         // This test should fail if the bug is present, showing where the 741.059 comes from
         expect(position.value).not.toBe(741.059) // Anonymized version of 7410.59
@@ -1262,14 +1247,12 @@ describe('PortfolioCalculationService', () => {
           expect(position.currentPrice).toBe(1024.885)
           expect(position.value).toBe(1024.885) // 1 × 1024.885
           expect(position.avgCost).toBe(870.40)
-          expect(position.unrealizedPnL).toBeCloseTo(154.485, 2)
 
           console.log('Async method test - position:', {
             symbol: position.symbol,
             currentPrice: position.currentPrice,
             value: position.value,
             avgCost: position.avgCost,
-            unrealizedPnL: position.unrealizedPnL
           })
 
           // Verify the historical price service was called
@@ -1594,7 +1577,6 @@ describe('PortfolioCalculationService', () => {
           expect(position.currentPrice).toBe(10248.85)
           expect(position.value).toBeCloseTo(1 * 10248.85, 2) // €10,248.85
           expect(position.avgCost).toBe(8704.00)
-          expect(position.unrealizedPnL).toBeCloseTo(1544.85, 2)
 
           // This would fail before the fix (position.currentPrice would be 8704.00)
           expect(position.currentPrice).not.toBe(8704.00)
@@ -1860,7 +1842,6 @@ describe('PortfolioCalculationService', () => {
         if (customPosition) {
           expect(customPosition.currentPrice).toBe(200.00) // From avgCost fallback
           expect(customPosition.value).toBe(5 * 200.00)
-          expect(customPosition.unrealizedPnL).toBe(0) // No gain/loss if using cost as current price
         }
 
         console.log('Fallback test results:', {
@@ -1902,7 +1883,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 140.00,
           currentPrice: 150.00,
           value: 15000,
-          unrealizedPnL: 1000,
           isCustom: false,
           dividendIncome: 0
         },
@@ -1912,7 +1892,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 180.00,
           currentPrice: 200.00,
           value: 10000,
-          unrealizedPnL: 1000,
           isCustom: false,
           dividendIncome: 0
         }
@@ -1955,7 +1934,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 140.00,
           currentPrice: 150.00,
           value: 15000,
-          unrealizedPnL: 1000,
           isCustom: false,
           dividendIncome: 0
         },
@@ -1965,7 +1943,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 180.00,
           currentPrice: 200.00,
           value: 10000,
-          unrealizedPnL: 1000,
           isCustom: false,
           dividendIncome: 0
         }
@@ -2002,7 +1979,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 450000.00,
           currentPrice: 500000.00,
           value: 500000,
-          unrealizedPnL: 50000,
           isCustom: true,
           dividendIncome: 0
         }
@@ -2065,7 +2041,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 140.00,
           currentPrice: 150.00,
           value: 15000,
-          unrealizedPnL: 1000,
           isCustom: false,
           dividendIncome: 0
         },
@@ -2075,7 +2050,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 40000.00,
           currentPrice: 50000.00,
           value: 25000,
-          unrealizedPnL: 5000,
           isCustom: false,
           dividendIncome: 0
         },
@@ -2085,7 +2059,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 450000.00,
           currentPrice: 500000.00,
           value: 500000,
-          unrealizedPnL: 50000,
           isCustom: true,
           dividendIncome: 0
         }
@@ -2141,7 +2114,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 140.00,
           currentPrice: 150.00,
           value: 15000,
-          unrealizedPnL: 1000,
           isCustom: false,
           dividendIncome: 0
         },
@@ -2151,7 +2123,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 180.00,
           currentPrice: 200.00,
           value: 10000,
-          unrealizedPnL: 1000,
           isCustom: false,
           dividendIncome: 0
         }
@@ -2187,7 +2158,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 100.00,
           currentPrice: 120.00,
           value: 1200,
-          unrealizedPnL: 200,
           isCustom: true,
           dividendIncome: 0
         }
@@ -2261,7 +2231,6 @@ describe('PortfolioCalculationService', () => {
           avgCost: 140.00,
           currentPrice: 150.00,
           value: 15000,
-          unrealizedPnL: 1000,
           isCustom: false,
           dividendIncome: 0
         }

@@ -5,20 +5,19 @@ import { unifiedCalculationService, type PortfolioPosition } from './unified-cal
 import { historicalDataService } from './historical-data.service'
 import { transactionService } from './transaction.service'
 import { type SupportedCurrency } from './currency.service'
-import { returnCalculationService, type PortfolioReturnMetrics } from './return-calculation.service'
+import { returnCalculationService, type ReturnMetrics } from './return-calculation.service'
 import { getStartDateForTimeRange, type TimeRange } from '../utils/timeranges'
 
 // Re-export types for external components
-export type { PortfolioPosition, PortfolioReturnMetrics }
+export type { PortfolioPosition, ReturnMetrics }
 
 export interface PortfolioData {
   positions: PortfolioPosition[]
-  returns: PortfolioReturnMetrics
+  returns: ReturnMetrics
 }
 
 /**
  * Main Portfolio Service - orchestrates other services
- * Now much smaller and focused on coordination rather than implementation
  */
 export class PortfolioService {
   /**
@@ -56,7 +55,7 @@ export class PortfolioService {
       const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
 
       // Calculate unified return metrics (always present, defaults to zeros if insufficient data)
-      let returns: PortfolioReturnMetrics
+      let returns: ReturnMetrics
       try {
         const historicalData = await historicalDataService.buildHistoricalData(user, transactions, symbols, targetCurrency)
         returns = returnCalculationService.calculatePortfolioReturnMetrics(
@@ -114,7 +113,7 @@ export class PortfolioService {
     return transactionService.getHoldingTransactions(user, symbol)
   }
 
-  async getHoldingDetailedReturns(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<PortfolioReturnMetrics | null> {
+  async getHoldingDetailedReturns(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<ReturnMetrics | null> {
     try {
       console.log('📊 Calculating detailed returns for holding:', symbol, 'timeRange:', timeRange)
 
@@ -250,6 +249,52 @@ export class PortfolioService {
 
   async deleteUserSymbolPrice(user: AuthUser, priceId: string) {
     return transactionService.deleteUserSymbolPrice(user, priceId)
+  }
+
+  /**
+   * Calculate return metrics for a specific symbol
+   * This is the single source of truth for per-symbol calculations
+   */
+  async getSymbolPnLMetrics(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD'): Promise<ReturnMetrics | null> {
+    try {
+      const [transactions, symbols, historicalData] = await Promise.all([
+        transactionService.getHoldingTransactions(user, symbol),
+        transactionService.getSymbols(user),
+        this.getHoldingHistoricalData(user, symbol, targetCurrency)
+      ])
+
+      if (transactions.length === 0 || historicalData.length < 2) {
+        return null
+      }
+
+      return returnCalculationService.calculateSymbolPnLMetrics(symbol, transactions, historicalData)
+    } catch (error) {
+      console.error('❌ Error calculating symbol P&L metrics:', error)
+      return null
+    }
+  }
+
+  /**
+   * Calculate return metrics for all symbols in the portfolio
+   * Returns a map of symbol -> return metrics
+   */
+  async getAllSymbolPnLMetrics(user: AuthUser, targetCurrency: SupportedCurrency = 'USD'): Promise<Map<string, ReturnMetrics>> {
+    try {
+      const [transactions, symbols, historicalData] = await Promise.all([
+        transactionService.getTransactions(user),
+        transactionService.getSymbols(user),
+        this.getPortfolioHistoricalData(user, targetCurrency)
+      ])
+
+      if (transactions.length === 0 || historicalData.length < 2) {
+        return new Map()
+      }
+
+      return returnCalculationService.calculateAllSymbolPnLMetrics(transactions, historicalData)
+    } catch (error) {
+      console.error('❌ Error calculating all symbol P&L metrics:', error)
+      return new Map()
+    }
   }
 
   // Legacy method signatures for backward compatibility

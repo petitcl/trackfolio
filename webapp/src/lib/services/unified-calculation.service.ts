@@ -3,8 +3,6 @@ import type { Transaction, Symbol } from '@/lib/supabase/types'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import { historicalPriceService } from './historical-price.service'
 import { currencyService, type SupportedCurrency } from './currency.service'
-import { returnCalculationService } from './return-calculation.service'
-import { historicalDataService } from './historical-data.service'
 
 export interface PortfolioPosition {
   symbol: string
@@ -12,9 +10,6 @@ export interface PortfolioPosition {
   avgCost: number
   currentPrice: number
   value: number
-  unrealizedPnL: number
-  realizedPnL: number // Track realized gains/losses from sales and dividends
-  realizedCostBasis: number // Track total cost basis for realized positions (for percentage calculation)
   isCustom: boolean
   dividendIncome: number // Track total dividend income received as cash
 }
@@ -107,60 +102,6 @@ export class UnifiedCalculationService {
     return Array.from(positionMap.values())
   }
 
-  /**
-   * Calculate realized P&L and cost basis for a specific symbol
-   * Uses the return calculation service to get accurate realized gains/losses
-   */
-  private async calculateRealizedPnLForSymbol(
-    symbol: string,
-    transactions: Transaction[],
-    symbols: Symbol[],
-    user: AuthUser,
-    targetCurrency: SupportedCurrency
-  ): Promise<{ realizedPnL: number; costBasis: number }> {
-    try {
-      // Filter transactions for this symbol only
-      const symbolTransactions = transactions.filter(t => t.symbol === symbol)
-
-      if (symbolTransactions.length === 0) {
-        return { realizedPnL: 0, costBasis: 0 }
-      }
-
-      // Build historical data for this symbol (needed for return calculation)
-      const historicalData = await historicalDataService.buildHistoricalData(
-        user,
-        symbolTransactions,
-        symbols,
-        targetCurrency,
-        { symbol, useSimplePriceLookup: true }
-      )
-
-      if (historicalData.length < 2) {
-        return { realizedPnL: 0, costBasis: 0 }
-      }
-
-      // Calculate portfolio summary which includes realized P&L
-      const summary = returnCalculationService.calculatePortfolioSummaryV2(
-        symbolTransactions,
-        historicalData
-      )
-
-      // Calculate total cost basis from all buy transactions
-      const totalCostBasis = symbolTransactions
-        .filter(t => t.type === 'buy' || t.type === 'deposit')
-        .reduce((sum, t) => sum + (t.quantity * t.price_per_unit + (t.fees || 0)), 0)
-
-      // Return realized P&L + dividends (both are "realized" income) and cost basis
-      return {
-        realizedPnL: summary.realizedPnL + summary.dividends,
-        costBasis: totalCostBasis
-      }
-
-    } catch (error) {
-      console.warn(`Failed to calculate realized P&L for ${symbol}:`, error)
-      return { realizedPnL: 0, costBasis: 0 }
-    }
-  }
 
   /**
    * Unified method to get historical price for any symbol
@@ -535,22 +476,6 @@ export class UnifiedCalculationService {
 
       // Calculate value WITHOUT dividend income (as per user's requirement)
       const value = position.quantity * convertedCurrentPrice
-      const unrealizedPnL = value - (position.quantity * position.avgCost)
-
-      // Calculate realized P&L for this symbol (includes realized gains + dividends)
-      let realizedPnL = 0
-      let realizedCostBasis = 0
-      if (includeClosedPositions || position.quantity === 0) {
-        const realizedData = await this.calculateRealizedPnLForSymbol(
-          position.symbol,
-          transactions,
-          symbols,
-          user,
-          targetCurrency
-        )
-        realizedPnL = realizedData.realizedPnL
-        realizedCostBasis = realizedData.costBasis
-      }
 
       return {
         symbol: position.symbol,
@@ -558,9 +483,6 @@ export class UnifiedCalculationService {
         avgCost: position.avgCost,
         currentPrice: convertedCurrentPrice,
         value: value, // Dividend income NOT included here
-        unrealizedPnL: unrealizedPnL,
-        realizedPnL: realizedPnL,
-        realizedCostBasis: realizedCostBasis,
         isCustom: symbolData?.is_custom || false,
         dividendIncome: convertedDividendIncome // Tracked separately
       }
