@@ -36,8 +36,8 @@ export class UnifiedCalculationService {
     transactions: Transaction[],
     date: string,
     targetSymbol?: string,
-    includeClosedPositions: boolean = false
   ): UnifiedPosition[] {
+    const includeClosedPositions = true
     // Filter transactions up to date and optionally by symbol
     const relevantTransactions = transactions
       .filter(t => t.date <= date)
@@ -101,7 +101,6 @@ export class UnifiedCalculationService {
 
     return Array.from(positionMap.values())
   }
-
 
   /**
    * Unified method to get historical price for any symbol
@@ -410,12 +409,11 @@ export class UnifiedCalculationService {
     symbols: Symbol[],
     user: AuthUser,
     targetCurrency: SupportedCurrency = 'USD',
-    includeClosedPositions: boolean = false
   ): Promise<PortfolioPosition[]> {
     const currentDate = new Date().toISOString().split('T')[0]
 
     // Calculate positions as of current date
-    const unifiedPositions = this.calculatePositionsUpToDate(transactions, currentDate, undefined, includeClosedPositions)
+    const unifiedPositions = this.calculatePositionsUpToDate(transactions, currentDate, undefined)
 
     if (unifiedPositions.length === 0) {
       return []

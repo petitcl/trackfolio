@@ -34,15 +34,13 @@ export interface ReturnMetrics {
   periodYears: number
 }
 
-// Legacy alias for backward compatibility
 export type PortfolioReturnMetrics = ReturnMetrics
-export type SymbolReturnMetrics = ReturnMetrics
+export type HoldingReturnMetrics = ReturnMetrics
 
 export interface ReturnCalculationOptions {
   startDate?: string
   endDate?: string
 }
-
 
 // FIFO lot
 interface Lot {
@@ -470,16 +468,17 @@ export class ReturnCalculationService {
   }
 
   /**
-   * Calculate return metrics for a specific symbol
+   * Calculate return metrics for a specific holding
    * This is the single source of truth for per-symbol calculations
    * Note: Annualized returns (TWR/XIRR) are currently set to 0 for symbol-level
    * TODO: Implement symbol-level TWR/XIRR calculation
    */
-  calculateSymbolPnLMetrics(
+  calculateHoldingReturnMetrics(
     symbol: string,
     transactions: Transaction[],
     historicalData: HistoricalDataPoint[]
   ): ReturnMetrics {
+    console.log("calculateHoldingReturnMetrics");
     // Filter transactions for this symbol
     const symbolTransactions = transactions.filter(t => t.symbol === symbol)
 
@@ -487,55 +486,62 @@ export class ReturnCalculationService {
       return this.getEmptyReturnMetrics()
     }
 
-    // Use V2 summary to calculate P&L breakdown
-    const firstPoint = historicalData[0]
-    const lastPoint = historicalData[historicalData.length - 1]
-
-    const summary = computePortfolioSummaryV2(
+    return this.calculatePortfolioReturnMetrics(
       symbolTransactions,
       historicalData,
-      firstPoint.date,
-      lastPoint.date
+      [],
+      {}
     )
 
-    // Calculate total return percentage
-    let totalReturnPercentage = 0
-    if (summary.totalInvested > 0) {
-      totalReturnPercentage = (summary.totalPnL / summary.totalInvested) * 100
-    }
+    // // Use V2 summary to calculate P&L breakdown
+    // const firstPoint = historicalData[0]
+    // const lastPoint = historicalData[historicalData.length - 1]
 
-    return {
-      // Portfolio Value
-      totalValue: summary.totalValue,
+    // const summary = computePortfolioSummaryV2(
+    //   symbolTransactions,
+    //   historicalData,
+    //   firstPoint.date,
+    //   lastPoint.date
+    // )
 
-      // P&L Breakdown
-      totalPnL: summary.totalPnL,
-      realizedPnL: summary.realizedPnL + summary.dividends, // Realized = capital gains + dividends
-      unrealizedPnL: summary.unrealizedPnL,
-      capitalGains: summary.capitalGains,
-      dividends: summary.dividends,
+    // // Calculate total return percentage
+    // let totalReturnPercentage = 0
+    // if (summary.totalInvested > 0) {
+    //   totalReturnPercentage = (summary.totalPnL / summary.totalInvested) * 100
+    // }
 
-      // Cost Basis
-      costBasis: summary.costBasis,
-      totalInvested: summary.totalInvested,
+    // return {
+    //   // Portfolio Value
+    //   totalValue: summary.totalValue,
 
-      // Annualized Returns (TODO: implement for symbol-level)
-      timeWeightedReturn: 0,
-      moneyWeightedReturn: 0,
-      totalReturnPercentage,
+    //   // P&L Breakdown
+    //   totalPnL: summary.totalPnL,
+    //   realizedPnL: summary.realizedPnL + summary.dividends, // Realized = capital gains + dividends
+    //   unrealizedPnL: summary.unrealizedPnL,
+    //   capitalGains: summary.capitalGains,
+    //   dividends: summary.dividends,
 
-      // Time Period
-      startDate: firstPoint.date,
-      endDate: lastPoint.date,
-      periodYears: this.calculateYearsDifference(firstPoint.date, lastPoint.date)
-    }
+    //   // Cost Basis
+    //   costBasis: summary.costBasis,
+    //   totalInvested: summary.totalInvested,
+
+    //   // Annualized Returns (TODO: implement for symbol-level)
+    //   timeWeightedReturn: 0,
+    //   moneyWeightedReturn: 0,
+    //   totalReturnPercentage,
+
+    //   // Time Period
+    //   startDate: firstPoint.date,
+    //   endDate: lastPoint.date,
+    //   periodYears: this.calculateYearsDifference(firstPoint.date, lastPoint.date)
+    // }
   }
 
   /**
    * Calculate return metrics for all symbols in the portfolio
    * Returns a map of symbol -> return metrics
    */
-  calculateAllSymbolPnLMetrics(
+  calculateAllHoldingsReturnMetrics(
     transactions: Transaction[],
     historicalData: HistoricalDataPoint[]
   ): Map<string, ReturnMetrics> {
@@ -543,7 +549,7 @@ export class ReturnCalculationService {
     const metricsMap = new Map<string, ReturnMetrics>()
 
     for (const symbol of symbolsSet) {
-      const metrics = this.calculateSymbolPnLMetrics(symbol, transactions, historicalData)
+      const metrics = this.calculateHoldingReturnMetrics(symbol, transactions, historicalData)
       metricsMap.set(symbol, metrics)
     }
 

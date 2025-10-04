@@ -58,7 +58,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
           portfolioService.getSymbols(user),
           portfolioService.getTransactions(user),
           portfolioService.getHoldingHistoricalData(user, symbol, selectedCurrency),
-          portfolioService.getHoldingDetailedReturns(user, symbol, selectedCurrency, timeRange)
+          portfolioService.getHoldingReturnMetrics(user, symbol, selectedCurrency, timeRange)
         ])
         const apiEndTime = performance.now()
 

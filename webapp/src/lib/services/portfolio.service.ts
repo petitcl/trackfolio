@@ -35,7 +35,7 @@ export class PortfolioService {
     historicalPriceService.clearCache()
   }
 
-  async getPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', includeClosedPositions: boolean = false): Promise<PortfolioData> {
+  async getPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD'): Promise<PortfolioData> {
     console.log('🔄 Fetching portfolio data for user:', user.email)
 
     try {
@@ -49,10 +49,7 @@ export class PortfolioService {
       }
 
       // Calculate positions using unified calculation service (already in target currency)
-      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency, includeClosedPositions)
-
-      // Calculate totals in target currency (no additional conversion needed)
-      const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
+      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency)
 
       // Calculate unified return metrics (always present, defaults to zeros if insufficient data)
       let returns: ReturnMetrics
@@ -113,7 +110,7 @@ export class PortfolioService {
     return transactionService.getHoldingTransactions(user, symbol)
   }
 
-  async getHoldingDetailedReturns(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<ReturnMetrics | null> {
+  async getHoldingReturnMetrics(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<ReturnMetrics> {
     try {
       console.log('📊 Calculating detailed returns for holding:', symbol, 'timeRange:', timeRange)
 
@@ -126,7 +123,7 @@ export class PortfolioService {
 
       if (transactions.length === 0 || historicalData.length < 2) {
         console.log('📊 Insufficient data for detailed return calculation')
-        return null
+        return returnCalculationService.getEmptyReturnMetrics()
       }
 
       // Apply time range filter if specified
@@ -148,8 +145,28 @@ export class PortfolioService {
       return returns
     } catch (error) {
       console.error('❌ Error calculating holding detailed returns:', error)
-      return null
+      return returnCalculationService.getEmptyReturnMetrics()
     }
+  }
+
+  /**
+   * Calculate return metrics for all symbols in the portfolio
+   * Returns a map of symbol -> return metrics
+   */
+  async getAllHoldingsReturnsMetricsNotTimeRangeAware(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<Map<string, ReturnMetrics>> {
+    const transactions = await transactionService.getTransactions(user)
+
+    const symbols = new Set<string>()
+    transactions.forEach(t => symbols.add(t.symbol))
+
+    const metricsMap = new Map<string, ReturnMetrics>()
+
+    for (const symbol of symbols) {
+      const metrics = await this.getHoldingReturnMetrics(user, symbol, targetCurrency, timeRange)
+      metricsMap.set(symbol, metrics)
+    }
+
+    return metricsMap
   }
 
   async getPortfolioRepartitionData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange, date?: string): Promise<Array<{
@@ -249,52 +266,6 @@ export class PortfolioService {
 
   async deleteUserSymbolPrice(user: AuthUser, priceId: string) {
     return transactionService.deleteUserSymbolPrice(user, priceId)
-  }
-
-  /**
-   * Calculate return metrics for a specific symbol
-   * This is the single source of truth for per-symbol calculations
-   */
-  async getSymbolPnLMetrics(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD'): Promise<ReturnMetrics | null> {
-    try {
-      const [transactions, symbols, historicalData] = await Promise.all([
-        transactionService.getHoldingTransactions(user, symbol),
-        transactionService.getSymbols(user),
-        this.getHoldingHistoricalData(user, symbol, targetCurrency)
-      ])
-
-      if (transactions.length === 0 || historicalData.length < 2) {
-        return null
-      }
-
-      return returnCalculationService.calculateSymbolPnLMetrics(symbol, transactions, historicalData)
-    } catch (error) {
-      console.error('❌ Error calculating symbol P&L metrics:', error)
-      return null
-    }
-  }
-
-  /**
-   * Calculate return metrics for all symbols in the portfolio
-   * Returns a map of symbol -> return metrics
-   */
-  async getAllSymbolPnLMetrics(user: AuthUser, targetCurrency: SupportedCurrency = 'USD'): Promise<Map<string, ReturnMetrics>> {
-    try {
-      const [transactions, symbols, historicalData] = await Promise.all([
-        transactionService.getTransactions(user),
-        transactionService.getSymbols(user),
-        this.getPortfolioHistoricalData(user, targetCurrency)
-      ])
-
-      if (transactions.length === 0 || historicalData.length < 2) {
-        return new Map()
-      }
-
-      return returnCalculationService.calculateAllSymbolPnLMetrics(transactions, historicalData)
-    } catch (error) {
-      console.error('❌ Error calculating all symbol P&L metrics:', error)
-      return new Map()
-    }
   }
 
   // Legacy method signatures for backward compatibility

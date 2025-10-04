@@ -32,7 +32,7 @@ export default function DetailedHoldingReturns({
         setError(null)
         console.log('📊 Loading detailed returns for holding:', symbol)
 
-        const returns = await portfolioService.getHoldingDetailedReturns(
+        const returns = await portfolioService.getHoldingReturnMetrics(
           user,
           symbol,
           selectedCurrency,

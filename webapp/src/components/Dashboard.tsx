@@ -50,7 +50,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [symbols, setSymbols] = useState<Symbol[]>([])
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
   const [repartitionData, setRepartitionData] = useState<Array<{ assetType: string; value: number; percentage: number }>>([])
-  const [symbolMetrics, setSymbolMetrics] = useState<Map<string, ReturnMetrics>>(new Map())
+  const [holdingsReturnMetrics, setHoldingsReturnMetrics] = useState<Map<string, ReturnMetrics>>(new Map())
   const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>(
     currencyService.getPreferredCurrency()
   )
@@ -59,19 +59,19 @@ export default function Dashboard({ user }: DashboardProps) {
   const router = useRouter()
 
   // Unified loader for portfolio data
-  const loadPortfolioData = useCallback(async (currency: SupportedCurrency) => {
+  const loadPortfolioData = useCallback(async (selectedCurrency: SupportedCurrency) => {
     try {
       setDataLoading(true)
       const startTime = performance.now()
-      console.log('📊 Loading portfolio data for user:', user.email, 'currency:', currency)
+      console.log('📊 Loading portfolio data for user:', user.email, 'currency:', selectedCurrency)
 
       const apiStartTime = performance.now()
-      const [portfolio, symbolsData, historical, repartition, metrics] = await Promise.all([
-        portfolioService.getPortfolioData(user, currency, true),
+      const [portfolio, symbolsData, historical, repartition, holdingsReturnMetrics] = await Promise.all([
+        portfolioService.getPortfolioData(user, selectedCurrency),
         portfolioService.getSymbols(user),
-        portfolioService.getPortfolioHistoricalData(user, currency),
-        portfolioService.getPortfolioRepartitionData(user, currency, selectedTimeRange),
-        portfolioService.getAllSymbolPnLMetrics(user, currency)
+        portfolioService.getPortfolioHistoricalData(user, selectedCurrency),
+        portfolioService.getPortfolioRepartitionData(user, selectedCurrency, selectedTimeRange),
+        portfolioService.getAllHoldingsReturnsMetricsNotTimeRangeAware(user, selectedCurrency, selectedTimeRange)
       ])
       const apiEndTime = performance.now()
 
@@ -80,12 +80,14 @@ export default function Dashboard({ user }: DashboardProps) {
       setSymbols(symbolsData)
       setHistoricalData(historical)
       setRepartitionData(repartition)
-      setSymbolMetrics(metrics)
+      setHoldingsReturnMetrics(holdingsReturnMetrics)
       const calculationEndTime = performance.now()
 
       console.log("portfolio", portfolio);
+      console.log("symbols", symbolsData);
       console.log("historical last point", historical.at(-1));
       console.log("repartition", repartition);
+      console.log("holdings return metrics", holdingsReturnMetrics);
 
       const totalTime = performance.now() - startTime
       const apiTime = apiEndTime - apiStartTime
@@ -102,7 +104,7 @@ export default function Dashboard({ user }: DashboardProps) {
       setSymbols([])
       setHistoricalData([])
       setRepartitionData([])
-      setSymbolMetrics(new Map())
+      setHoldingsReturnMetrics(new Map())
     } finally {
       setDataLoading(false)
     }
@@ -134,7 +136,7 @@ export default function Dashboard({ user }: DashboardProps) {
 
   // Helper to get symbol metrics with fallback
   const getSymbolMetrics = (symbol: string): { unrealizedPnL: number; realizedPnL: number; totalPnL: number; totalReturnPercentage: number } => {
-    const metrics = symbolMetrics.get(symbol)
+    const metrics = holdingsReturnMetrics.get(symbol)
     if (!metrics) {
       // Fallback calculation if metrics not available
       const position = portfolioData?.positions.find(p => p.symbol === symbol)
