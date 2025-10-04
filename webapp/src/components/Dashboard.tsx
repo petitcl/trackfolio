@@ -24,11 +24,9 @@ interface DashboardProps {
 }
 
 const defaultPortfolioData = (): PortfolioData => ({
-  totalValue: 0,
-  totalCostBasis: 0,
   positions: [],
-  totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 },
   returns: {
+    totalValue: 0,
     totalPnL: 0,
     realizedPnL: 0,
     unrealizedPnL: 0,
@@ -38,7 +36,7 @@ const defaultPortfolioData = (): PortfolioData => ({
     totalInvested: 0,
     timeWeightedReturn: 0,
     moneyWeightedReturn: 0,
-    totalReturn: 0,
+    totalReturnPercentage: 0,
     startDate: '',
     endDate: '',
     periodYears: 0
@@ -113,7 +111,6 @@ export default function Dashboard({ user }: DashboardProps) {
   const handleCurrencyChange = (newCurrency: SupportedCurrency) => {
     setSelectedCurrency(newCurrency)
   }
-
 
   const handleBulkImport = () => {
     setShowBulkImport(true)
@@ -212,8 +209,6 @@ export default function Dashboard({ user }: DashboardProps) {
           <div className="mb-8">
             <EnhancedPortfolioOverview
               returns={portfolioData.returns}
-              totalValue={portfolioData.totalValue}
-              totalCostBasis={portfolioData.totalCostBasis}
               selectedCurrency={selectedCurrency}
             />
           </div>
@@ -231,7 +226,7 @@ export default function Dashboard({ user }: DashboardProps) {
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Portfolio</dt>
                       <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(portfolioData.totalValue)}
+                        {formatCurrency(portfolioData.returns.totalValue)}
                       </dd>
                     </dl>
                   </div>
@@ -250,7 +245,7 @@ export default function Dashboard({ user }: DashboardProps) {
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Cost Basis</dt>
                       <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(portfolioData.totalCostBasis)}
+                        {formatCurrency(portfolioData.returns.costBasis)}
                       </dd>
                     </dl>
                   </div>
@@ -269,17 +264,17 @@ export default function Dashboard({ user }: DashboardProps) {
                     <dl className="space-y-2">
                       <div>
                         <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Unrealized P&L</dt>
-                        <dd className={`text-lg font-medium ${getPnLColor(portfolioData.totalPnL.unrealized)}`}>
-                          {formatCurrency(portfolioData.totalPnL.unrealized)}
+                        <dd className={`text-lg font-medium ${getPnLColor(portfolioData.returns.unrealizedPnL)}`}>
+                          {formatCurrency(portfolioData.returns.unrealizedPnL)}
                         </dd>
                       </div>
                       <div>
                         <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Return</dt>
-                        <dd className={`text-lg font-medium ${getPnLColor(portfolioData.totalPnL.total)}`}>
-                          {formatCurrency(portfolioData.totalPnL.total)}
+                        <dd className={`text-lg font-medium ${getPnLColor(portfolioData.returns.totalPnL)}`}>
+                          {formatCurrency(portfolioData.returns.totalPnL)}
                         </dd>
-                        <dd className={`text-xs ${getPnLColor(portfolioData.totalPnL.totalPercentage)} mt-1`}>
-                          {formatPercent(portfolioData.totalPnL.totalPercentage)}
+                        <dd className={`text-xs ${getPnLColor(portfolioData.returns.totalReturnPercentage)} mt-1`}>
+                          {formatPercent(portfolioData.returns.totalReturnPercentage)}
                         </dd>
                       </div>
                     </dl>

@@ -6,6 +6,9 @@ import type { HistoricalDataPoint } from '@/lib/mockData'
  * Combines P&L breakdown, cost basis, and annualized returns
  */
 export interface PortfolioReturnMetrics {
+  // Portfolio Value
+  totalValue: number  // current total portfolio value
+
   // P&L Breakdown
   totalPnL: number
   realizedPnL: number
@@ -14,13 +17,13 @@ export interface PortfolioReturnMetrics {
   dividends: number
 
   // Cost Basis
-  costBasis: number
-  totalInvested: number
+  costBasis: number  // how much money was invested, taking into account shares sold
+  totalInvested: number  // how much money was invested in total
 
   // Annualized Returns
-  timeWeightedReturn: number  // TWR - pure investment performance (%)
-  moneyWeightedReturn: number // XIRR - investor experience with cash flow timing (%)
-  totalReturn: number         // Absolute return percentage (%)
+  timeWeightedReturn: number     // TWR - pure investment performance (%)
+  moneyWeightedReturn: number    // XIRR - investor experience with cash flow timing (%)
+  totalReturnPercentage: number  // Absolute return percentage (%)
 
   // Time Period
   startDate: string
@@ -31,7 +34,6 @@ export interface PortfolioReturnMetrics {
 export interface ReturnCalculationOptions {
   startDate?: string
   endDate?: string
-  includeVolatility?: boolean
 }
 
 // Legacy interface - kept for tests, use PortfolioReturnMetrics instead
@@ -51,22 +53,7 @@ interface Lot {
 }
 
 interface PortfolioSummary {
-  totalPnL: number;
-  realizedPnL: number;
-  unrealizedPnL: number;
-  capitalGains: number;
-  dividends: number;
-  costBasis: number;
-  totalInvested: number;
-  annualizedReturn: number;
-}
-
-interface Lot {
-  quantity: number;
-  costPerUnit: number;
-}
-
-interface PortfolioSummary {
+  totalValue: number;
   totalPnL: number;
   realizedPnL: number;
   unrealizedPnL: number;
@@ -87,16 +74,6 @@ function computePortfolioSummaryV2(
   const histSorted = histData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const histStart = histSorted.find(d => d.date >= startDate) ?? histSorted[0];
   const histEnd = histSorted.slice().reverse().find(d => d.date <= endDate) ?? histSorted[histSorted.length - 1];
-
-  // console.log(`🔍 computePortfolioSummaryV2:`, {
-  //   startDate,
-  //   endDate,
-  //   histStartDate: histStart.date,
-  //   histStartCostBasis: histStart.costBasis,
-  //   histEndDate: histEnd.date,
-  //   histEndCostBasis: histEnd.costBasis,
-  //   histEndValue: Object.values(histEnd.assetTypeValues).reduce((a, b) => a + b, 0)
-  // })
 
   // IMPORTANT: For FIFO lot tracking, we need to process ALL transactions from the beginning,
   // not just those in the date range. This ensures lots are built correctly for closed positions.
@@ -165,6 +142,7 @@ function computePortfolioSummaryV2(
   const annualizedReturn = computeAnnualizedTWR(histData, txs, startDate, endDate);
 
   return {
+    totalValue: totalCurrentValue,
     totalPnL,
     realizedPnL,
     unrealizedPnL,
@@ -445,6 +423,9 @@ export class ReturnCalculationService {
     const xirr = calculateXIRR(xirrTransactions, finalValue, actualEndDate)
 
     return {
+      // Portfolio Value
+      totalValue: v2Summary.totalValue,
+
       // P&L Breakdown
       totalPnL: v2Summary.totalPnL,
       realizedPnL: v2Summary.realizedPnL,
@@ -459,7 +440,7 @@ export class ReturnCalculationService {
       // Annualized Returns
       timeWeightedReturn: v2Summary.annualizedReturn * 100,
       moneyWeightedReturn: xirr * 100,
-      totalReturn,
+      totalReturnPercentage: totalReturn,
 
       // Time Period
       startDate: firstPoint.date,
@@ -473,6 +454,7 @@ export class ReturnCalculationService {
    */
   getEmptyReturnMetrics(): PortfolioReturnMetrics {
     return {
+      totalValue: 0,
       totalPnL: 0,
       realizedPnL: 0,
       unrealizedPnL: 0,
@@ -482,7 +464,7 @@ export class ReturnCalculationService {
       totalInvested: 0,
       timeWeightedReturn: 0,
       moneyWeightedReturn: 0,
-      totalReturn: 0,
+      totalReturnPercentage: 0,
       startDate: '',
       endDate: '',
       periodYears: 0
@@ -520,7 +502,7 @@ export class ReturnCalculationService {
       return this.getEmptyMetrics()
     }
 
-    const { startDate: optionsStartDate, endDate: optionsEndDate, includeVolatility = false } = options
+    const { startDate: optionsStartDate, endDate: optionsEndDate } = options
 
     // Filter historical data by date range if specified
     let filteredData = historicalData

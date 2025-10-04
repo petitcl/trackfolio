@@ -12,15 +12,7 @@ import { getStartDateForTimeRange, type TimeRange } from '../utils/timeranges'
 export type { PortfolioPosition, PortfolioReturnMetrics }
 
 export interface PortfolioData {
-  totalValue: number
-  totalCostBasis: number
   positions: PortfolioPosition[]
-  totalPnL: {
-    realized: number
-    unrealized: number
-    total: number
-    totalPercentage: number
-  }
   returns: PortfolioReturnMetrics
 }
 
@@ -62,15 +54,9 @@ export class PortfolioService {
 
       // Calculate totals in target currency (no additional conversion needed)
       const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
-      const totalCostBasis = positions.reduce((sum, pos) => sum + (pos.quantity * pos.avgCost), 0)
-      const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
-
-      // Calculate total percentage P&L
-      const totalPercentage = totalCostBasis > 0 ? (totalUnrealizedPnL / totalCostBasis) * 100 : 0
 
       // Calculate unified return metrics (always present, defaults to zeros if insufficient data)
       let returns: PortfolioReturnMetrics
-      let realizedPnL = 0
       try {
         const historicalData = await historicalDataService.buildHistoricalData(user, transactions, symbols, targetCurrency)
         returns = returnCalculationService.calculatePortfolioReturnMetrics(
@@ -78,22 +64,13 @@ export class PortfolioService {
           historicalData,
           symbols
         )
-        realizedPnL = returns.realizedPnL + returns.dividends
       } catch (error) {
         console.warn('Could not calculate return metrics:', error)
         returns = returnCalculationService.getEmptyReturnMetrics()
       }
 
       return {
-        totalValue,
-        totalCostBasis,
         positions: positions,
-        totalPnL: {
-          realized: realizedPnL,
-          unrealized: totalUnrealizedPnL,
-          total: totalUnrealizedPnL + realizedPnL,
-          totalPercentage
-        },
         returns
       }
     } catch (error) {
@@ -229,10 +206,7 @@ export class PortfolioService {
 
   private getEmptyPortfolio(): PortfolioData {
     return {
-      totalValue: 0,
-      totalCostBasis: 0,
       positions: [],
-      totalPnL: { realized: 0, unrealized: 0, total: 0, totalPercentage: 0 },
       returns: returnCalculationService.getEmptyReturnMetrics()
     }
   }

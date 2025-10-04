@@ -6,15 +6,11 @@ import { currencyService, type SupportedCurrency } from '@/lib/services/currency
 
 interface EnhancedPortfolioOverviewProps {
   returns: PortfolioReturnMetrics
-  totalValue: number
-  totalCostBasis: number
   selectedCurrency: SupportedCurrency
 }
 
 export default function EnhancedPortfolioOverview({
   returns,
-  totalValue,
-  totalCostBasis,
   selectedCurrency
 }: EnhancedPortfolioOverviewProps) {
 
@@ -48,7 +44,7 @@ export default function EnhancedPortfolioOverview({
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Portfolio</dt>
                   <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                    {formatCurrency(totalValue)}
+                    {formatCurrency(returns.totalValue)}
                   </dd>
                 </dl>
               </div>
@@ -88,8 +84,8 @@ export default function EnhancedPortfolioOverview({
                   <dd className={`text-lg font-medium ${getPnLColor(returns.totalPnL)}`}>
                     {formatCurrency(returns.totalPnL)}
                   </dd>
-                  <dd className={`text-xs ${getPnLColor(returns.totalReturn)} mt-1`}>
-                    {formatPercent(returns.totalReturn)}
+                  <dd className={`text-xs ${getPnLColor(returns.totalReturnPercentage)} mt-1`}>
+                    {formatPercent(returns.totalReturnPercentage)}
                   </dd>
                 </dl>
               </div>
