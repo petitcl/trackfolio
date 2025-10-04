@@ -12,12 +12,12 @@ import {
   ChartOptions
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
-import type { TimeRange } from '../TimeRangeSelector'
 import type { HistoricalDataPoint } from '../../lib/mockData'
 import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
 import { portfolioService } from '../../lib/services/portfolio.service'
 import type { AuthUser } from '../../lib/auth/client.auth.service'
 import { currencyService, type SupportedCurrency, CURRENCY_SYMBOLS } from '../../lib/services/currency.service'
+import { type TimeRange } from '@/lib/utils/timeranges'
 
 ChartJS.register(
   CategoryScale,

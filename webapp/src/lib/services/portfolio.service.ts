@@ -1,13 +1,12 @@
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { HistoricalDataPoint } from '@/lib/mockData'
-import type { TimeRange } from '@/components/TimeRangeSelector'
 import { historicalPriceService } from './historical-price.service'
 import { unifiedCalculationService, type PortfolioPosition } from './unified-calculation.service'
 import { historicalDataService } from './historical-data.service'
 import { transactionService } from './transaction.service'
-import { currencyService, type SupportedCurrency } from './currency.service'
+import { type SupportedCurrency } from './currency.service'
 import { returnCalculationService, type PortfolioReturnMetrics } from './return-calculation.service'
-import { getStartDateForTimeRange } from '../utils/timeranges'
+import { getStartDateForTimeRange, type TimeRange } from '../utils/timeranges'
 
 // Re-export types for external components
 export type { PortfolioPosition, PortfolioReturnMetrics }

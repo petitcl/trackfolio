@@ -2,9 +2,9 @@
 
 import React from 'react'
 import ValueEvolutionChart from './ValueEvolutionChart'
-import type { TimeRange } from '../TimeRangeSelector'
 import type { HistoricalDataPoint } from '../../lib/mockData'
 import type { SupportedCurrency } from '../../lib/services/currency.service'
+import { type TimeRange } from '@/lib/utils/timeranges'
 
 interface PortfolioValueEvolutionChartProps {
   data: HistoricalDataPoint[]

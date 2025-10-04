@@ -13,11 +13,10 @@ import {
   ChartOptions
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
-import type { TimeRange } from '../TimeRangeSelector'
 import type { HistoricalDataPoint } from '../../lib/mockData'
 import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
 import { type SupportedCurrency, CURRENCY_SYMBOLS } from '../../lib/services/currency.service'
-import { getStartDateForTimeRange } from '@/lib/utils/timeranges'
+import { getStartDateForTimeRange, type TimeRange } from '@/lib/utils/timeranges'
 
 ChartJS.register(
   CategoryScale,

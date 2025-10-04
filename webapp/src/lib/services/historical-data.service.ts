@@ -1,10 +1,9 @@
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/types'
 import type { HistoricalDataPoint } from '@/lib/mockData'
-import type { TimeRange } from '@/components/TimeRangeSelector'
 import { unifiedCalculationService } from './unified-calculation.service'
 import type { SupportedCurrency } from './currency.service'
-import { getGroupByTimePeriodForTimeRange, getStartDateForTimeRange, getTimePeriodBucketsForTimePeriod } from '../utils/timeranges'
+import { getGroupByTimePeriodForTimeRange, getStartDateForTimeRange, getTimePeriodBucketsForTimePeriod, type TimeRange } from '../utils/timeranges'
 
 /**
  * Service responsible for generating historical data time series

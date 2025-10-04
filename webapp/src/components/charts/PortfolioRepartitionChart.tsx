@@ -9,9 +9,9 @@ import {
   ChartOptions
 } from 'chart.js'
 import { Pie } from 'react-chartjs-2'
-import type { TimeRange } from '../TimeRangeSelector'
 import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
 import { currencyService, type SupportedCurrency } from '../../lib/services/currency.service'
+import { type TimeRange } from '@/lib/utils/timeranges'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 

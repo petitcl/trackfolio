@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { portfolioService, type PortfolioReturnMetrics } from '@/lib/services/portfolio.service'
 import { type AuthUser } from '@/lib/auth/client.auth.service'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
-import { type TimeRange } from '@/components/TimeRangeSelector'
+import { type TimeRange } from '@/lib/utils/timeranges'
 
 interface DetailedHoldingReturnsProps {
   user: AuthUser

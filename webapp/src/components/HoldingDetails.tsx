@@ -7,7 +7,7 @@ import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/types'
 import { portfolioService, type PortfolioPosition, type PortfolioData, type PortfolioReturnMetrics } from '@/lib/services/portfolio.service'
 import ValueEvolutionChart from './charts/ValueEvolutionChart'
-import TimeRangeSelector, { type TimeRange } from './TimeRangeSelector'
+import TimeRangeSelector from './TimeRangeSelector'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import QuickActions from './QuickActions'
 import DemoModeBanner from './DemoModeBanner'
@@ -18,6 +18,7 @@ import { type SupportedCurrency } from '@/lib/services/currency.service'
 import DetailedHoldingReturns from './DetailedHoldingReturns'
 import Header from '@/components/Header'
 import { formatPercent, getAssetTypeIcon, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
+import { type TimeRange } from '@/lib/utils/timeranges'
 
 interface HoldingDetailsProps {
   user: AuthUser
