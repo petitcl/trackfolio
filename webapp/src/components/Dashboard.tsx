@@ -135,19 +135,11 @@ export default function Dashboard({ user }: DashboardProps) {
   const formatCurrency = makeFormatCurrency(selectedCurrency)
 
   // Helper to get symbol metrics with fallback
-  const getSymbolMetrics = (symbol: string): { unrealizedPnL: number; realizedPnL: number; totalPnL: number; totalReturnPercentage: number } => {
+  const getHoldingMetrics = (symbol: string): { unrealizedPnL: number; realizedPnL: number; totalPnL: number; totalReturnPercentage: number } => {
     const metrics = holdingsReturnMetrics.get(symbol)
     if (!metrics) {
-      // Fallback calculation if metrics not available
-      const position = portfolioData?.positions.find(p => p.symbol === symbol)
-      if (!position) return { unrealizedPnL: 0, realizedPnL: 0, totalPnL: 0, totalReturnPercentage: 0 }
-
-      const unrealizedPnL = (position.currentPrice - position.avgCost) * position.quantity
-      const totalPnL = unrealizedPnL + position.dividendIncome
-      const totalCost = position.avgCost * position.quantity
-      const totalReturnPercentage = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
-
-      return { unrealizedPnL, realizedPnL: 0, totalPnL, totalReturnPercentage }
+      console.warn("Holding metrics now found for symbol", symbol)
+      return { unrealizedPnL: 0, realizedPnL: 0, totalPnL: 0, totalReturnPercentage: 0 }
     }
 
     return {
@@ -441,17 +433,17 @@ export default function Dashboard({ user }: DashboardProps) {
                     // Calculate totals for this asset type (only include active positions in totals)
                     const activePositions = positions.filter(pos => pos.quantity > 0)
                     const typeTotalValue = activePositions.reduce((sum, pos) => sum + pos.value, 0)
-                    const typeTotalUnrealizedPnL = activePositions.reduce((sum, pos) => sum + getSymbolMetrics(pos.symbol).unrealizedPnL, 0)
+                    const typeTotalUnrealizedPnL = activePositions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).unrealizedPnL, 0)
                     const typeTotalDividends = activePositions.reduce((sum, pos) => sum + pos.dividendIncome, 0)
                     const typeTotalReturn = typeTotalUnrealizedPnL + typeTotalDividends
-                    const typeTotalRealizedPnL = positions.reduce((sum, pos) => sum + getSymbolMetrics(pos.symbol).realizedPnL, 0)
+                    const typeTotalRealizedPnL = positions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).realizedPnL, 0)
                     const typeTotalCost = activePositions.reduce((sum, pos) => sum + (pos.avgCost * pos.quantity), 0)
                     const typePnLPercentage = typeTotalCost > 0 ? (typeTotalUnrealizedPnL / typeTotalCost) * 100 : 0
                     const typeTotalReturnPercentage = typeTotalCost > 0 ? (typeTotalReturn / typeTotalCost) * 100 : 0
 
                     // Add individual positions
                     positions.forEach(position => {
-                      const metrics = getSymbolMetrics(position.symbol)
+                      const metrics = getHoldingMetrics(position.symbol)
                       const isClosed = position.quantity === 0
                       const totalCost = position.avgCost * position.quantity
                       const pnlPercentage = totalCost > 0 ? (metrics.unrealizedPnL / totalCost) * 100 : 0
