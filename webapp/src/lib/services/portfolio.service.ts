@@ -153,7 +153,7 @@ export class PortfolioService {
    * Calculate return metrics for all symbols in the portfolio
    * Returns a map of symbol -> return metrics
    */
-  async getAllHoldingsReturnsMetricsNotTimeRangeAware(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<Map<string, ReturnMetrics>> {
+  async getAllHoldingsReturnsMetrics(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<Map<string, ReturnMetrics>> {
     const transactions = await transactionService.getTransactions(user)
 
     const symbols = new Set<string>()

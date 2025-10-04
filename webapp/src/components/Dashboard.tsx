@@ -71,7 +71,7 @@ export default function Dashboard({ user }: DashboardProps) {
         portfolioService.getSymbols(user),
         portfolioService.getPortfolioHistoricalData(user, selectedCurrency),
         portfolioService.getPortfolioRepartitionData(user, selectedCurrency, selectedTimeRange),
-        portfolioService.getAllHoldingsReturnsMetricsNotTimeRangeAware(user, selectedCurrency, selectedTimeRange)
+        portfolioService.getAllHoldingsReturnsMetrics(user, selectedCurrency, selectedTimeRange)
       ])
       const apiEndTime = performance.now()
 
