@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/types'
-import { portfolioService, type PortfolioPosition, type PortfolioData, type ReturnMetrics } from '@/lib/services/portfolio.service'
+import { portfolioService, type PortfolioPosition, type PortfolioData, type ReturnMetrics, type BucketedReturnMetrics } from '@/lib/services/portfolio.service'
 import ValueEvolutionChart from './charts/ValueEvolutionChart'
+import BucketedReturnsChart from './BucketedReturnsChart'
 import TimeRangeSelector from './TimeRangeSelector'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import QuickActions from './QuickActions'
@@ -33,6 +34,7 @@ interface HoldingData {
   transactions: Transaction[]
   historicalData: HistoricalDataPoint[]
   detailedReturns: ReturnMetrics | null
+  bucketedReturns: BucketedReturnMetrics | null
 }
 
 export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD', onCurrencyChange }: HoldingDetailsProps) {
@@ -53,12 +55,13 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
 
         // Get all portfolio data and filter for this symbol
         const apiStartTime = performance.now()
-        const [portfolioData, symbols, transactions, historicalData, detailedReturns] = await Promise.all([
+        const [portfolioData, symbols, transactions, historicalData, detailedReturns, bucketedReturns] = await Promise.all([
           portfolioService.getPortfolioData(user, selectedCurrency, timeRange),
           portfolioService.getSymbols(user),
           portfolioService.getTransactions(user),
           portfolioService.getHoldingHistoricalData(user, symbol, selectedCurrency),
-          portfolioService.getHoldingReturnMetrics(user, symbol, selectedCurrency, timeRange)
+          portfolioService.getHoldingReturnMetrics(user, symbol, selectedCurrency, timeRange),
+          portfolioService.getHoldingBucketedReturnMetrics(user, symbol, timeRange, selectedCurrency)
         ])
         const apiEndTime = performance.now()
 
@@ -77,7 +80,8 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
           symbol: symbolData || null,
           transactions: symbolTransactions,
           historicalData,
-          detailedReturns
+          detailedReturns,
+          bucketedReturns
         })
         const calculationEndTime = performance.now()
 
@@ -156,12 +160,13 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
     return null
   }
 
-  const { position, symbol: symbolData, transactions, detailedReturns } = holdingData
+  const { position, symbol: symbolData, transactions, detailedReturns, bucketedReturns } = holdingData
 
   console.log('HoldingDetails - position', position);
   console.log('HoldingDetails - symbolData', symbolData);
-  console.log('HoldingDetails - symbolData', transactions);
+  console.log('HoldingDetails - transactions', transactions.map(({date, type, price_per_unit, quantity, amount, fees}) => ({date, type, price_per_unit, quantity, amount, fees})));
   console.log('HoldingDetails - detailedReturns', detailedReturns);
+  console.log('HoldingDetails - bucketedReturns', bucketedReturns)
 
   const currentValue = detailedReturns
     ? detailedReturns.costBasis + detailedReturns.unrealizedPnL
@@ -360,6 +365,18 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
               currency={selectedCurrency}
               showInvested={true}
             />
+          </div>
+        )}
+
+        {/* Returns Performance by Period */}
+        {holdingData.bucketedReturns && holdingData.bucketedReturns.buckets.length > 0 && (
+          <div className="mb-8">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                {symbol} Returns by Period
+              </h3>
+              <BucketedReturnsChart data={holdingData.bucketedReturns} currency={selectedCurrency} />
+            </div>
           </div>
         )}
 

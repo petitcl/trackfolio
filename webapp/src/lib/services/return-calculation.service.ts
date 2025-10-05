@@ -264,6 +264,7 @@ function computePeriodPortfolioSummary(
   // Unrealized P&L at period end vs period start
   const unrealizedPnLEnd = totalCurrentValue - endState.costBasis;
   const unrealizedPnLStart = startValue - startState.costBasis;
+
   const periodUnrealizedPnLChange = unrealizedPnLEnd - unrealizedPnLStart;
 
   // Period capital gains = period realized + change in unrealized
@@ -564,7 +565,7 @@ function computeNetInflowsForPeriod(
   startDate: string,
   endDate: string
 ): number {
-  const periodTxs = transactions.filter(tx => tx.date >= startDate && tx.date <= endDate)
+  const periodTxs = transactions.filter(tx => tx.date > startDate && tx.date <= endDate)
 
   let netInflows = 0
   for (const tx of periodTxs) {
@@ -685,12 +686,23 @@ export class ReturnCalculationService {
     )
 
     // Calculate total return percentage for the period
-    // This represents the total P&L as a percentage of the cost basis
+    // This accounts for when capital was deployed during the period
     let totalReturnPercentage = 0
-    if (periodSummary.costBasis > 0) {
-      // Total return % = Total P&L / Cost Basis
-      // This shows the total gain/loss relative to the amount invested
-      totalReturnPercentage = (periodSummary.totalPnL / periodSummary.costBasis) * 100
+
+    // Get portfolio values at period boundaries
+    const startValue = Object.values(startPoint.assetTypeValues).reduce((a, b) => a + b, 0)
+
+    // Calculate net inflows during the period
+    const netInflows = computeNetInflowsForPeriod(transactions, startPoint.date, endPoint.date)
+
+    // Average capital = starting value + (net inflows / 2)
+    // This assumes inflows happen evenly throughout the period
+    const avgCapital = startValue + (netInflows / 2)
+
+    if (avgCapital > 0) {
+      // Total return % = Total P&L / Average Capital
+      // This shows the return relative to the average amount of capital deployed
+      totalReturnPercentage = (periodSummary.totalPnL / avgCapital) * 100
     }
 
     // Calculate XIRR for money-weighted return - ALWAYS use ALL transactions

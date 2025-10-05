@@ -8,8 +8,8 @@ Mark done item with ✅
 - ✅ Update timerange changes to affect all metrics correctly
 - ✅ Improve page load speed
 - ✅ Fix annualized return calculation (use money weighted?)
+- ✅ Add performance view per period bucket showing 2024, 2025 performance separately
 - [ ] Implement portfolio export and backup functionality
-- [ ] Add performance view per period bucket showing 2024, 2025 performance separately
 - [ ] Add infinite scrolling to transaction history
 - [ ] Redirect custom holding creation to holding detail page instead of homepage
 - [ ] Allow editing of custom holding details

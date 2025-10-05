@@ -880,17 +880,11 @@ describe('ReturnCalculationService', () => {
         { startDate: '2024-01-01', endDate: '2024-12-31' }
       )
 
-      // Net cash flow = 150k (end invested) - 200k (start invested) = -50k
+      // Net cash flow = -50k (withdrawal during period)
       // Average capital = 200k + (-50k / 2) = 175k
-      // Calculation computes period P&L as: endValue - startValue
-      // = 180k - 200k = -20k (but this isn't right, since we withdrew 50k)
-      // Actual formula in code computes based on change in value: 180k - 200k = -20k
-      // But then adds back realized gains from the sale
-      // The function returns totalReturnPercentage based on totalPnL from period calculation
-      // If it's returning 15%, that means: totalPnL / averageCapital = 0.15
-      // So: totalPnL = 0.15 * 175k = 26.25k ≈ or totalPnL / 200k - 50k/2 = 15%
-      // Let's verify the actual behavior rather than our assumption
-      expect(result.totalReturnPercentage).toBeCloseTo(15, 1)
+      // Total P&L from period = 30k (change in unrealized P&L)
+      // Return % = 30k / 175k = 17.14%
+      expect(result.totalReturnPercentage).toBeCloseTo(17.14, 1)
 
       // Verify withdrawal scenario properly accounts for cash flows
       expect(result.totalReturnPercentage).toBeGreaterThan(0)

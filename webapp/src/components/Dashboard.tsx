@@ -3,6 +3,7 @@
 import PortfolioRepartitionChart from '@/components/charts/PortfolioRepartitionChart'
 import PortfolioRepartitionHistoryChart from '@/components/charts/PortfolioRepartitionHistoryChart'
 import PortfolioValueEvolutionChart from '@/components/charts/PortfolioValueEvolutionChart'
+import BucketedReturnsChart from '@/components/BucketedReturnsChart'
 import DemoModeBanner from '@/components/DemoModeBanner'
 import EnhancedPortfolioOverview from '@/components/EnhancedPortfolioOverview'
 import Header from '@/components/Header'
@@ -12,7 +13,7 @@ import TimeRangeSelector from '@/components/TimeRangeSelector'
 import { type AuthUser } from '@/lib/auth/client.auth.service'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
-import { portfolioService, type PortfolioData, type ReturnMetrics } from '@/lib/services/portfolio.service'
+import { portfolioService, type PortfolioData, type ReturnMetrics, type BucketedReturnMetrics } from '@/lib/services/portfolio.service'
 import type { AssetType, Symbol } from '@/lib/supabase/types'
 import { formatPercent, getAssetTypeIcon, getAssetTypeLabel, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
 import { type TimeRange } from '@/lib/utils/timeranges'
@@ -51,6 +52,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
   const [repartitionData, setRepartitionData] = useState<Array<{ assetType: string; value: number; percentage: number }>>([])
   const [holdingsReturnMetrics, setHoldingsReturnMetrics] = useState<Map<string, ReturnMetrics>>(new Map())
+  const [bucketedReturnMetrics, setBucketedReturnMetrics] = useState<BucketedReturnMetrics | null>(null)
   const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>(
     currencyService.getPreferredCurrency()
   )
@@ -89,6 +91,7 @@ export default function Dashboard({ user }: DashboardProps) {
       setHistoricalData(historical)
       setRepartitionData(repartition)
       setHoldingsReturnMetrics(holdingsReturnMetrics)
+      setBucketedReturnMetrics(portfolioBucketedReturnMetrics)
       const calculationEndTime = performance.now()
 
       console.log("portfolio", portfolio);
@@ -114,6 +117,7 @@ export default function Dashboard({ user }: DashboardProps) {
       setHistoricalData([])
       setRepartitionData([])
       setHoldingsReturnMetrics(new Map())
+      setBucketedReturnMetrics(null)
     } finally {
       setDataLoading(false)
     }
@@ -246,6 +250,18 @@ export default function Dashboard({ user }: DashboardProps) {
               selectedCurrency={selectedCurrency}
             />
           </div>
+
+          {/* Returns Performance by Period */}
+          {bucketedReturnMetrics && bucketedReturnMetrics.buckets.length > 0 && (
+            <div className="grid grid-cols-1">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow border dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Returns by Period
+                </h3>
+                <BucketedReturnsChart data={bucketedReturnMetrics} currency={selectedCurrency} />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Holdings Table */}
