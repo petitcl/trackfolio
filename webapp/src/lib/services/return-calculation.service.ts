@@ -488,9 +488,8 @@ export class ReturnCalculationService {
       return this.getEmptyReturnMetrics()
     }
 
-    const periodYears = this.calculateYearsDifference(startPoint.date, endPoint.date)
-
-    if (periodYears <= 0) {
+    const totalRangeDuration = this.calculateYearsDifference(startPoint.date, endPoint.date)
+    if (totalRangeDuration <= 0) {
       return this.getEmptyReturnMetrics()
     }
 
@@ -503,28 +502,19 @@ export class ReturnCalculationService {
     )
 
     // Calculate total return percentage for the period
-    // We need to account for cash flows during the period
-    const startValue = Object.values(startPoint.assetTypeValues).reduce((a, b) => a + b, 0)
-    const startState = computePortfolioStateAt(transactions, startPoint.date)
-    const endState = computePortfolioStateAt(transactions, endPoint.date)
-
-    // Net cash invested during the period
-    const periodNetCashFlow = endState.totalInvested - startState.totalInvested
-
+    // This represents the total P&L as a percentage of the cost basis
     let totalReturnPercentage = 0
-    // Use a time-weighted average base: starting value + half of net cash flows
-    // This approximates the average capital at risk during the period
-    const averageCapitalBase = startValue + (periodNetCashFlow / 2)
-
-    if (averageCapitalBase > 0) {
-      // Period return % = Total Period P&L / Average Capital Base
-      totalReturnPercentage = (periodSummary.totalPnL / averageCapitalBase) * 100
+    if (periodSummary.costBasis > 0) {
+      // Total return % = Total P&L / Cost Basis
+      // This shows the total gain/loss relative to the amount invested
+      totalReturnPercentage = (periodSummary.totalPnL / periodSummary.costBasis) * 100
     }
 
     // Calculate XIRR for money-weighted return - ALWAYS use ALL transactions
     const finalValue = Object.values(endPoint.assetTypeValues).reduce((a, b) => a + b, 0)
     const xirr = calculateXIRR(transactions, finalValue, endPoint.date)
 
+    const periodYears = this.calculateYearsDifference(firstAvailableDate, lastAvailableDate)
     return {
       // Portfolio Value
       totalValue: periodSummary.totalValue,

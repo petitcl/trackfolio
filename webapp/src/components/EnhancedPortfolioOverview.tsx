@@ -103,8 +103,8 @@ export default function EnhancedPortfolioOverview({
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
-                  <dd className={`text-lg font-medium ${getPnLColor(returns.timeWeightedReturn)}`}>
-                    {formatPercent(returns.timeWeightedReturn)}
+                  <dd className={`text-lg font-medium ${getPnLColor(returns.moneyWeightedReturn)}`}>
+                    {formatPercent(returns.moneyWeightedReturn)}
                   </dd>
                   {returns.periodYears > 0 && (
                     <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">

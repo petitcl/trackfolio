@@ -174,7 +174,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
   const totalReturn = detailedReturns?.totalPnL || (unrealizedPnL + realizedPnL)
   const totalInvested = detailedReturns?.totalInvested || 0
   const averageCostBasis = quantity > 0 ? costBasis / quantity : 0
-  const annualizedReturn = detailedReturns?.timeWeightedReturn ?? 0
+  const annualizedReturn = detailedReturns?.moneyWeightedReturn ?? 0
   const holdingPeriod = detailedReturns && detailedReturns.periodYears > 0 ? (detailedReturns.periodYears < 1 ?
   `${Math.round(detailedReturns.periodYears * 365)} days` :
   `${detailedReturns.periodYears.toFixed(1)} years`) : null
@@ -322,7 +322,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
-                    <dd className={`text-lg font-medium ${getPnLColor(detailedReturns?.timeWeightedReturn)}`}>
+                    <dd className={`text-lg font-medium ${getPnLColor(detailedReturns?.moneyWeightedReturn)}`}>
                       {formatPercent(annualizedReturn)}
                     </dd>
                     {holdingPeriod && (
