@@ -35,8 +35,8 @@ export class PortfolioService {
     historicalPriceService.clearCache()
   }
 
-  async getPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange: TimeRange): Promise<PortfolioData> {
-    console.log('🔄 Fetching portfolio data: currency=', targetCurrency, ', timeRange=', timeRange)
+  async getPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange: TimeRange, includeClosedPositions: boolean = false): Promise<PortfolioData> {
+    console.log('🔄 Fetching portfolio data: currency=', targetCurrency, ', timeRange=', timeRange, ', includeClosedPositions=', includeClosedPositions)
 
     try {
       // Fetch transactions and symbols using transaction service
@@ -56,7 +56,7 @@ export class PortfolioService {
       }
 
       // Calculate positions using unified calculation service (already in target currency)
-      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency)
+      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency, includeClosedPositions)
 
       // Calculate unified return metrics (always present, defaults to zeros if insufficient data)
       let returns: ReturnMetrics

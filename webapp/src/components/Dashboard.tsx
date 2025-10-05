@@ -59,15 +59,15 @@ export default function Dashboard({ user }: DashboardProps) {
   const router = useRouter()
 
   // Unified loader for portfolio data
-  const loadPortfolioData = useCallback(async (selectedCurrency: SupportedCurrency) => {
+  const loadPortfolioData = useCallback(async (selectedCurrency: SupportedCurrency, includeClosedPositions: boolean) => {
     try {
       setDataLoading(true)
       const startTime = performance.now()
-      console.log('📊 Loading portfolio data for user:', user.email, 'currency:', selectedCurrency)
+      console.log('📊 Loading portfolio data for user:', user.email, 'currency:', selectedCurrency, 'includeClosedPositions:', includeClosedPositions)
 
       const apiStartTime = performance.now()
       const [portfolio, symbolsData, historical, repartition, holdingsReturnMetrics] = await Promise.all([
-        portfolioService.getPortfolioData(user, selectedCurrency, selectedTimeRange),
+        portfolioService.getPortfolioData(user, selectedCurrency, selectedTimeRange, includeClosedPositions),
         portfolioService.getSymbols(user),
         portfolioService.getPortfolioHistoricalData(user, selectedCurrency),
         portfolioService.getPortfolioRepartitionData(user, selectedCurrency, selectedTimeRange),
@@ -111,8 +111,8 @@ export default function Dashboard({ user }: DashboardProps) {
   }, [user, selectedTimeRange])
 
   useEffect(() => {
-    loadPortfolioData(selectedCurrency)
-  }, [loadPortfolioData, selectedCurrency])
+    loadPortfolioData(selectedCurrency, showClosedPositions)
+  }, [loadPortfolioData, selectedCurrency, showClosedPositions])
 
   const handleCurrencyChange = (newCurrency: SupportedCurrency) => {
     setSelectedCurrency(newCurrency)
@@ -304,10 +304,6 @@ export default function Dashboard({ user }: DashboardProps) {
                 {(() => {
                   // Group positions by asset type
                   const positionsByType = portfolioData.positions
-                    .filter(p => {
-                      if (showClosedPositions) return true
-                      return p.quantity > 0
-                    })
                     .reduce((groups, position) => {
                       // Find the asset type from symbols
                       const symbol = symbols.find(s => s.symbol === position.symbol)

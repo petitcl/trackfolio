@@ -36,10 +36,11 @@ export class UnifiedCalculationService {
     transactions: Transaction[],
     date: string,
     targetSymbol?: string,
+    includeClosedPositions?: boolean,
   ): UnifiedPosition[] {
     // For single holdings, include closed positions to continue tracking after liquidation
-    // For portfolio, exclude closed positions to stop generating data after complete liquidation
-    const includeClosedPositions = !!targetSymbol
+    // For portfolio, exclude closed positions by default unless explicitly requested
+    const shouldIncludeClosedPositions = includeClosedPositions !== undefined ? includeClosedPositions : !!targetSymbol
     // Filter transactions up to date and optionally by symbol
     const relevantTransactions = transactions
       .filter(t => t.date <= date)
@@ -65,7 +66,7 @@ export class UnifiedCalculationService {
       } else if (transaction.type === 'sell' || transaction.type === 'withdrawal') {
         existing.quantity -= transaction.quantity
         if (existing.quantity <= 0) {
-          if (!includeClosedPositions) {
+          if (!shouldIncludeClosedPositions) {
             positionMap.delete(symbol)
             return
           }
@@ -96,7 +97,7 @@ export class UnifiedCalculationService {
         existing.avgCost = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
       }
 
-      if (existing.quantity > 0 || (includeClosedPositions && existing.quantity === 0)) {
+      if (existing.quantity > 0 || (shouldIncludeClosedPositions && existing.quantity === 0)) {
         positionMap.set(symbol, existing)
       }
     })
@@ -411,11 +412,12 @@ export class UnifiedCalculationService {
     symbols: Symbol[],
     user: AuthUser,
     targetCurrency: SupportedCurrency = 'USD',
+    includeClosedPositions: boolean = false,
   ): Promise<PortfolioPosition[]> {
     const currentDate = new Date().toISOString().split('T')[0]
 
     // Calculate positions as of current date
-    const unifiedPositions = this.calculatePositionsUpToDate(transactions, currentDate, undefined)
+    const unifiedPositions = this.calculatePositionsUpToDate(transactions, currentDate, undefined, includeClosedPositions)
 
     if (unifiedPositions.length === 0) {
       return []
