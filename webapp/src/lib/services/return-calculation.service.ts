@@ -1,5 +1,7 @@
 import type { Transaction, Symbol } from '@/lib/supabase/types'
 import type { HistoricalDataPoint } from '@/lib/mockData'
+import type { TimeRange, TimePeriod } from '@/lib/utils/timeranges'
+import { getStartDateForTimeRange, getGroupByTimePeriodForTimeRange, getTimePeriodBucketsForTimePeriod } from '@/lib/utils/timeranges'
 
 /**
  * Unified return metrics interface
@@ -38,6 +40,42 @@ export type HoldingReturnMetrics = ReturnMetrics
 export interface ReturnCalculationOptions {
   startDate?: string
   endDate?: string
+}
+
+/**
+ * Performance metrics for a specific time bucket (e.g., one year, one quarter, one month)
+ */
+export interface PeriodBucketMetrics {
+  periodKey: string           // e.g., "2024", "2024-Q1", "2024-01", "2024-01-15"
+  startDate: string
+  endDate: string
+
+  // Value metrics
+  startValue: number         // Portfolio value at period start
+  endValue: number           // Portfolio value at period end
+
+  // P&L breakdown (period-specific)
+  totalPnL: number
+  realizedPnL: number
+  unrealizedPnLChange: number  // Change in unrealized during this period
+  capitalGains: number         // Realized + unrealized change
+  dividends: number
+
+  // Return metrics
+  totalReturnPercentage: number         // Simple return % for this bucket
+
+  // Cash flows during period
+  netInflows: number          // Buy - Sell (excluding dividends)
+}
+
+/**
+ * Bucketed return metrics for a time range
+ * Breaks down performance into sub-periods (e.g., yearly buckets for "all" time range)
+ */
+export interface BucketedReturnMetrics {
+  buckets: PeriodBucketMetrics[]
+  timePeriod: TimePeriod       // 'day' | 'week' | 'month' | 'quarter' | 'year'
+  totalMetrics: ReturnMetrics  // Overall metrics for entire range
 }
 
 // FIFO lot
@@ -171,13 +209,26 @@ interface PortfolioSummary {
 /**
  * Compute portfolio metrics for a specific period
  * This calculates period-specific P&L while maintaining accurate cost basis
+ *
+ * @param transactions - All transactions
+ * @param histData - Historical data points
+ * @param startDate - Period start date (for finding historical data and portfolio state)
+ * @param endDate - Period end date (for finding historical data and portfolio state)
+ * @param transactionStartDate - Optional: specific start date for filtering transactions (defaults to startDate)
+ * @param transactionEndDate - Optional: specific end date for filtering transactions (defaults to endDate)
  */
 function computePeriodPortfolioSummary(
   transactions: Transaction[],
   histData: HistoricalDataPoint[],
   startDate: string,
-  endDate: string
+  endDate: string,
+  transactionStartDate?: string,
+  transactionEndDate?: string
 ): PortfolioSummary {
+  // Use provided transaction dates or fall back to start/end dates
+  const txStartDate = transactionStartDate || startDate
+  const txEndDate = transactionEndDate || endDate
+
   // Find historical data points at period boundaries
   const histStart = findHistoricalDataPointAt(histData, startDate);
   const histEnd = findHistoricalDataPointAt(histData, endDate);
@@ -203,7 +254,8 @@ function computePeriodPortfolioSummary(
   const startState = computePortfolioStateAt(transactions, startDate);
 
   // Get period-specific metrics (realized P&L and dividends within period)
-  const { periodRealizedPnL, periodDividends } = computePeriodMetrics(transactions, startDate, endDate);
+  // Use transaction-specific dates to capture all transactions in the theoretical period
+  const { periodRealizedPnL, periodDividends } = computePeriodMetrics(transactions, txStartDate, txEndDate);
 
   // Current portfolio value from historical data
   const totalCurrentValue = Object.values(histEnd.assetTypeValues).reduce((a, b) => a + b, 0);
@@ -439,6 +491,137 @@ function calculateXIRR(
 }
 
 /**
+ * Convert a period key to actual start and end dates
+ * Handles all TimePeriod types: day, week, month, quarter, year
+ */
+function getPeriodDateRange(periodKey: string, timePeriod: TimePeriod): { startDate: string; endDate: string } {
+  switch (timePeriod) {
+    case 'day': {
+      // periodKey format: "2024-01-15"
+      const date = new Date(periodKey)
+      return {
+        startDate: periodKey,
+        endDate: periodKey
+      }
+    }
+
+    case 'week': {
+      // periodKey format: "2024-01-15" (Monday of the week)
+      const startDate = new Date(periodKey)
+      const endDate = new Date(startDate)
+      endDate.setDate(endDate.getDate() + 6) // Sunday
+      return {
+        startDate: periodKey,
+        endDate: endDate.toISOString().split('T')[0]
+      }
+    }
+
+    case 'month': {
+      // periodKey format: "2024-01"
+      const [year, month] = periodKey.split('-').map(Number)
+      const startDate = new Date(year, month - 1, 1)
+      const endDate = new Date(year, month, 0) // Last day of month
+      return {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      }
+    }
+
+    case 'quarter': {
+      // periodKey format: "2024-Q1"
+      const [yearStr, quarterStr] = periodKey.split('-')
+      const year = Number(yearStr)
+      const quarter = Number(quarterStr.substring(1))
+      const startMonth = (quarter - 1) * 3
+      const startDate = new Date(year, startMonth, 1)
+      const endDate = new Date(year, startMonth + 3, 0) // Last day of quarter
+      return {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      }
+    }
+
+    case 'year': {
+      // periodKey format: "2024"
+      const year = Number(periodKey)
+      const startDate = new Date(year, 0, 1)
+      const endDate = new Date(year, 11, 31)
+      return {
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      }
+    }
+  }
+}
+
+/**
+ * Calculate net cash inflows for a specific period
+ * Buys/deposits = positive inflow, Sells/withdrawals = negative
+ * Excludes dividends (tracked separately)
+ */
+function computeNetInflowsForPeriod(
+  transactions: Transaction[],
+  startDate: string,
+  endDate: string
+): number {
+  const periodTxs = transactions.filter(tx => tx.date >= startDate && tx.date <= endDate)
+
+  let netInflows = 0
+  for (const tx of periodTxs) {
+    switch (tx.type) {
+      case 'buy':
+        netInflows += tx.price_per_unit * tx.quantity + (tx.fees || 0)
+        break
+      case 'sell':
+        netInflows -= (tx.price_per_unit * tx.quantity - (tx.fees || 0))
+        break
+      case 'deposit':
+        netInflows += tx.price_per_unit
+        break
+      case 'withdrawal':
+        netInflows -= tx.price_per_unit
+        break
+      // Dividends excluded - tracked separately
+    }
+  }
+
+  return netInflows
+}
+
+/**
+ * Find the closest historical data points for bucket boundaries
+ * Returns the data points at or immediately before the bucket start/end dates
+ *
+ * Special handling for 'day' periods: uses previous day as startPoint to create a proper period
+ */
+function findBucketBoundaries(
+  historicalData: HistoricalDataPoint[],
+  periodKey: string,
+  timePeriod: TimePeriod
+): { startPoint: HistoricalDataPoint | null; endPoint: HistoricalDataPoint | null } {
+  const { startDate, endDate } = getPeriodDateRange(periodKey, timePeriod)
+
+  // For daily periods, we need to use the previous day as the start point
+  // Otherwise startPoint and endPoint would be the same, giving us no period to calculate over
+  if (timePeriod === 'day') {
+    const currentDate = new Date(startDate)
+    const previousDate = new Date(currentDate)
+    previousDate.setDate(previousDate.getDate() - 1)
+    const previousDateStr = previousDate.toISOString().split('T')[0]
+
+    return {
+      startPoint: findHistoricalDataPointAt(historicalData, previousDateStr),
+      endPoint: findHistoricalDataPointAt(historicalData, endDate)
+    }
+  }
+
+  return {
+    startPoint: findHistoricalDataPointAt(historicalData, startDate),
+    endPoint: findHistoricalDataPointAt(historicalData, endDate)
+  }
+}
+
+/**
  * Service for calculating various return metrics including annualized returns
  * Supports both Time-Weighted Return (TWR) and Money-Weighted Return (XIRR)
  */
@@ -564,6 +747,153 @@ export class ReturnCalculationService {
       endDate: '',
       periodYears: 0
     }
+  }
+
+  /**
+   * Calculate bucketed portfolio metrics for a time range
+   * Breaks down performance into sub-periods (e.g., yearly buckets for "all" time range)
+   *
+   * @param transactions - All portfolio transactions
+   * @param historicalData - Portfolio historical data points
+   * @param symbols - Symbol metadata
+   * @param timeRange - Time range selector (e.g., 'all', '1y', '5y', 'ytd')
+   * @param options - Optional start/end date overrides
+   * @returns Bucketed metrics with performance breakdown by period
+   */
+  calculateBucketedPortfolioMetrics(
+    transactions: Transaction[],
+    historicalData: HistoricalDataPoint[],
+    symbols: Symbol[],
+    timeRange: TimeRange,
+    options: ReturnCalculationOptions = {}
+  ): BucketedReturnMetrics {
+    // Return empty result if insufficient data
+    if (historicalData.length < 2) {
+      return {
+        buckets: [],
+        timePeriod: getGroupByTimePeriodForTimeRange(timeRange),
+        totalMetrics: this.getEmptyReturnMetrics()
+      }
+    }
+
+    // Determine date range
+    const sortedData = historicalData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    const firstAvailableDate = sortedData[0].date
+    const lastAvailableDate = sortedData[sortedData.length - 1].date
+
+    const rangeStartDate = options.startDate || getStartDateForTimeRange(timeRange).toISOString().split('T')[0]
+    const rangeEndDate = options.endDate || lastAvailableDate
+
+    // Use first available date if requested start is before portfolio existed
+    const actualStartDate = rangeStartDate < firstAvailableDate ? firstAvailableDate : rangeStartDate
+
+    // Determine bucket period (e.g., 'year' for 'all', 'month' for '1y')
+    const timePeriod = getGroupByTimePeriodForTimeRange(timeRange)
+
+    // Generate all period buckets
+    const periodBuckets = getTimePeriodBucketsForTimePeriod(
+      new Date(actualStartDate),
+      new Date(rangeEndDate),
+      timePeriod
+    )
+
+    // Calculate metrics for each bucket
+    const buckets: PeriodBucketMetrics[] = []
+    const sortedPeriodKeys = Array.from(periodBuckets).sort()
+
+    for (const periodKey of sortedPeriodKeys) {
+      // Get the theoretical period dates from the period key
+      const { startDate: theoreticalStartDate, endDate: theoreticalEndDate } = getPeriodDateRange(periodKey, timePeriod)
+
+      // Find the closest historical data points
+      const { startPoint, endPoint } = findBucketBoundaries(historicalData, periodKey, timePeriod)
+
+      // Skip bucket if we don't have data for it
+      if (!startPoint || !endPoint) {
+        continue
+      }
+
+      // Get period-specific metrics
+      // Use historical data points for portfolio state, but theoretical dates for transaction filtering
+      const periodSummary = computePeriodPortfolioSummary(
+        transactions,
+        historicalData,
+        startPoint.date,
+        endPoint.date,
+        theoreticalStartDate,  // Filter transactions using calendar period
+        theoreticalEndDate
+      )
+
+      // Calculate portfolio values
+      const startValue = Object.values(startPoint.assetTypeValues).reduce((a, b) => a + b, 0)
+      const endValue = Object.values(endPoint.assetTypeValues).reduce((a, b) => a + b, 0)
+
+      // Calculate net inflows for the period - use theoretical dates for inclusive transaction filtering
+      // This ensures we capture all transactions that occurred during the calendar period
+      const netInflows = computeNetInflowsForPeriod(transactions, theoreticalStartDate, theoreticalEndDate)
+
+      // Calculate period return percentage based on totalPnL and average capital
+      // For periods with cash flows, we need to account for when the capital was deployed
+      // Using a simple approximation: average capital = startValue + (netInflows / 2)
+      let periodReturn = 0
+      const avgCapital = startValue + (netInflows / 2)
+      if (avgCapital > 0) {
+        periodReturn = (periodSummary.totalPnL / avgCapital) * 100
+      }
+
+      buckets.push({
+        periodKey,
+        startDate: startPoint.date,
+        endDate: endPoint.date,
+        startValue,
+        endValue,
+        totalPnL: periodSummary.totalPnL,
+        realizedPnL: periodSummary.realizedPnL,
+        unrealizedPnLChange: periodSummary.unrealizedPnL,
+        capitalGains: periodSummary.capitalGains,
+        dividends: periodSummary.dividends,
+        totalReturnPercentage: periodReturn,
+        netInflows
+      })
+    }
+
+    // Calculate overall metrics for the entire range
+    const totalMetrics = this.calculatePortfolioReturnMetrics(
+      transactions,
+      historicalData,
+      symbols,
+      { startDate: actualStartDate, endDate: rangeEndDate }
+    )
+
+    return {
+      buckets,
+      timePeriod,
+      totalMetrics
+    }
+  }
+
+  /**
+   * Calculate bucketed holding (per-symbol) metrics for a time range
+   * This is the same as calculateBucketedPortfolioMetrics but can be used with
+   * filtered transactions/historical data for a specific symbol
+   *
+   * @param transactions - Transactions for this holding (should be pre-filtered to one symbol)
+   * @param historicalData - Historical data for this holding (should be pre-filtered to one symbol)
+   * @param symbols - Symbol metadata
+   * @param timeRange - Time range selector (e.g., 'all', '1y', '5y', 'ytd')
+   * @param options - Optional start/end date overrides
+   * @returns Bucketed metrics with performance breakdown by period for this holding
+   */
+  calculateBucketedHoldingMetrics(
+    transactions: Transaction[],
+    historicalData: HistoricalDataPoint[],
+    symbols: Symbol[],
+    timeRange: TimeRange,
+    options: ReturnCalculationOptions = {}
+  ): BucketedReturnMetrics {
+    // Use the same implementation as portfolio-level bucketing
+    // The caller is responsible for filtering transactions and historical data to a specific symbol
+    return this.calculateBucketedPortfolioMetrics(transactions, historicalData, symbols, timeRange, options)
   }
 
   /**

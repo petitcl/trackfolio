@@ -983,4 +983,438 @@ describe('ReturnCalculationService', () => {
     })
   })
 
+  describe('Bucketed Return Metrics', () => {
+    // Helper to create simple test data for bucketing tests
+    const createBucketTestData = () => {
+      const symbol: Symbol = {
+        id: 'test-bucket-001',
+        symbol: 'TEST.BUCKET',
+        name: 'Test Bucket Symbol',
+        asset_type: 'stock',
+        currency: 'USD',
+        last_price: 100,
+        is_custom: false,
+        created_at: '2020-01-01T00:00:00Z',
+        updated_at: '2024-12-31T00:00:00Z'
+      }
+
+      // Create transactions across multiple years (2020-2024)
+      const transactions: Transaction[] = [
+        // 2020
+        { id: '1', user_id: mockUserId, symbol: 'TEST.BUCKET', type: 'buy', date: '2020-01-15', quantity: 100, price_per_unit: 50, fees: 0, created_at: '2020-01-15T00:00:00Z', updated_at: '2020-01-15T00:00:00Z' },
+        { id: '2', user_id: mockUserId, symbol: 'TEST.BUCKET', type: 'dividend', date: '2020-06-30', quantity: 0, price_per_unit: 0, amount: 100, fees: 0, created_at: '2020-06-30T00:00:00Z', updated_at: '2020-06-30T00:00:00Z' },
+
+        // 2021
+        { id: '3', user_id: mockUserId, symbol: 'TEST.BUCKET', type: 'buy', date: '2021-01-15', quantity: 50, price_per_unit: 60, fees: 0, created_at: '2021-01-15T00:00:00Z', updated_at: '2021-01-15T00:00:00Z' },
+        { id: '4', user_id: mockUserId, symbol: 'TEST.BUCKET', type: 'dividend', date: '2021-06-30', quantity: 0, price_per_unit: 0, amount: 150, fees: 0, created_at: '2021-06-30T00:00:00Z', updated_at: '2021-06-30T00:00:00Z' },
+
+        // 2022
+        { id: '5', user_id: mockUserId, symbol: 'TEST.BUCKET', type: 'buy', date: '2022-01-15', quantity: 25, price_per_unit: 70, fees: 0, created_at: '2022-01-15T00:00:00Z', updated_at: '2022-01-15T00:00:00Z' },
+        { id: '6', user_id: mockUserId, symbol: 'TEST.BUCKET', type: 'sell', date: '2022-06-15', quantity: 50, price_per_unit: 75, fees: 0, created_at: '2022-06-15T00:00:00Z', updated_at: '2022-06-15T00:00:00Z' },
+        { id: '7', user_id: mockUserId, symbol: 'TEST.BUCKET', type: 'dividend', date: '2022-12-30', quantity: 0, price_per_unit: 0, amount: 125, fees: 0, created_at: '2022-12-30T00:00:00Z', updated_at: '2022-12-30T00:00:00Z' },
+
+        // 2023
+        { id: '8', user_id: mockUserId, symbol: 'TEST.BUCKET', type: 'buy', date: '2023-03-15', quantity: 30, price_per_unit: 80, fees: 0, created_at: '2023-03-15T00:00:00Z', updated_at: '2023-03-15T00:00:00Z' },
+        { id: '9', user_id: mockUserId, symbol: 'TEST.BUCKET', type: 'dividend', date: '2023-09-30', quantity: 0, price_per_unit: 0, amount: 155, fees: 0, created_at: '2023-09-30T00:00:00Z', updated_at: '2023-09-30T00:00:00Z' },
+
+        // 2024
+        { id: '10', user_id: mockUserId, symbol: 'TEST.BUCKET', type: 'buy', date: '2024-02-15', quantity: 20, price_per_unit: 90, fees: 0, created_at: '2024-02-15T00:00:00Z', updated_at: '2024-02-15T00:00:00Z' },
+        { id: '11', user_id: mockUserId, symbol: 'TEST.BUCKET', type: 'dividend', date: '2024-08-30', quantity: 0, price_per_unit: 0, amount: 175, fees: 0, created_at: '2024-08-30T00:00:00Z', updated_at: '2024-08-30T00:00:00Z' },
+      ]
+
+      // Create historical data points for each year
+      const historicalData: HistoricalDataPoint[] = [
+        { date: '2020-01-01', totalValue: 0, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 0 } },
+        { date: '2020-12-31', totalValue: 5500, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 5500 } }, // 100 shares @ 55
+        { date: '2021-12-31', totalValue: 10500, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 10500 } }, // 150 shares @ 70
+        { date: '2022-12-31', totalValue: 9375, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 9375 } }, // 125 shares @ 75
+        { date: '2023-12-31', totalValue: 13950, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 13950 } }, // 155 shares @ 90
+        { date: '2024-12-31', totalValue: 17500, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 17500 } }, // 175 shares @ 100
+      ]
+
+      return { symbol, transactions, historicalData }
+    }
+
+    describe('Yearly buckets (all time range)', () => {
+      it('should calculate metrics for each year bucket', () => {
+        const { symbol, transactions, historicalData } = createBucketTestData()
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          historicalData,
+          [symbol],
+          'all'
+        )
+
+        expect(result.timePeriod).toBe('year')
+        expect(result.buckets.length).toBeGreaterThan(0)
+
+        // Check structure of first bucket
+        const firstBucket = result.buckets[0]
+        expect(firstBucket).toHaveProperty('periodKey')
+        expect(firstBucket).toHaveProperty('startDate')
+        expect(firstBucket).toHaveProperty('endDate')
+        expect(firstBucket).toHaveProperty('startValue')
+        expect(firstBucket).toHaveProperty('endValue')
+        expect(firstBucket).toHaveProperty('totalPnL')
+        expect(firstBucket).toHaveProperty('realizedPnL')
+        expect(firstBucket).toHaveProperty('unrealizedPnLChange')
+        expect(firstBucket).toHaveProperty('capitalGains')
+        expect(firstBucket).toHaveProperty('dividends')
+        expect(firstBucket).toHaveProperty('totalReturnPercentage')
+        expect(firstBucket).toHaveProperty('netInflows')
+      })
+
+      it('should have correct periodKeys for yearly buckets', () => {
+        const { symbol, transactions, historicalData } = createBucketTestData()
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          historicalData,
+          [symbol],
+          'all'
+        )
+
+        // Should have buckets for 2020, 2021, 2022, 2023, 2024
+        const periodKeys = result.buckets.map(b => b.periodKey)
+        expect(periodKeys).toContain('2020')
+        expect(periodKeys).toContain('2021')
+        expect(periodKeys).toContain('2022')
+        expect(periodKeys).toContain('2023')
+        expect(periodKeys).toContain('2024')
+      })
+
+      it('should track dividends per year bucket', () => {
+        const { symbol, transactions, historicalData } = createBucketTestData()
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          historicalData,
+          [symbol],
+          'all'
+        )
+
+        const bucket2020 = result.buckets.find(b => b.periodKey === '2020')
+        const bucket2021 = result.buckets.find(b => b.periodKey === '2021')
+        const bucket2022 = result.buckets.find(b => b.periodKey === '2022')
+
+        expect(bucket2020?.dividends).toBe(100)
+        expect(bucket2021?.dividends).toBe(150)
+        expect(bucket2022?.dividends).toBe(125)
+      })
+
+      it('should calculate net inflows correctly per bucket', () => {
+        const { symbol, transactions, historicalData } = createBucketTestData()
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          historicalData,
+          [symbol],
+          'all'
+        )
+
+        const bucket2020 = result.buckets.find(b => b.periodKey === '2020')
+        const bucket2022 = result.buckets.find(b => b.periodKey === '2022')
+
+        // 2020: 100 shares @ $50 = $5000 inflow
+        expect(bucket2020?.netInflows).toBe(5000)
+
+        // 2022: 25 shares @ $70 ($1750) - 50 shares @ $75 ($3750) = -$2000 net outflow
+        expect(bucket2022?.netInflows).toBe(-2000)
+      })
+
+      it('should include totalMetrics for entire range', () => {
+        const { symbol, transactions, historicalData } = createBucketTestData()
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          historicalData,
+          [symbol],
+          'all'
+        )
+
+        expect(result.totalMetrics).toBeDefined()
+        expect(result.totalMetrics.totalValue).toBe(17500)
+        expect(result.totalMetrics.totalPnL).toBeGreaterThan(0)
+      })
+    })
+
+    describe('Monthly buckets (1y time range)', () => {
+      it('should use monthly buckets for 1y time range', () => {
+        const { symbol, transactions, historicalData } = createBucketTestData()
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          historicalData,
+          [symbol],
+          '1y'
+        )
+
+        expect(result.timePeriod).toBe('month')
+
+        // Check that we have monthly periodKeys (format: "2024-01")
+        const hasMonthlyKeys = result.buckets.some(b => /^\d{4}-\d{2}$/.test(b.periodKey))
+        expect(hasMonthlyKeys).toBe(true)
+      })
+    })
+
+    describe('Quarterly buckets (5y time range)', () => {
+      it('should use quarterly buckets for 5y time range', () => {
+        const { symbol, transactions, historicalData } = createBucketTestData()
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          historicalData,
+          [symbol],
+          '5y'
+        )
+
+        expect(result.timePeriod).toBe('quarter')
+
+        // Check that we have quarterly periodKeys (format: "2024-Q1")
+        const hasQuarterlyKeys = result.buckets.some(b => /^\d{4}-Q\d$/.test(b.periodKey))
+        expect(hasQuarterlyKeys).toBe(true)
+      })
+    })
+
+    describe('Edge cases', () => {
+      it('should handle insufficient data gracefully', () => {
+        const { symbol, transactions } = createBucketTestData()
+        const insufficientData: HistoricalDataPoint[] = [
+          { date: '2024-01-01', totalValue: 0, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 0 } }
+        ]
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          insufficientData,
+          [symbol],
+          'all'
+        )
+
+        expect(result.buckets).toEqual([])
+        expect(result.totalMetrics.totalValue).toBe(0)
+      })
+
+      it('should handle periods with no transactions', () => {
+        const symbol: Symbol = {
+          id: 'test-empty-001',
+          symbol: 'TEST.EMPTY',
+          name: 'Test Empty',
+          asset_type: 'stock',
+          currency: 'USD',
+          last_price: 100,
+          is_custom: false,
+          created_at: '2020-01-01T00:00:00Z',
+          updated_at: '2024-12-31T00:00:00Z'
+        }
+
+        // Only one transaction in 2020, nothing in other years
+        const transactions: Transaction[] = [
+          { id: '1', user_id: mockUserId, symbol: 'TEST.EMPTY', type: 'buy', date: '2020-01-15', quantity: 100, price_per_unit: 50, fees: 0, created_at: '2020-01-15T00:00:00Z', updated_at: '2020-01-15T00:00:00Z' }
+        ]
+
+        const historicalData: HistoricalDataPoint[] = [
+          { date: '2020-01-01', totalValue: 0, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 0 } },
+          { date: '2020-12-31', totalValue: 5500, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 5500 } },
+          { date: '2021-12-31', totalValue: 6000, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 6000 } },
+          { date: '2022-12-31', totalValue: 6500, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 6500 } },
+        ]
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          historicalData,
+          [symbol],
+          'all'
+        )
+
+        // Should still have buckets for years without transactions
+        expect(result.buckets.length).toBeGreaterThan(1)
+
+        // 2021 and 2022 should have 0 dividends and 0 net inflows
+        const bucket2021 = result.buckets.find(b => b.periodKey === '2021')
+        const bucket2022 = result.buckets.find(b => b.periodKey === '2022')
+
+        expect(bucket2021?.dividends).toBe(0)
+        expect(bucket2021?.netInflows).toBe(0)
+        expect(bucket2022?.dividends).toBe(0)
+        expect(bucket2022?.netInflows).toBe(0)
+      })
+
+      it('should handle YTD partial year correctly', () => {
+        const { symbol, transactions, historicalData } = createBucketTestData()
+
+        // Test YTD with 2024 as the reference year (since our test data covers through 2024)
+        // Add more granular historical data for 2024 to support monthly buckets
+        const enhancedHistoricalData = [
+          ...historicalData.filter(h => h.date < '2024-01-01'),
+          { date: '2024-01-31', totalValue: 14500, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 14500 } },
+          { date: '2024-02-29', totalValue: 15300, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 15300 } },
+          { date: '2024-12-31', totalValue: 17500, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 17500 } },
+        ]
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          enhancedHistoricalData,
+          [symbol],
+          'ytd',
+          { startDate: '2024-01-01', endDate: '2024-12-31' }
+        )
+
+        expect(result.timePeriod).toBe('month')
+        expect(result.buckets.length).toBeGreaterThan(0)
+
+        // Debug: Log bucket dates to see what we're getting
+        // console.log('YTD Buckets:', result.buckets.map(b => ({ key: b.periodKey, start: b.startDate, end: b.endDate })))
+
+        // All buckets should be from 2024
+        // Note: The first bucket might have a startDate from 2023 if that's the closest historical point
+        // So let's just verify that the periodKeys are from 2024
+        const allPeriodKeys2024 = result.buckets.every(b =>
+          b.periodKey.startsWith('2024')
+        )
+        expect(allPeriodKeys2024).toBe(true)
+      })
+
+      it('should calculate period returns correctly', () => {
+        const { symbol, transactions, historicalData } = createBucketTestData()
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          historicalData,
+          [symbol],
+          'all'
+        )
+
+        // All buckets should have period return calculated
+        result.buckets.forEach(bucket => {
+          expect(typeof bucket.totalReturnPercentage).toBe('number')
+
+          // Period return should be reasonable (not NaN or Infinity)
+          expect(Number.isFinite(bucket.totalReturnPercentage)).toBe(true)
+        })
+      })
+
+      it('should handle closed positions within a bucket', () => {
+        const symbol: Symbol = {
+          id: 'test-closed-001',
+          symbol: 'TEST.CLOSED',
+          name: 'Test Closed',
+          asset_type: 'stock',
+          currency: 'USD',
+          last_price: 0,
+          is_custom: false,
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-12-31T00:00:00Z'
+        }
+
+        // Buy and sell all within same year
+        const transactions: Transaction[] = [
+          { id: '1', user_id: mockUserId, symbol: 'TEST.CLOSED', type: 'buy', date: '2023-01-15', quantity: 100, price_per_unit: 50, fees: 0, created_at: '2023-01-15T00:00:00Z', updated_at: '2023-01-15T00:00:00Z' },
+          { id: '2', user_id: mockUserId, symbol: 'TEST.CLOSED', type: 'sell', date: '2023-06-15', quantity: 100, price_per_unit: 60, fees: 0, created_at: '2023-06-15T00:00:00Z', updated_at: '2023-06-15T00:00:00Z' }
+        ]
+
+        const historicalData: HistoricalDataPoint[] = [
+          { date: '2023-01-01', totalValue: 0, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 0 } },
+          { date: '2023-06-15', totalValue: 0, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 0 } },
+          { date: '2023-12-31', totalValue: 0, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 0 } }
+        ]
+
+        const result = returnCalculationService.calculateBucketedPortfolioMetrics(
+          transactions,
+          historicalData,
+          [symbol],
+          'all'
+        )
+
+        const bucket2023 = result.buckets.find(b => b.periodKey === '2023')
+
+        expect(bucket2023).toBeDefined()
+        expect(bucket2023?.endValue).toBe(0)
+
+        // Realized P&L should be 100 * (60 - 50) = $1000
+        expect(bucket2023?.realizedPnL).toBe(1000)
+      })
+    })
+
+    describe('Holding-level (per-symbol) bucketing', () => {
+      it('should work with holding-level data using calculateBucketedHoldingMetrics', () => {
+        const { symbol, transactions, historicalData } = createBucketTestData()
+
+        // Use the holding-specific method (which is just an alias to the portfolio method)
+        const result = returnCalculationService.calculateBucketedHoldingMetrics(
+          transactions,
+          historicalData,
+          [symbol],
+          'all'
+        )
+
+        expect(result.timePeriod).toBe('year')
+        expect(result.buckets.length).toBeGreaterThan(0)
+
+        // Verify we get the same results as portfolio-level
+        const bucket2020 = result.buckets.find(b => b.periodKey === '2020')
+        expect(bucket2020?.dividends).toBe(100)
+        expect(bucket2020?.netInflows).toBe(5000)
+      })
+
+      it('should handle filtered transactions for a single symbol', () => {
+        // Create a multi-symbol portfolio
+        const symbol1: Symbol = {
+          id: 'test-001',
+          symbol: 'AAPL',
+          name: 'Apple',
+          asset_type: 'stock',
+          currency: 'USD',
+          last_price: 150,
+          is_custom: false,
+          created_at: '2020-01-01T00:00:00Z',
+          updated_at: '2024-12-31T00:00:00Z'
+        }
+
+        const symbol2: Symbol = {
+          id: 'test-002',
+          symbol: 'MSFT',
+          name: 'Microsoft',
+          asset_type: 'stock',
+          currency: 'USD',
+          last_price: 350,
+          is_custom: false,
+          created_at: '2020-01-01T00:00:00Z',
+          updated_at: '2024-12-31T00:00:00Z'
+        }
+
+        const allTransactions: Transaction[] = [
+          // AAPL transactions
+          { id: '1', user_id: mockUserId, symbol: 'AAPL', type: 'buy', date: '2020-01-15', quantity: 100, price_per_unit: 50, fees: 0, created_at: '2020-01-15T00:00:00Z', updated_at: '2020-01-15T00:00:00Z' },
+          { id: '2', user_id: mockUserId, symbol: 'AAPL', type: 'dividend', date: '2020-06-30', quantity: 0, price_per_unit: 0, amount: 100, fees: 0, created_at: '2020-06-30T00:00:00Z', updated_at: '2020-06-30T00:00:00Z' },
+
+          // MSFT transactions (should be filtered out)
+          { id: '3', user_id: mockUserId, symbol: 'MSFT', type: 'buy', date: '2020-01-15', quantity: 50, price_per_unit: 100, fees: 0, created_at: '2020-01-15T00:00:00Z', updated_at: '2020-01-15T00:00:00Z' },
+          { id: '4', user_id: mockUserId, symbol: 'MSFT', type: 'dividend', date: '2020-06-30', quantity: 0, price_per_unit: 0, amount: 200, fees: 0, created_at: '2020-06-30T00:00:00Z', updated_at: '2020-06-30T00:00:00Z' },
+        ]
+
+        const aaplHistoricalData: HistoricalDataPoint[] = [
+          { date: '2020-01-01', totalValue: 0, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 0 } },
+          { date: '2020-12-31', totalValue: 15000, assetTypeAllocations: { stock: 100 }, assetTypeValues: { stock: 15000 } },
+        ]
+
+        // Filter to AAPL only
+        const aaplTransactions = allTransactions.filter(tx => tx.symbol === 'AAPL')
+
+        const result = returnCalculationService.calculateBucketedHoldingMetrics(
+          aaplTransactions,
+          aaplHistoricalData,
+          [symbol1],
+          'all'
+        )
+
+        const bucket2020 = result.buckets.find(b => b.periodKey === '2020')
+
+        // Should only see AAPL's dividend, not MSFT's
+        expect(bucket2020?.dividends).toBe(100)
+        expect(bucket2020?.netInflows).toBe(5000)
+      })
+    })
+  })
+
 })

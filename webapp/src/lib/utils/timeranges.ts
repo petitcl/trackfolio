@@ -52,7 +52,7 @@ export const getGroupByTimePeriodForTimeRange = (range: TimeRange): TimePeriod =
     }
 }
 
-export const getTimePeriodBucketsForTimePeriod = (startDate: Date, endDate: Date, groupByPeriod: TimePeriod) => {
+export const getTimePeriodBucketsForTimePeriod = (startDate: Date, endDate: Date, groupByPeriod: TimePeriod): Set<string> => {
     const allPeriods = new Set<string>()
 
     // Generate all periods between start and end date

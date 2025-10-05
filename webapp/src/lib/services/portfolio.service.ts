@@ -5,11 +5,11 @@ import { unifiedCalculationService, type PortfolioPosition } from './unified-cal
 import { historicalDataService } from './historical-data.service'
 import { transactionService } from './transaction.service'
 import { type SupportedCurrency } from './currency.service'
-import { returnCalculationService, type ReturnMetrics } from './return-calculation.service'
+import { returnCalculationService, type ReturnMetrics, type BucketedReturnMetrics } from './return-calculation.service'
 import { getStartDateForTimeRange, type TimeRange } from '../utils/timeranges'
 
 // Re-export types for external components
-export type { PortfolioPosition, ReturnMetrics }
+export type { PortfolioPosition, ReturnMetrics, BucketedReturnMetrics }
 
 export interface PortfolioData {
   positions: PortfolioPosition[]
@@ -185,6 +185,86 @@ export class PortfolioService {
     })
 
     return metricsMap
+  }
+
+  /**
+   * Calculate bucketed return metrics for the entire portfolio
+   * Returns performance info per sub-period "buckets" (e.g., yearly, monthly)
+   */
+  async getPortfolioBucketedReturnMetrics(user: AuthUser, timeRange: TimeRange, targetCurrency: SupportedCurrency = 'USD'): Promise<BucketedReturnMetrics> {
+    try {
+      console.log('📊 Calculating bucketed returns for portfolio: timeRange:', timeRange)
+
+      const [transactions, symbols, historicalData] = await Promise.all([
+        transactionService.getTransactions(user),
+        transactionService.getSymbols(user),
+        this.getPortfolioHistoricalData(user, targetCurrency)
+      ])
+
+      if (transactions.length === 0 || historicalData.length < 2) {
+        console.log('📊 Insufficient data for bucketed return calculation')
+        return {
+          buckets: [],
+          timePeriod: 'year',
+          totalMetrics: returnCalculationService.getEmptyReturnMetrics()
+        }
+      }
+
+      // Calculate bucketed return metrics
+      return returnCalculationService.calculateBucketedPortfolioMetrics(
+        transactions,
+        historicalData,
+        symbols,
+        timeRange
+      )
+    } catch (error) {
+      console.error('❌ Error calculating portfolio bucketed returns:', error)
+      return {
+        buckets: [],
+        timePeriod: 'year',
+        totalMetrics: returnCalculationService.getEmptyReturnMetrics()
+      }
+    }
+  }
+
+  /**
+   * Calculate bucketed return metrics for a specific holding
+   * Returns performance info per sub-period "buckets" for a single symbol
+   */
+  async getHoldingBucketedReturnMetrics(user: AuthUser, symbol: string, timeRange: TimeRange, targetCurrency: SupportedCurrency = 'USD'): Promise<BucketedReturnMetrics> {
+    try {
+      console.log('📊 Calculating bucketed returns for holding:', symbol, 'timeRange:', timeRange)
+
+      const [transactions, symbols, historicalData] = await Promise.all([
+        transactionService.getHoldingTransactions(user, symbol),
+        transactionService.getSymbols(user),
+        this.getHoldingHistoricalData(user, symbol, targetCurrency)
+      ])
+
+      if (transactions.length === 0 || historicalData.length < 2) {
+        console.log('📊 Insufficient data for bucketed return calculation')
+        return {
+          buckets: [],
+          timePeriod: 'year',
+          totalMetrics: returnCalculationService.getEmptyReturnMetrics()
+        }
+      }
+
+      // Calculate bucketed return metrics
+      return returnCalculationService.calculateBucketedHoldingMetrics(
+        transactions,
+        historicalData,
+        symbols,
+        timeRange
+      )
+    } catch (error) {
+      console.error('❌ Error calculating holding bucketed returns:', error)
+      return {
+        buckets: [],
+        timePeriod: 'year',
+        totalMetrics: returnCalculationService.getEmptyReturnMetrics()
+      }
+    }
   }
 
   async getPortfolioRepartitionData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange, date?: string): Promise<Array<{

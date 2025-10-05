@@ -66,12 +66,20 @@ export default function Dashboard({ user }: DashboardProps) {
       console.log('📊 Loading portfolio data for user:', user.email, 'currency:', selectedCurrency, 'includeClosedPositions:', includeClosedPositions)
 
       const apiStartTime = performance.now()
-      const [portfolio, symbolsData, historical, repartition, holdingsReturnMetrics] = await Promise.all([
+      const [
+        portfolio,
+        symbolsData,
+        historical,
+        repartition,
+        holdingsReturnMetrics,
+        portfolioBucketedReturnMetrics,
+      ] = await Promise.all([
         portfolioService.getPortfolioData(user, selectedCurrency, selectedTimeRange, includeClosedPositions),
         portfolioService.getSymbols(user),
         portfolioService.getPortfolioHistoricalData(user, selectedCurrency),
         portfolioService.getPortfolioRepartitionData(user, selectedCurrency, selectedTimeRange),
-        portfolioService.getAllHoldingsReturnsMetrics(user, selectedCurrency, selectedTimeRange)
+        portfolioService.getAllHoldingsReturnsMetrics(user, selectedCurrency, selectedTimeRange),
+        portfolioService.getPortfolioBucketedReturnMetrics(user, selectedTimeRange, selectedCurrency),
       ])
       const apiEndTime = performance.now()
 
@@ -88,6 +96,7 @@ export default function Dashboard({ user }: DashboardProps) {
       console.log("historical last point", historical.at(-1));
       console.log("repartition", repartition);
       console.log("holdings return metrics", holdingsReturnMetrics);
+      console.log("portfolio bucketed return metrics", portfolioBucketedReturnMetrics);
 
       const totalTime = performance.now() - startTime
       const apiTime = apiEndTime - apiStartTime
