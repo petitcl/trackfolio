@@ -205,113 +205,13 @@ export default function Dashboard({ user }: DashboardProps) {
             </div>
           </div>
         </div>
-        {/* Portfolio Overview */}
-        {portfolioData.returns.periodYears > 0 ? (
-          <div className="mb-8">
-            <EnhancedPortfolioOverview
-              returns={portfolioData.returns}
-              selectedCurrency={selectedCurrency}
-            />
-          </div>
-        ) : (
-          /* Fallback to basic overview if detailed returns not available */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {/* Total Portfolio Value */}
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="text-2xl">💰</div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Portfolio</dt>
-                      <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(portfolioData.returns.totalValue)}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Total Cost Basis */}
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="text-2xl">💵</div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Cost Basis</dt>
-                      <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(portfolioData.returns.costBasis)}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* P&L Breakdown */}
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="text-2xl">🎯</div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl className="space-y-2">
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Unrealized P&L</dt>
-                        <dd className={`text-lg font-medium ${getPnLColor(portfolioData.returns.unrealizedPnL)}`}>
-                          {formatCurrency(portfolioData.returns.unrealizedPnL)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Return</dt>
-                        <dd className={`text-lg font-medium ${getPnLColor(portfolioData.returns.totalPnL)}`}>
-                          {formatCurrency(portfolioData.returns.totalPnL)}
-                        </dd>
-                        <dd className={`text-xs ${getPnLColor(portfolioData.returns.totalReturnPercentage)} mt-1`}>
-                          {formatPercent(portfolioData.returns.totalReturnPercentage)}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Annualized Return */}
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg border dark:border-gray-700">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="text-2xl">📈</div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
-                      <dd className={`text-lg font-medium ${portfolioData.returns.periodYears > 0 ? getPnLColor(portfolioData.returns.timeWeightedReturn) : 'text-gray-600 dark:text-gray-400'}`}>
-                        {portfolioData.returns.periodYears > 0 ?
-                          `${formatPercent(portfolioData.returns.timeWeightedReturn)}` :
-                          'Calculating...'
-                        }
-                      </dd>
-                      {holdingPeriod && (
-                        <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {holdingPeriod}
-                        </dd>
-                      )}
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Enhanced Portfolio Overview */}
+        <div className="mb-8">
+          <EnhancedPortfolioOverview
+            returns={portfolioData.returns}
+            selectedCurrency={selectedCurrency}
+          />
+        </div>
 
         {/* Charts Section */}
         <div className="mb-8 space-y-8">
@@ -364,12 +264,10 @@ export default function Dashboard({ user }: DashboardProps) {
                       onChange={(e) => setShowClosedPositions(e.target.checked)}
                       className="sr-only"
                     />
-                    <div className={`block bg-gray-300 dark:bg-gray-600 w-12 h-6 rounded-full transition-colors duration-200 ${
-                      showClosedPositions ? 'bg-blue-600 dark:bg-blue-500' : ''
-                    }`}></div>
-                    <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ${
-                      showClosedPositions ? 'transform translate-x-6' : ''
-                    }`}></div>
+                    <div className={`block bg-gray-300 dark:bg-gray-600 w-12 h-6 rounded-full transition-colors duration-200 ${showClosedPositions ? 'bg-blue-600 dark:bg-blue-500' : ''
+                      }`}></div>
+                    <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ${showClosedPositions ? 'transform translate-x-6' : ''
+                      }`}></div>
                   </div>
                 </label>
               </div>
@@ -406,20 +304,20 @@ export default function Dashboard({ user }: DashboardProps) {
                 {(() => {
                   // Group positions by asset type
                   const positionsByType = portfolioData.positions
-                      .filter(p => {
-                          if (showClosedPositions) return true
-                          return p.quantity > 0
-                      })
-                      .reduce((groups, position) => {
-                        // Find the asset type from symbols
-                        const symbol = symbols.find(s => s.symbol === position.symbol)
-                        const assetType = symbol?.asset_type || 'other'
-                        if (!groups[assetType]) {
-                          groups[assetType] = []
-                        }
-                        groups[assetType].push(position)
-                        return groups
-                      }, {} as Record<string, typeof portfolioData.positions>)
+                    .filter(p => {
+                      if (showClosedPositions) return true
+                      return p.quantity > 0
+                    })
+                    .reduce((groups, position) => {
+                      // Find the asset type from symbols
+                      const symbol = symbols.find(s => s.symbol === position.symbol)
+                      const assetType = symbol?.asset_type || 'other'
+                      if (!groups[assetType]) {
+                        groups[assetType] = []
+                      }
+                      groups[assetType].push(position)
+                      return groups
+                    }, {} as Record<string, typeof portfolioData.positions>)
 
                   const rows: React.ReactElement[] = []
 
@@ -539,11 +437,11 @@ export default function Dashboard({ user }: DashboardProps) {
                           <td className={`px-6 py-2 whitespace-nowrap text-sm font-bold ${activePositions.length > 0 ? getPnLColor(typeTotalReturn) : (typeTotalRealizedPnL !== 0 ? getPnLColor(typeTotalRealizedPnL) : 'text-gray-500 dark:text-gray-400')}`}>
                             <div>
                               {activePositions.length > 0 ? formatCurrency(typeTotalReturn) :
-                               (typeTotalRealizedPnL !== 0 ? formatCurrency(typeTotalRealizedPnL) : '-')}
+                                (typeTotalRealizedPnL !== 0 ? formatCurrency(typeTotalRealizedPnL) : '-')}
                             </div>
                             <div className="text-xs">
                               {activePositions.length > 0 ? formatPercent(typeTotalReturnPercentage) :
-                               (typeTotalRealizedPnL !== 0 ? `${formatPercent(typeTotalRealizedPnL > 0 ? 100 : -100)} (closed)` : 'No Activity')}
+                                (typeTotalRealizedPnL !== 0 ? `${formatPercent(typeTotalRealizedPnL > 0 ? 100 : -100)} (closed)` : 'No Activity')}
                             </div>
                           </td>
                         </tr>
