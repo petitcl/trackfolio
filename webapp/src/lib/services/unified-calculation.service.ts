@@ -37,7 +37,9 @@ export class UnifiedCalculationService {
     date: string,
     targetSymbol?: string,
   ): UnifiedPosition[] {
-    const includeClosedPositions = true
+    // For single holdings, include closed positions to continue tracking after liquidation
+    // For portfolio, exclude closed positions to stop generating data after complete liquidation
+    const includeClosedPositions = !!targetSymbol
     // Filter transactions up to date and optionally by symbol
     const relevantTransactions = transactions
       .filter(t => t.date <= date)
@@ -190,7 +192,7 @@ export class UnifiedCalculationService {
       
       // Calculate positions as of this date
       // For single holdings, include closed positions to continue generating data after liquidation
-      const positions = this.calculatePositionsUpToDate(transactions, currentDate, targetSymbol, !!targetSymbol)
+      const positions = this.calculatePositionsUpToDate(transactions, currentDate, targetSymbol)
       
       if (positions.length === 0) {
         continue

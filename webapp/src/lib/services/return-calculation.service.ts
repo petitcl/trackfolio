@@ -5,8 +5,6 @@ import type { HistoricalDataPoint } from '@/lib/mockData'
  * Unified return metrics interface
  * Used for both portfolio-level and symbol-level calculations
  * Combines P&L breakdown, cost basis, and annualized returns
- *
- * TODO: Add symbol-level TWR/XIRR calculation (currently only portfolio-level)
  */
 export interface ReturnMetrics {
   // Portfolio Value
@@ -465,23 +463,6 @@ export class ReturnCalculationService {
       endDate: '',
       periodYears: 0
     }
-  }
-
-  /**
-   * Calculate portfolio summary using the V2 algorithm
-   * @deprecated Use calculatePortfolioReturnMetrics instead
-   */
-  calculatePortfolioSummaryV2(
-    transactions: Transaction[],
-    historicalData: HistoricalDataPoint[],
-    startDate?: string,
-    endDate?: string
-  ): PortfolioSummary {
-    // Set default date range if not provided
-    const defaultStartDate = startDate || '2000-01-01'
-    const defaultEndDate = endDate || new Date().toISOString().split('T')[0]
-
-    return computePortfolioSummaryV2(transactions, historicalData, defaultStartDate, defaultEndDate)
   }
 
   /**

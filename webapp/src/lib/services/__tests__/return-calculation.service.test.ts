@@ -176,11 +176,11 @@ describe('ReturnCalculationService', () => {
         }
       ])
 
-      const result = returnCalculationService.calculatePortfolioSummaryV2(
+      const result = returnCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
-        '2024-01-01',
-        '2024-12-31'
+        [createMockSymbol()],
+        { startDate: '2024-01-01', endDate: '2024-12-31' }
       )
 
       expect(result.totalInvested).toBe(1001) // 100 * 10 + 1 fee
@@ -218,11 +218,11 @@ describe('ReturnCalculationService', () => {
         }
       ])
 
-      const result = returnCalculationService.calculatePortfolioSummaryV2(
+      const result = returnCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
-        '2024-01-01',
-        '2024-12-31'
+        [createMockSymbol()],
+        { startDate: '2024-01-01', endDate: '2024-12-31' }
       )
 
       expect(result.totalInvested).toBe(1002) // 100 * 10 + 2 fee
@@ -271,11 +271,11 @@ describe('ReturnCalculationService', () => {
         }
       ])
 
-      const result = returnCalculationService.calculatePortfolioSummaryV2(
+      const result = returnCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
-        '2024-01-01',
-        '2024-12-31'
+        [createMockSymbol()],
+        { startDate: '2024-01-01', endDate: '2024-12-31' }
       )
 
       expect(result.totalInvested).toBe(1000) // Only the initial purchase
@@ -321,11 +321,11 @@ describe('ReturnCalculationService', () => {
         }
       ])
 
-      const result = returnCalculationService.calculatePortfolioSummaryV2(
+      const result = returnCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
-        '2024-01-01',
-        '2024-12-31'
+        [createMockSymbol()],
+        { startDate: '2024-01-01', endDate: '2024-12-31' }
       )
 
       expect(result.totalInvested).toBe(1000) // Only the initial purchase
@@ -373,11 +373,11 @@ describe('ReturnCalculationService', () => {
         }
       ])
 
-      const result = returnCalculationService.calculatePortfolioSummaryV2(
+      const result = returnCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
-        '2024-01-01',
-        '2024-12-31'
+        [createMockSymbol()],
+        { startDate: '2024-01-01', endDate: '2024-12-31' }
       )
 
       expect(result.totalInvested).toBe(1001) // 100 * 10 + 1 fee
@@ -423,11 +423,11 @@ describe('ReturnCalculationService', () => {
         }
       ])
 
-      const result = returnCalculationService.calculatePortfolioSummaryV2(
+      const result = returnCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
-        '2024-01-01',
-        '2024-12-31'
+        [createMockSymbol()],
+        { startDate: '2024-01-01', endDate: '2024-12-31' }
       )
 
       expect(result.totalInvested).toBe(2002) // 100 * 20 + 2 fee
@@ -484,11 +484,11 @@ describe('ReturnCalculationService', () => {
         }
       ])
 
-      const result = returnCalculationService.calculatePortfolioSummaryV2(
+      const result = returnCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
-        '2024-01-01',
-        '2024-12-31'
+        [createMockSymbol()],
+        { startDate: '2024-01-01', endDate: '2024-12-31' }
       )
 
       expect(result.totalInvested).toBe(1502) // (50*10+1) + (50*20+1) = 1502
@@ -514,11 +514,11 @@ describe('ReturnCalculationService', () => {
         { totalValue: 0, assetTypeValues: { stock: 0 } }
       ])
 
-      const result = returnCalculationService.calculatePortfolioSummaryV2(
+      const result = returnCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
-        '2024-01-01',
-        '2024-12-31'
+        [createMockSymbol()],
+        { startDate: '2024-01-01', endDate: '2024-12-31' }
       )
 
       expect(result.totalInvested).toBe(0)
@@ -555,11 +555,11 @@ describe('ReturnCalculationService', () => {
         }
       ])
 
-      const result = returnCalculationService.calculatePortfolioSummaryV2(
+      const result = returnCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
-        '2024-01-01',
-        '2024-12-31'
+        [createMockSymbol()],
+        { startDate: '2024-01-01', endDate: '2024-12-31' }
       )
 
       expect(result.totalInvested).toBe(1000) // Clean $1000
@@ -623,11 +623,11 @@ describe('ReturnCalculationService', () => {
         }
       ])
 
-      const result = returnCalculationService.calculatePortfolioSummaryV2(
+      const result = returnCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
-        '2024-01-01',
-        '2024-12-31'
+        [createMockSymbol()],
+        { startDate: '2024-01-01', endDate: '2024-12-31' }
       )
 
       expect(result.totalInvested).toBe(1001) // Initial purchase only

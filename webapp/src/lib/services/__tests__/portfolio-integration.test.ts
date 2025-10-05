@@ -377,7 +377,7 @@ describe('Portfolio Integration Tests', () => {
       // Calculate totals from positions
       const totalValue = positions.reduce((sum, pos) => sum + pos.value, 0)
       const totalCostBasis = positions.reduce((sum, pos) => sum + (pos.quantity * pos.avgCost), 0)
-      const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
+      const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + ((pos.currentPrice - pos.avgCost) * pos.quantity), 0)
 
       // Note: Values may differ from legacy sync method due to improved calculation logic
       expect(positions.length).toBeGreaterThan(0)
