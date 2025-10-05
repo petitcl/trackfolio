@@ -4,6 +4,7 @@ import type { HistoricalDataPoint } from '@/lib/mockData'
 import { unifiedCalculationService } from './unified-calculation.service'
 import type { SupportedCurrency } from './currency.service'
 import { getGroupByTimePeriodForTimeRange, getStartDateForTimeRange, getTimePeriodBucketsForTimePeriod, type TimeRange } from '../utils/timeranges'
+import { cacheService } from './cache.service'
 
 /**
  * Service responsible for generating historical data time series
@@ -22,6 +23,7 @@ export class HistoricalDataService {
   /**
    * Unified method to build historical data for portfolio or individual holdings
    * Now uses the unified calculation engine to ensure consistent results
+   * CACHED: Results are cached per user/symbol/currency to avoid expensive recalculations
    */
   async buildHistoricalData(
     user: AuthUser,
@@ -35,20 +37,32 @@ export class HistoricalDataService {
   ): Promise<HistoricalDataPoint[]> {
     try {
       const { symbol: targetSymbol } = options || {}
-      
-      console.log(`📊 Building ${targetSymbol ? `holding data for ${targetSymbol}` : 'portfolio data'} using unified calculation engine`)
-      
-      // Use the unified calculation service for consistent results
-      return await unifiedCalculationService.calculateUnifiedHistoricalData(
-        user,
-        transactions,
-        symbols,
-        {
-          targetSymbol,
-          targetCurrency // Pass the target currency
-        }
+
+      // Generate cache key based on user, symbol (or 'portfolio'), and currency
+      const cacheKey = targetSymbol
+        ? cacheService.Keys.holdingHistoricalData(user.id, targetSymbol, targetCurrency)
+        : cacheService.Keys.historicalData(user.id, targetCurrency)
+
+      // Use cache with 5 minute TTL for portfolio-level calculations (expensive)
+      return await cacheService.getOrFetch(
+        cacheKey,
+        async () => {
+          console.log(`📊 Building ${targetSymbol ? `holding data for ${targetSymbol}` : 'portfolio data'} using unified calculation engine`)
+
+          // Use the unified calculation service for consistent results
+          return await unifiedCalculationService.calculateUnifiedHistoricalData(
+            user,
+            transactions,
+            symbols,
+            {
+              targetSymbol,
+              targetCurrency // Pass the target currency
+            }
+          )
+        },
+        cacheService.getTTL('portfolio') // 5 minute TTL
       )
-      
+
     } catch (error) {
       return this.handleError('building historical data', error, [])
     }

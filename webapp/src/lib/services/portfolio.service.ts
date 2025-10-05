@@ -160,6 +160,7 @@ export class PortfolioService {
   /**
    * Calculate return metrics for all symbols in the portfolio
    * Returns a map of symbol -> return metrics
+   * OPTIMIZED: Processes symbols in parallel for faster initial load
    */
   async getAllHoldingsReturnsMetrics(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<Map<string, ReturnMetrics>> {
     const transactions = await transactionService.getTransactions(user)
@@ -167,12 +168,21 @@ export class PortfolioService {
     const symbols = new Set<string>()
     transactions.forEach(t => symbols.add(t.symbol))
 
-    const metricsMap = new Map<string, ReturnMetrics>()
+    // Process all symbols in parallel instead of sequentially
+    // This allows cache coordination via singleflight and faster I/O
+    const symbolArray = Array.from(symbols)
+    const metricsPromises = symbolArray.map(symbol =>
+      this.getHoldingReturnMetrics(user, symbol, targetCurrency, timeRange)
+        .then(metrics => ({ symbol, metrics }))
+    )
 
-    for (const symbol of symbols) {
-      const metrics = await this.getHoldingReturnMetrics(user, symbol, targetCurrency, timeRange)
+    const results = await Promise.all(metricsPromises)
+
+    // Convert array results to Map
+    const metricsMap = new Map<string, ReturnMetrics>()
+    results.forEach(({ symbol, metrics }) => {
       metricsMap.set(symbol, metrics)
-    }
+    })
 
     return metricsMap
   }

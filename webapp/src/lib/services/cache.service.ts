@@ -189,6 +189,7 @@ export class CacheService {
     customPrices: (userId: string, symbol: string) => `customPrices:${userId}:${symbol}`,
     portfolioData: (userId: string, currency: string) => `portfolioData:${userId}:${currency}`,
     historicalData: (userId: string, currency: string) => `historicalData:${userId}:${currency}`,
+    holdingHistoricalData: (userId: string, symbol: string, currency: string) => `holdingHistoricalData:${userId}:${symbol}:${currency}`,
   }
 
   /**
