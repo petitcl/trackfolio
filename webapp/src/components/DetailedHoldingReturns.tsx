@@ -5,6 +5,7 @@ import { portfolioService, type ReturnMetrics } from '@/lib/services/portfolio.s
 import { type AuthUser } from '@/lib/auth/client.auth.service'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 import { type TimeRange } from '@/lib/utils/timeranges'
+import { getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
 
 interface DetailedHoldingReturnsProps {
   user: AuthUser
@@ -51,19 +52,7 @@ export default function DetailedHoldingReturns({
     loadDetailedReturns()
   }, [user, symbol, selectedCurrency, timeRange])
 
-  const formatCurrency = (amount: number) => {
-    return currencyService.formatCurrency(amount, selectedCurrency)
-  }
-
-  const formatPercent = (percent: number) => {
-    return `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`
-  }
-
-  const getPnLColor = (value: number) => {
-    if (value > 0) return 'text-green-600 dark:text-green-400'
-    if (value < 0) return 'text-red-600 dark:text-red-400'
-    return 'text-gray-600 dark:text-gray-400'
-  }
+  const formatCurrency = makeFormatCurrency(selectedCurrency)
 
   if (isLoading) {
     return (

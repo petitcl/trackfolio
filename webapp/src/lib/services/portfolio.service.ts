@@ -35,8 +35,8 @@ export class PortfolioService {
     historicalPriceService.clearCache()
   }
 
-  async getPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD'): Promise<PortfolioData> {
-    console.log('🔄 Fetching portfolio data for user:', user.email)
+  async getPortfolioData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange: TimeRange): Promise<PortfolioData> {
+    console.log('🔄 Fetching portfolio data: currency=', targetCurrency, ', timeRange=', timeRange)
 
     try {
       // Fetch transactions and symbols using transaction service
@@ -46,6 +46,13 @@ export class PortfolioService {
       if (transactions.length === 0) {
         console.log('📈 No transactions found for user, returning empty portfolio')
         return this.getEmptyPortfolio()
+      }
+
+      let startDate: string | undefined
+      if (timeRange && timeRange !== 'all') {
+        const filterStartDate: Date = getStartDateForTimeRange(timeRange)
+
+        startDate = filterStartDate.toISOString().split('T')[0]
       }
 
       // Calculate positions using unified calculation service (already in target currency)
@@ -58,7 +65,8 @@ export class PortfolioService {
         returns = returnCalculationService.calculatePortfolioReturnMetrics(
           transactions,
           historicalData,
-          symbols
+          symbols,
+          { startDate },
         )
       } catch (error) {
         console.warn('Could not calculate return metrics:', error)

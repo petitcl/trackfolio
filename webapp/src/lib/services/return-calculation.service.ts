@@ -46,42 +46,49 @@ interface Lot {
   costPerUnit: number;
 }
 
-interface PortfolioSummary {
-  totalValue: number;
-  totalPnL: number;
-  realizedPnL: number;
-  unrealizedPnL: number;
-  capitalGains: number;
-  dividends: number;
-  costBasis: number;
-  totalInvested: number;
-  annualizedReturn: number;
+/**
+ * Find the historical data point at or immediately before the specified date
+ * Returns the closest point without going past the target date
+ */
+function findHistoricalDataPointAt(
+  histData: HistoricalDataPoint[],
+  targetDate: string
+): HistoricalDataPoint | null {
+  if (histData.length === 0) return null;
+
+  const sorted = histData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // Find the last point that is <= targetDate
+  let result: HistoricalDataPoint | null = null;
+  for (const point of sorted) {
+    if (point.date <= targetDate) {
+      result = point;
+    } else {
+      break;
+    }
+  }
+
+  // If no point found before target, return the first point
+  return result || sorted[0];
 }
 
-function computePortfolioSummaryV2(
+/**
+ * Compute portfolio state (cost basis, lots) at a specific date
+ * Processes all transactions up to and including the target date
+ */
+function computePortfolioStateAt(
   transactions: Transaction[],
-  histData: HistoricalDataPoint[],
-  startDate: string,
-  endDate: string
-): PortfolioSummary {
-  // Sort historical data
-  const histSorted = histData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const histStart = histSorted.find(d => d.date >= startDate) ?? histSorted[0];
-  const histEnd = histSorted.slice().reverse().find(d => d.date <= endDate) ?? histSorted[histSorted.length - 1];
-
-  // IMPORTANT: For FIFO lot tracking, we need to process ALL transactions from the beginning,
-  // not just those in the date range. This ensures lots are built correctly for closed positions.
-  const allTxs = transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-  // For TWR calculation, we still need transactions within the date range
-  const txs = allTxs.filter(tx => tx.date >= startDate && tx.date <= endDate);
+  targetDate: string
+): { costBasis: number; totalInvested: number; realizedPnL: number; dividends: number; lotsBySymbol: Record<string, Lot[]> } {
+  const allTxs = transactions
+    .filter(tx => tx.date <= targetDate)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const lotsBySymbol: Record<string, Lot[]> = {};
   let realizedPnL = 0;
   let dividends = 0;
   let totalInvested = 0;
 
-  // Process ALL transactions for FIFO lot tracking
   for (const tx of allTxs) {
     if (!lotsBySymbol[tx.symbol]) lotsBySymbol[tx.symbol] = [];
 
@@ -124,40 +131,122 @@ function computePortfolioSummaryV2(
     }
   }
 
-  // Compute unrealized PnL using historical end values
+  return { costBasis, totalInvested, realizedPnL, dividends, lotsBySymbol };
+}
+
+/**
+ * Compute period-specific realized P&L and dividends
+ * Only considers transactions within the specified date range
+ */
+function computePeriodMetrics(
+  transactions: Transaction[],
+  startDate: string,
+  endDate: string
+): { periodRealizedPnL: number; periodDividends: number } {
+  // Get state at period start (just before)
+  const stateBeforeStart = computePortfolioStateAt(transactions, new Date(new Date(startDate).getTime() - 1).toISOString().split('T')[0]);
+
+  // Get state at period end
+  const stateAtEnd = computePortfolioStateAt(transactions, endDate);
+
+  // Period metrics are the delta
+  const periodRealizedPnL = stateAtEnd.realizedPnL - stateBeforeStart.realizedPnL;
+  const periodDividends = stateAtEnd.dividends - stateBeforeStart.dividends;
+
+  return { periodRealizedPnL, periodDividends };
+}
+
+interface PortfolioSummary {
+  totalValue: number;
+  totalPnL: number;
+  realizedPnL: number;
+  unrealizedPnL: number;
+  capitalGains: number;
+  dividends: number;
+  costBasis: number;
+  totalInvested: number;
+  annualizedReturn: number;
+}
+
+/**
+ * Compute portfolio metrics for a specific period
+ * This calculates period-specific P&L while maintaining accurate cost basis
+ */
+function computePeriodPortfolioSummary(
+  transactions: Transaction[],
+  histData: HistoricalDataPoint[],
+  startDate: string,
+  endDate: string
+): PortfolioSummary {
+  // Find historical data points at period boundaries
+  const histStart = findHistoricalDataPointAt(histData, startDate);
+  const histEnd = findHistoricalDataPointAt(histData, endDate);
+
+  if (!histStart || !histEnd) {
+    return {
+      totalValue: 0,
+      totalPnL: 0,
+      realizedPnL: 0,
+      unrealizedPnL: 0,
+      capitalGains: 0,
+      dividends: 0,
+      costBasis: 0,
+      totalInvested: 0,
+      annualizedReturn: 0,
+    };
+  }
+
+  // Get portfolio state at period end (for current cost basis and total invested)
+  const endState = computePortfolioStateAt(transactions, endDate);
+
+  // Get portfolio state at period start
+  const startState = computePortfolioStateAt(transactions, startDate);
+
+  // Get period-specific metrics (realized P&L and dividends within period)
+  const { periodRealizedPnL, periodDividends } = computePeriodMetrics(transactions, startDate, endDate);
+
+  // Current portfolio value from historical data
   const totalCurrentValue = Object.values(histEnd.assetTypeValues).reduce((a, b) => a + b, 0);
-  const unrealizedPnL = totalCurrentValue - costBasis;
+  const startValue = Object.values(histStart.assetTypeValues).reduce((a, b) => a + b, 0);
 
-  // Capital gains and total PnL
-  const capitalGains = realizedPnL + unrealizedPnL;
-  const totalPnL = capitalGains + dividends;
+  // Unrealized P&L at period end vs period start
+  const unrealizedPnLEnd = totalCurrentValue - endState.costBasis;
+  const unrealizedPnLStart = startValue - startState.costBasis;
+  const periodUnrealizedPnLChange = unrealizedPnLEnd - unrealizedPnLStart;
 
-  // Annualized TWR
-  const annualizedReturn = computeAnnualizedTWR(histData, txs, startDate, endDate);
+  // Period capital gains = period realized + change in unrealized
+  const periodCapitalGains = periodRealizedPnL + periodUnrealizedPnLChange;
+
+  // Period total P&L = capital gains + dividends
+  const periodTotalPnL = periodCapitalGains + periodDividends;
+
+  // Annualized TWR uses full historical data (calculated separately)
+  const annualizedReturn = computeAnnualizedTWR(histData, transactions);
 
   return {
     totalValue: totalCurrentValue,
-    totalPnL,
-    realizedPnL,
-    unrealizedPnL,
-    capitalGains,
-    dividends,
-    costBasis,
-    totalInvested,
+    totalPnL: periodTotalPnL,
+    realizedPnL: periodRealizedPnL,
+    unrealizedPnL: periodUnrealizedPnLChange, // Change in unrealized P&L during period
+    capitalGains: periodCapitalGains,
+    dividends: periodDividends,
+    costBasis: endState.costBasis,
+    totalInvested: endState.totalInvested,
     annualizedReturn,
   };
 }
 
+/**
+ * Compute annualized Time-Weighted Return (TWR)
+ * ALWAYS uses full historical data - never filtered by date range
+ * This represents the lifetime performance of the portfolio
+ */
 function computeAnnualizedTWR(
   histData: HistoricalDataPoint[],
-  transactions: Transaction[],
-  startDate: string,
-  endDate: string
+  transactions: Transaction[]
 ): number {
-  // Sort historical data
-  const histSorted = histData
-    .filter(d => d.date >= startDate && d.date <= endDate)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  // Sort historical data - use ALL data points
+  const histSorted = histData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   if (histSorted.length < 2) return 0;
 
@@ -167,7 +256,7 @@ function computeAnnualizedTWR(
 
   // For closed positions, use realized return calculation instead of TWR
   if (isClosedPosition) {
-    // Calculate total invested (all buys)
+    // Calculate total invested (all buys) and total proceeds (all sells)
     let totalInvested = 0;
     let totalProceeds = 0;
 
@@ -359,6 +448,10 @@ export class ReturnCalculationService {
    * Calculate unified portfolio return metrics
    * This is the primary calculation method that should be used for all return calculations
    * Returns sensible defaults (zeros) when insufficient data is available
+   *
+   * IMPORTANT:
+   * - Annualized returns (TWR, XIRR) are ALWAYS calculated from full lifetime data
+   * - Period metrics (totalPnL, unrealizedPnL, etc.) are calculated for the specified date range
    */
   calculatePortfolioReturnMetrics(
     transactions: Transaction[],
@@ -373,72 +466,90 @@ export class ReturnCalculationService {
 
     const { startDate: optionsStartDate, endDate: optionsEndDate } = options
 
-    // Filter historical data by date range if specified
-    let filteredData = historicalData
-    if (optionsStartDate || optionsEndDate) {
-      filteredData = historicalData.filter(point => {
-        const pointDate = point.date
-        if (optionsStartDate && pointDate < optionsStartDate) return false
-        if (optionsEndDate && pointDate > optionsEndDate) return false
-        return true
-      })
+    // Determine period boundaries - use full range if not specified
+    const sortedData = historicalData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    const firstAvailableDate = sortedData[0].date
+    const lastAvailableDate = sortedData[sortedData.length - 1].date
+
+    // IMPORTANT: If requested start date is before first available data, use first available date
+    // This prevents calculating returns from before the portfolio existed
+    let actualStartDate = optionsStartDate || firstAvailableDate
+    if (optionsStartDate && optionsStartDate < firstAvailableDate) {
+      actualStartDate = firstAvailableDate
     }
 
-    if (filteredData.length < 2) {
+    const actualEndDate = optionsEndDate || lastAvailableDate
+
+    // Find historical data points at period boundaries
+    const startPoint = findHistoricalDataPointAt(historicalData, actualStartDate)
+    const endPoint = findHistoricalDataPointAt(historicalData, actualEndDate)
+
+    if (!startPoint || !endPoint) {
       return this.getEmptyReturnMetrics()
     }
 
-    const firstPoint = filteredData[0]
-    const lastPoint = filteredData[filteredData.length - 1]
-    const periodYears = this.calculateYearsDifference(firstPoint.date, lastPoint.date)
-
-    // Use actual data range for calculation
-    const actualStartDate = optionsStartDate || firstPoint.date
-    const actualEndDate = optionsEndDate || lastPoint.date
+    const periodYears = this.calculateYearsDifference(startPoint.date, endPoint.date)
 
     if (periodYears <= 0) {
       return this.getEmptyReturnMetrics()
     }
 
-    // Calculate V2 summary for P&L breakdown
-    const v2Summary = computePortfolioSummaryV2(transactions, filteredData, actualStartDate, actualEndDate)
+    // Calculate period-specific summary (P&L for the selected time range)
+    const periodSummary = computePeriodPortfolioSummary(
+      transactions,
+      historicalData,  // Pass full historical data
+      startPoint.date,  // Use actual found start point
+      endPoint.date     // Use actual found end point
+    )
 
-    // Calculate total return percentage
-    let totalReturn = 0
-    if (v2Summary.totalInvested > 0) {
-      totalReturn = (v2Summary.totalPnL / v2Summary.totalInvested) * 100
+    // Calculate total return percentage for the period
+    // We need to account for cash flows during the period
+    const startValue = Object.values(startPoint.assetTypeValues).reduce((a, b) => a + b, 0)
+    const startState = computePortfolioStateAt(transactions, startPoint.date)
+    const endState = computePortfolioStateAt(transactions, endPoint.date)
+
+    // Net cash invested during the period
+    const periodNetCashFlow = endState.totalInvested - startState.totalInvested
+
+    let totalReturnPercentage = 0
+    // Use a time-weighted average base: starting value + half of net cash flows
+    // This approximates the average capital at risk during the period
+    const averageCapitalBase = startValue + (periodNetCashFlow / 2)
+
+    if (averageCapitalBase > 0) {
+      // Period return % = Total Period P&L / Average Capital Base
+      totalReturnPercentage = (periodSummary.totalPnL / averageCapitalBase) * 100
     }
 
-    // Calculate XIRR for money-weighted return
-    const finalValue = Object.values(lastPoint.assetTypeValues).reduce((a, b) => a + b, 0)
-    const xirrTransactions = transactions.filter(tx =>
-      tx.date >= actualStartDate && tx.date <= actualEndDate
-    )
-    const xirr = calculateXIRR(xirrTransactions, finalValue, actualEndDate)
+    // Calculate XIRR for money-weighted return - ALWAYS use ALL transactions
+    const finalValue = Object.values(endPoint.assetTypeValues).reduce((a, b) => a + b, 0)
+    const xirr = calculateXIRR(transactions, finalValue, endPoint.date)
 
     return {
       // Portfolio Value
-      totalValue: v2Summary.totalValue,
+      totalValue: periodSummary.totalValue,
 
-      // P&L Breakdown
-      totalPnL: v2Summary.totalPnL,
-      realizedPnL: v2Summary.realizedPnL,
-      unrealizedPnL: v2Summary.unrealizedPnL,
-      capitalGains: v2Summary.capitalGains,
-      dividends: v2Summary.dividends,
+      // P&L Breakdown (period-specific)
+      totalPnL: periodSummary.totalPnL,
+      realizedPnL: periodSummary.realizedPnL,
+      unrealizedPnL: periodSummary.unrealizedPnL,
+      capitalGains: periodSummary.capitalGains,
+      dividends: periodSummary.dividends,
 
       // Cost Basis
-      costBasis: v2Summary.costBasis,
-      totalInvested: v2Summary.totalInvested,
+      costBasis: periodSummary.costBasis,
+      totalInvested: periodSummary.totalInvested,
 
-      // Annualized Returns
-      timeWeightedReturn: v2Summary.annualizedReturn * 100,
+      // Annualized Returns (lifetime, not affected by date range)
+      timeWeightedReturn: periodSummary.annualizedReturn * 100,
       moneyWeightedReturn: xirr * 100,
-      totalReturnPercentage: totalReturn,
+
+      // Period Return Percentage (period-specific)
+      totalReturnPercentage: totalReturnPercentage,
 
       // Time Period
-      startDate: firstPoint.date,
-      endDate: lastPoint.date,
+      startDate: startPoint.date,
+      endDate: endPoint.date,
       periodYears
     }
   }

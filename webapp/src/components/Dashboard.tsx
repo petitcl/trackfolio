@@ -67,7 +67,7 @@ export default function Dashboard({ user }: DashboardProps) {
 
       const apiStartTime = performance.now()
       const [portfolio, symbolsData, historical, repartition, holdingsReturnMetrics] = await Promise.all([
-        portfolioService.getPortfolioData(user, selectedCurrency),
+        portfolioService.getPortfolioData(user, selectedCurrency, selectedTimeRange),
         portfolioService.getSymbols(user),
         portfolioService.getPortfolioHistoricalData(user, selectedCurrency),
         portfolioService.getPortfolioRepartitionData(user, selectedCurrency, selectedTimeRange),

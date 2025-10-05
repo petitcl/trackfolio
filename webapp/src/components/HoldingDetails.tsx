@@ -54,7 +54,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
         // Get all portfolio data and filter for this symbol
         const apiStartTime = performance.now()
         const [portfolioData, symbols, transactions, historicalData, detailedReturns] = await Promise.all([
-          portfolioService.getPortfolioData(user, selectedCurrency),
+          portfolioService.getPortfolioData(user, selectedCurrency, timeRange),
           portfolioService.getSymbols(user),
           portfolioService.getTransactions(user),
           portfolioService.getHoldingHistoricalData(user, symbol, selectedCurrency),
@@ -303,11 +303,9 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                     <dd className={`text-lg font-medium ${getPnLColor(totalReturn)}`}>
                       {formatCurrency(totalReturn)}
                     </dd>
-                    {timeRange === 'all' && totalInvested > 0 && (
-                      <dd className={`text-xs ${totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mt-1`}>
+                    <dd className={`text-xs ${totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mt-1`}>
                         {formatPercent((totalReturn / totalInvested) * 100)}
-                      </dd>
-                    )}
+                    </dd>
                   </dl>
                 </div>
               </div>

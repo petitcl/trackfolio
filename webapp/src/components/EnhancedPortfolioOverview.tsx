@@ -142,8 +142,7 @@ export default function EnhancedPortfolioOverview({
             </div>
 
             {/* Dividends */}
-            {returns.dividends > 0 && (
-              <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-2">
                   <span className="text-xl">💰</span>
                   <span className="text-sm text-gray-600 dark:text-gray-400">Dividends</span>
@@ -154,7 +153,6 @@ export default function EnhancedPortfolioOverview({
                   </div>
                 </div>
               </div>
-            )}
 
             {/* Realized vs Unrealized */}
             <div className="border-t border-gray-200 dark:border-gray-600 pt-4 space-y-3">

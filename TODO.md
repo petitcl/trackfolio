@@ -5,7 +5,7 @@ Mark done item with ✅
 - ✅ Fix Annualized Return = -100% for some closed positions
 - ✅ Prevent page reload when changing "show closed positions"
 - ✅ Move dashboard positions calculations to service layer
-- [ ] Update timerange changes to affect all metrics correctly
+- ✅ Update timerange changes to affect all metrics correctly
 - [ ] Fix annualized return calculation (use money weighted?)
 - [ ] Improve page load speed - time latency of service layer 
 - [ ] Implement portfolio export and backup functionality
