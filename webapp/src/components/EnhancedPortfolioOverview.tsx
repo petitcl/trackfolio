@@ -3,6 +3,7 @@
 import React from 'react'
 import { type ReturnMetrics } from '@/lib/services/portfolio.service'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
+import ProfitDisplay from './ProfitDisplay'
 
 interface EnhancedPortfolioOverviewProps {
   returns: ReturnMetrics
@@ -16,16 +17,6 @@ export default function EnhancedPortfolioOverview({
 
   const formatCurrency = (amount: number) => {
     return currencyService.formatCurrency(amount, selectedCurrency)
-  }
-
-  const formatPercent = (percent: number) => {
-    return `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`
-  }
-
-  const getPnLColor = (value: number) => {
-    if (value > 0) return 'text-green-600 dark:text-green-400'
-    if (value < 0) return 'text-red-600 dark:text-red-400'
-    return 'text-gray-600 dark:text-gray-400'
   }
 
   return (
@@ -81,11 +72,11 @@ export default function EnhancedPortfolioOverview({
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Return</dt>
-                  <dd className={`text-lg font-medium ${getPnLColor(returns.totalPnL)}`}>
-                    {formatCurrency(returns.totalPnL)}
+                  <dd>
+                    <ProfitDisplay value={returns.totalPnL} format="currency" currency={selectedCurrency} className="text-lg font-medium" />
                   </dd>
-                  <dd className={`text-xs ${getPnLColor(returns.totalReturnPercentage)} mt-1`}>
-                    {formatPercent(returns.totalReturnPercentage)}
+                  <dd className="mt-1">
+                    <ProfitDisplay value={returns.totalReturnPercentage} format="percentage" className="text-xs" />
                   </dd>
                 </dl>
               </div>
@@ -103,8 +94,8 @@ export default function EnhancedPortfolioOverview({
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
-                  <dd className={`text-lg font-medium ${getPnLColor(returns.moneyWeightedReturn)}`}>
-                    {formatPercent(returns.moneyWeightedReturn)}
+                  <dd>
+                    <ProfitDisplay value={returns.moneyWeightedReturn} format="percentage" className="text-lg font-medium" />
                   </dd>
                   {returns.periodYears > 0 && (
                     <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -135,9 +126,7 @@ export default function EnhancedPortfolioOverview({
                 <span className="text-sm text-gray-600 dark:text-gray-400">Capital Gains</span>
               </div>
               <div className="text-right">
-                <div className={`text-sm font-medium ${getPnLColor(returns.capitalGains)}`}>
-                  {formatCurrency(returns.capitalGains)}
-                </div>
+                <ProfitDisplay value={returns.capitalGains} format="currency" currency={selectedCurrency} className="text-sm font-medium" />
               </div>
             </div>
 
@@ -148,9 +137,7 @@ export default function EnhancedPortfolioOverview({
                   <span className="text-sm text-gray-600 dark:text-gray-400">Dividends</span>
                 </div>
                 <div className="text-right">
-                  <div className={`text-sm font-medium ${getPnLColor(returns.dividends)}`}>
-                    {formatCurrency(returns.dividends)}
-                  </div>
+                  <ProfitDisplay value={returns.dividends} format="currency" currency={selectedCurrency} className="text-sm font-medium" />
                 </div>
               </div>
 
@@ -158,15 +145,11 @@ export default function EnhancedPortfolioOverview({
             <div className="border-t border-gray-200 dark:border-gray-600 pt-4 space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Realized P&L</span>
-                <div className={`text-sm font-medium ${getPnLColor(returns.realizedPnL)}`}>
-                  {formatCurrency(returns.realizedPnL)}
-                </div>
+                <ProfitDisplay value={returns.realizedPnL} format="currency" currency={selectedCurrency} className="text-sm font-medium" />
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Unrealized P&L</span>
-                <div className={`text-sm font-medium ${getPnLColor(returns.unrealizedPnL)}`}>
-                  {formatCurrency(returns.unrealizedPnL)}
-                </div>
+                <ProfitDisplay value={returns.unrealizedPnL} format="currency" currency={selectedCurrency} className="text-sm font-medium" />
               </div>
             </div>
           </div>

@@ -20,6 +20,7 @@ import DetailedHoldingReturns from './DetailedHoldingReturns'
 import Header from '@/components/Header'
 import { formatPercent, getAssetTypeIcon, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
 import { type TimeRange } from '@/lib/utils/timeranges'
+import ProfitDisplay from './ProfitDisplay'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -305,11 +306,11 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Performance</dt>
-                    <dd className={`text-lg font-medium ${getPnLColor(totalReturn)}`}>
-                      {formatCurrency(totalReturn)}
+                    <dd>
+                      <ProfitDisplay value={totalReturn} format="currency" currency={selectedCurrency} className="text-lg font-medium" />
                     </dd>
-                    <dd className={`text-xs ${totalReturn >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mt-1`}>
-                        {formatPercent((totalReturn / totalInvested) * 100)}
+                    <dd className="mt-1">
+                      <ProfitDisplay value={(totalReturn / totalInvested) * 100} format="percentage" className="text-xs" />
                     </dd>
                   </dl>
                 </div>
@@ -327,8 +328,8 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Annualized Return</dt>
-                    <dd className={`text-lg font-medium ${getPnLColor(detailedReturns?.moneyWeightedReturn)}`}>
-                      {formatPercent(annualizedReturn)}
+                    <dd>
+                      <ProfitDisplay value={annualizedReturn} format="percentage" className="text-lg font-medium" />
                     </dd>
                     {holdingPeriod && (
                       <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">

@@ -7,6 +7,7 @@ import { portfolioService } from '@/lib/services/portfolio.service'
 import AddPriceForm, { type PriceFormData } from './AddPriceForm'
 import ConfirmDialog from './ConfirmDialog'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
+import ProfitDisplay from './ProfitDisplay'
 
 interface ManualPriceHistoryProps {
   user: AuthUser
@@ -236,10 +237,8 @@ export default function ManualPriceHistory({ user, symbol, onPriceUpdated, selec
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {priceChange !== null ? (
-                        <span className={`inline-flex items-center ${
-                          priceChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                        }`}>
-                          {priceChange >= 0 ? '↗' : '↘'} {Math.abs(priceChange).toFixed(2)}%
+                        <span className="inline-flex items-center">
+                          <ProfitDisplay value={Math.abs(priceChange)} format="percentage" showSign={false} />
                         </span>
                       ) : (
                         <span className="text-gray-400 dark:text-gray-500">-</span>

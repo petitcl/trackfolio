@@ -6,6 +6,7 @@ import { type AuthUser } from '@/lib/auth/client.auth.service'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 import { type TimeRange } from '@/lib/utils/timeranges'
 import { getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
+import ProfitDisplay from './ProfitDisplay'
 
 interface DetailedHoldingReturnsProps {
   user: AuthUser
@@ -104,9 +105,7 @@ export default function DetailedHoldingReturns({
               <span className="text-sm text-gray-600 dark:text-gray-400">Capital Gains</span>
             </div>
             <div className="text-right">
-              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.capitalGains)}`}>
-                {formatCurrency(detailedReturns.capitalGains)}
-              </div>
+              <ProfitDisplay value={detailedReturns.capitalGains} format="currency" currency={selectedCurrency} className="text-sm font-medium" />
             </div>
           </div>
 
@@ -117,9 +116,7 @@ export default function DetailedHoldingReturns({
               <span className="text-sm text-gray-600 dark:text-gray-400">Dividends</span>
             </div>
             <div className="text-right">
-              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.dividends)}`}>
-                {formatCurrency(detailedReturns.dividends)}
-              </div>
+              <ProfitDisplay value={detailedReturns.dividends} format="currency" currency={selectedCurrency} className="text-sm font-medium" />
             </div>
           </div>
 
@@ -127,15 +124,11 @@ export default function DetailedHoldingReturns({
           <div className="border-t border-gray-200 dark:border-gray-600 pt-4 space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 dark:text-gray-400">Realized P&L</span>
-              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.realizedPnL)}`}>
-                {formatCurrency(detailedReturns.realizedPnL)}
-              </div>
+              <ProfitDisplay value={detailedReturns.realizedPnL} format="currency" currency={selectedCurrency} className="text-sm font-medium" />
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600 dark:text-gray-400">Unrealized P&L</span>
-              <div className={`text-sm font-medium ${getPnLColor(detailedReturns.unrealizedPnL)}`}>
-                {formatCurrency(detailedReturns.unrealizedPnL)}
-              </div>
+              <ProfitDisplay value={detailedReturns.unrealizedPnL} format="currency" currency={selectedCurrency} className="text-sm font-medium" />
             </div>
           </div>
         </div>

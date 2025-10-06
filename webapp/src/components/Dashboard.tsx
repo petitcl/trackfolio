@@ -19,6 +19,7 @@ import { formatPercent, getAssetTypeIcon, getAssetTypeLabel, getPnLColor, makeFo
 import { type TimeRange } from '@/lib/utils/timeranges'
 import { useRouter } from 'next/navigation'
 import React, { useCallback, useEffect, useState } from 'react'
+import ProfitDisplay from './ProfitDisplay'
 
 interface DashboardProps {
   user: AuthUser
@@ -406,16 +407,16 @@ export default function Dashboard({ user }: DashboardProps) {
                               {isClosed ? '-' : formatCurrency(position.value)}
                             </a>
                           </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? 'text-gray-500 dark:text-gray-400' : getPnLColor(metrics.unrealizedPnL)}`}>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? 'text-gray-500 dark:text-gray-400' : ''}`}>
                             <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
-                              <div>{isClosed ? '-' : formatCurrency(metrics.unrealizedPnL)}</div>
-                              <div className="text-xs">{isClosed ? '-' : formatPercent(pnlPercentage)}</div>
+                              <div>{isClosed ? '-' : <ProfitDisplay value={metrics.unrealizedPnL} format="currency" currency={selectedCurrency} />}</div>
+                              <div className="text-xs">{isClosed ? '-' : <ProfitDisplay value={pnlPercentage} format="percentage" />}</div>
                             </a>
                           </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? getPnLColor(metrics.realizedPnL) : getPnLColor(totalReturn)}`}>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? '' : ''}`}>
                             <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
-                              <div>{isClosed ? formatCurrency(metrics.realizedPnL) : formatCurrency(totalReturn)}</div>
-                              <div className="text-xs">{isClosed ? formatPercent(metrics.totalReturnPercentage) : formatPercent(totalReturnPercentage)}</div>
+                              <div>{isClosed ? <ProfitDisplay value={metrics.realizedPnL} format="currency" currency={selectedCurrency} /> : <ProfitDisplay value={totalReturn} format="currency" currency={selectedCurrency} />}</div>
+                              <div className="text-xs">{isClosed ? <ProfitDisplay value={metrics.totalReturnPercentage} format="percentage" /> : <ProfitDisplay value={totalReturnPercentage} format="percentage" />}</div>
                             </a>
                           </td>
                         </tr>
@@ -447,21 +448,21 @@ export default function Dashboard({ user }: DashboardProps) {
                           <td className="px-6 py-2 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
                             {activePositions.length > 0 ? formatCurrency(typeTotalValue) : '-'}
                           </td>
-                          <td className={`px-6 py-2 whitespace-nowrap text-sm font-bold ${activePositions.length > 0 ? getPnLColor(typeTotalUnrealizedPnL) : 'text-gray-500 dark:text-gray-400'}`}>
+                          <td className={`px-6 py-2 whitespace-nowrap text-sm font-bold ${activePositions.length === 0 ? 'text-gray-500 dark:text-gray-400' : ''}`}>
                             <div>
-                              {activePositions.length > 0 ? formatCurrency(typeTotalUnrealizedPnL) : '-'}
+                              {activePositions.length > 0 ? <ProfitDisplay value={typeTotalUnrealizedPnL} format="currency" currency={selectedCurrency} className="font-bold" /> : '-'}
                             </div>
                             <div className="text-xs">
-                              {activePositions.length > 0 ? formatPercent(typePnLPercentage) : '-'}
+                              {activePositions.length > 0 ? <ProfitDisplay value={typePnLPercentage} format="percentage" className="font-bold" /> : '-'}
                             </div>
                           </td>
-                          <td className={`px-6 py-2 whitespace-nowrap text-sm font-bold ${activePositions.length > 0 ? getPnLColor(typeTotalReturn) : (typeTotalRealizedPnL !== 0 ? getPnLColor(typeTotalRealizedPnL) : 'text-gray-500 dark:text-gray-400')}`}>
+                          <td className={`px-6 py-2 whitespace-nowrap text-sm font-bold ${activePositions.length === 0 && typeTotalRealizedPnL === 0 ? 'text-gray-500 dark:text-gray-400' : ''}`}>
                             <div>
-                              {activePositions.length > 0 ? formatCurrency(typeTotalReturn) :
-                                (typeTotalRealizedPnL !== 0 ? formatCurrency(typeTotalRealizedPnL) : '-')}
+                              {activePositions.length > 0 ? <ProfitDisplay value={typeTotalReturn} format="currency" currency={selectedCurrency} className="font-bold" /> :
+                                (typeTotalRealizedPnL !== 0 ? <ProfitDisplay value={typeTotalRealizedPnL} format="currency" currency={selectedCurrency} className="font-bold" /> : '-')}
                             </div>
                             <div className="text-xs">
-                              {activePositions.length > 0 ? formatPercent(typeTotalReturnPercentage) :
+                              {activePositions.length > 0 ? <ProfitDisplay value={typeTotalReturnPercentage} format="percentage" className="font-bold" /> :
                                 (typeTotalRealizedPnL !== 0 ? `${formatPercent(typeTotalRealizedPnL > 0 ? 100 : -100)} (closed)` : 'No Activity')}
                             </div>
                           </td>

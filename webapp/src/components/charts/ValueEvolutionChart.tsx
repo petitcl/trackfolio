@@ -17,6 +17,7 @@ import type { HistoricalDataPoint } from '../../lib/mockData'
 import { CHART_COLORS, CHART_CONFIGS } from '../../lib/constants/chartColors'
 import { type SupportedCurrency, CURRENCY_SYMBOLS } from '../../lib/services/currency.service'
 import { getStartDateForTimeRange, type TimeRange } from '@/lib/utils/timeranges'
+import ProfitDisplay from '../ProfitDisplay'
 
 ChartJS.register(
   CategoryScale,
@@ -290,8 +291,12 @@ export default function ValueEvolutionChart({
               <div className="flex items-center">
                 <span className="text-gray-600 dark:text-gray-400">Dividends: {formatCurrency(currentDividends)}</span>
               </div>
-              <div className={`font-medium ${totalPnL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                Total P&L: {formatCurrency(totalPnL)} ({totalPnLPercentage >= 0 ? '+' : ''}{totalPnLPercentage.toFixed(2)}%)
+              <div className="flex items-center gap-2">
+                <span className="text-gray-600 dark:text-gray-400">Total P&L:</span>
+                <ProfitDisplay value={totalPnL} format="currency" currency={currency} className="font-medium" />
+                <span className="text-gray-600 dark:text-gray-400">(</span>
+                <ProfitDisplay value={totalPnLPercentage} format="percentage" className="font-medium" />
+                <span className="text-gray-600 dark:text-gray-400">)</span>
               </div>
             </>
           )}
