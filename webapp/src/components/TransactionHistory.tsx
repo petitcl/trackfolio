@@ -28,6 +28,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
   const [isDeleting, setIsDeleting] = useState(false)
   const [symbolData, setSymbolData] = useState<Symbol | null>(null)
   const [bonusTransactionTotals, setBonusTransactionTotals] = useState<Map<string, number>>(new Map())
+  const [displayedCount, setDisplayedCount] = useState(20)
 
   useEffect(() => {
     const fetchSymbolData = async () => {
@@ -155,6 +156,11 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
     return colors[type] || 'text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/20'
   }
 
+  // Sort transactions once before filtering
+  const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  const displayedTransactions = sortedTransactions.slice(0, displayedCount)
+  const remainingCount = Math.max(0, sortedTransactions.length - displayedCount)
+
   if (transactions.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg border dark:border-gray-700">
@@ -202,7 +208,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {[...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((transaction) => {
+            {displayedTransactions.map((transaction) => {
               let total: number
               if (transaction.type === 'dividend') {
                 total = transaction.amount || 0
@@ -287,6 +293,17 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
             })}
           </tbody>
         </table>
+
+        {remainingCount > 0 && (
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <button
+              onClick={() => setDisplayedCount(prev => prev + 20)}
+              className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800"
+            >
+              Load More ({remainingCount} remaining)
+            </button>
+          </div>
+        )}
       </div>
 
       <ConfirmDialog
