@@ -179,6 +179,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
   const unrealizedPnL = detailedReturns?.unrealizedPnL || 0
   const totalReturn = detailedReturns?.totalPnL || (unrealizedPnL + realizedPnL)
   const totalInvested = detailedReturns?.totalInvested || 0
+  const totalReturnPercentage = detailedReturns?.totalReturnPercentage || 0
   const averageCostBasis = quantity > 0 ? costBasis / quantity : 0
   const annualizedReturn = detailedReturns?.moneyWeightedReturn ?? 0
   const holdingPeriod = detailedReturns && detailedReturns.periodYears > 0 ? (detailedReturns.periodYears < 1 ?
@@ -310,7 +311,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                       <ProfitDisplay value={totalReturn} format="currency" currency={selectedCurrency} className="text-lg font-medium" />
                     </dd>
                     <dd className="mt-1">
-                      <ProfitDisplay value={(totalReturn / totalInvested) * 100} format="percentage" className="text-xs" />
+                      <ProfitDisplay value={totalReturnPercentage} format="percentage" className="text-xs" />
                     </dd>
                   </dl>
                 </div>

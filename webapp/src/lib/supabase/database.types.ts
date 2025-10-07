@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      positions: {
+        Row: {
+          created_at: string
+          id: string
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          symbol?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positions_symbol_fkey"
+            columns: ["symbol"]
+            isOneToOne: false
+            referencedRelation: "symbols"
+            referencedColumns: ["symbol"]
+          },
+        ]
+      }
       symbol_price_history: {
         Row: {
           adjusted_close: number | null

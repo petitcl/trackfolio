@@ -4,6 +4,7 @@ import { historicalPriceService } from './historical-price.service'
 import { unifiedCalculationService, type PortfolioPosition } from './unified-calculation.service'
 import { historicalDataService } from './historical-data.service'
 import { transactionService } from './transaction.service'
+import { positionService } from './position.service'
 import { type SupportedCurrency } from './currency.service'
 import { returnCalculationService, type ReturnMetrics, type BucketedReturnMetrics } from './return-calculation.service'
 import { getStartDateForTimeRange, type TimeRange } from '../utils/timeranges'
@@ -39,12 +40,25 @@ export class PortfolioService {
     console.log('🔄 Fetching portfolio data: currency=', targetCurrency, ', timeRange=', timeRange, ', includeClosedPositions=', includeClosedPositions)
 
     try {
-      // Fetch transactions and symbols using transaction service
+      // Fetch positions, transactions and symbols
+      const positions = await positionService.getPositions(user)
       const transactions = await transactionService.getTransactions(user)
       const symbols = await transactionService.getSymbols(user)
 
-      if (transactions.length === 0) {
-        console.log('📈 No transactions found for user, returning empty portfolio')
+      // Get unique symbols from both positions and transactions
+      const positionSymbols = new Set(positions.map(p => p.symbol))
+      const transactionSymbols = new Set(transactions.map(t => t.symbol))
+
+      // Log warnings for transactions without positions (graceful fallback)
+      transactions.forEach(tx => {
+        if (!positionSymbols.has(tx.symbol)) {
+          console.warn(`⚠️ Transaction found without position for symbol ${tx.symbol}. Treating as if position exists.`)
+        }
+      })
+
+      // If no positions AND no transactions, return empty portfolio
+      if (positions.length === 0 && transactions.length === 0) {
+        console.log('📈 No positions or transactions found for user, returning empty portfolio')
         return this.getEmptyPortfolio()
       }
 
@@ -56,7 +70,15 @@ export class PortfolioService {
       }
 
       // Calculate positions using unified calculation service (already in target currency)
-      const positions = await unifiedCalculationService.calculateCurrentPositions(transactions, symbols, user, targetCurrency, includeClosedPositions)
+      // This will include positions with transactions AND positions without transactions (treated as closed)
+      const calculatedPositions = await unifiedCalculationService.calculateCurrentPositions(
+        transactions,
+        symbols,
+        user,
+        targetCurrency,
+        includeClosedPositions,
+        positions // Pass explicit positions to include those without transactions
+      )
 
       // Calculate unified return metrics (always present, defaults to zeros if insufficient data)
       let returns: ReturnMetrics
@@ -74,7 +96,7 @@ export class PortfolioService {
       }
 
       return {
-        positions: positions,
+        positions: calculatedPositions,
         returns
       }
     } catch (error) {
@@ -364,6 +386,19 @@ export class PortfolioService {
 
   async deleteUserSymbolPrice(user: AuthUser, priceId: string) {
     return transactionService.deleteUserSymbolPrice(user, priceId)
+  }
+
+  // Position management
+  async addPosition(user: AuthUser, symbol: string) {
+    return positionService.createPosition(user, symbol)
+  }
+
+  async getPositions(user: AuthUser) {
+    return positionService.getPositions(user)
+  }
+
+  async deletePosition(user: AuthUser, symbol: string) {
+    return positionService.deletePosition(user, symbol)
   }
 
   // Legacy method signatures for backward compatibility

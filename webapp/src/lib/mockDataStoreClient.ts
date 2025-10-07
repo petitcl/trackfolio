@@ -1,22 +1,29 @@
 // Client-side only mock data store wrapper
 import { mockTransactions, mockSymbols } from './mockData'
 import type { Transaction, Symbol, UserSymbolPrice } from './supabase/types'
+import type { Database } from './supabase/database.types'
 import { MOCK_USER_ID, MOCK_DATA_STORAGE_KEY } from './constants/mockConstants'
 
 const STORAGE_KEY = MOCK_DATA_STORAGE_KEY
+
+type Position = Database['public']['Tables']['positions']['Row']
 
 interface StoredMockData {
   transactions: Transaction[]
   symbols: Symbol[]
   userSymbolPrices: UserSymbolPrice[]
+  positions: Position[]
   lastTransactionId: number
+  lastPositionId: number
 }
 
 class ClientMockDataStore {
   private transactions: Transaction[] = []
   private symbols: Symbol[] = []
   private userSymbolPrices: UserSymbolPrice[] = []
+  private positions: Position[] = []
   private lastTransactionId: number = 0
+  private lastPositionId: number = 0
   private initialized: boolean = false
 
   constructor() {
@@ -36,19 +43,24 @@ class ClientMockDataStore {
         this.transactions = data.transactions
         this.symbols = data.symbols
         this.userSymbolPrices = data.userSymbolPrices || []
+        this.positions = data.positions || []
         this.lastTransactionId = data.lastTransactionId
+        this.lastPositionId = data.lastPositionId || 0
         console.log('📦 Loaded mock data from localStorage:', {
           transactions: this.transactions.length,
-          symbols: this.symbols.length
+          symbols: this.symbols.length,
+          positions: this.positions.length
         })
       } else {
         // Initialize with the static mock data
         this.transactions = [...mockTransactions]
         this.symbols = [...mockSymbols]
         this.userSymbolPrices = [] // Start with empty price history
-        this.lastTransactionId = Math.max(...mockTransactions.map(t => 
+        this.positions = [] // Start with empty positions
+        this.lastTransactionId = Math.max(...mockTransactions.map(t =>
           parseInt(t.id.replace('mock-transaction-', ''))
         ))
+        this.lastPositionId = 0
         this.saveToLocalStorage()
         console.log('📦 Initialized mock data from code and saved to localStorage')
       }
@@ -57,9 +69,11 @@ class ClientMockDataStore {
       // Fallback to mock data
       this.transactions = [...mockTransactions]
       this.symbols = [...mockSymbols]
-      this.lastTransactionId = Math.max(...mockTransactions.map(t => 
+      this.positions = []
+      this.lastTransactionId = Math.max(...mockTransactions.map(t =>
         parseInt(t.id.replace('mock-transaction-', ''))
       ))
+      this.lastPositionId = 0
     }
     
     this.initialized = true
@@ -67,13 +81,15 @@ class ClientMockDataStore {
 
   private saveToLocalStorage(): void {
     if (typeof window === 'undefined') return
-    
+
     try {
       const dataToStore: StoredMockData = {
         transactions: this.transactions,
         symbols: this.symbols,
         userSymbolPrices: this.userSymbolPrices,
-        lastTransactionId: this.lastTransactionId
+        positions: this.positions,
+        lastTransactionId: this.lastTransactionId,
+        lastPositionId: this.lastPositionId
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToStore))
       console.log('💾 Saved mock data to localStorage')
@@ -372,17 +388,76 @@ class ClientMockDataStore {
     console.log('🗑️ Deleted price entry from mock data:', priceId)
   }
 
+  getPositions(): Position[] {
+    if (!this.initialized && typeof window !== 'undefined') {
+      this.initialize()
+    }
+    return [...this.positions]
+  }
+
+  addPosition(symbol: string, userId: string): Position {
+    if (!this.initialized && typeof window !== 'undefined') {
+      this.initialize()
+    }
+
+    // Check if position already exists
+    const existingPosition = this.positions.find(p => p.symbol === symbol.toUpperCase() && p.user_id === userId)
+    if (existingPosition) {
+      return existingPosition
+    }
+
+    // Create new position
+    this.lastPositionId++
+    const newPosition: Position = {
+      id: `mock-position-${this.lastPositionId}`,
+      user_id: userId,
+      symbol: symbol.toUpperCase(),
+      created_at: new Date().toISOString()
+    }
+
+    this.positions.push(newPosition)
+    this.saveToLocalStorage()
+
+    console.log('📊 Added new position to mock data:', {
+      symbol: symbol,
+      position: newPosition
+    })
+
+    return newPosition
+  }
+
+  deletePosition(symbol: string): boolean {
+    if (!this.initialized && typeof window !== 'undefined') {
+      this.initialize()
+    }
+
+    const positionIndex = this.positions.findIndex(p => p.symbol === symbol.toUpperCase())
+    if (positionIndex === -1) {
+      console.error('Position not found for deletion:', symbol)
+      return false
+    }
+
+    // Remove the position
+    this.positions.splice(positionIndex, 1)
+    this.saveToLocalStorage()
+
+    console.log('🗑️ Deleted position from mock data:', symbol)
+    return true
+  }
+
   reset(): void {
     this.transactions = [...mockTransactions]
     this.symbols = [...mockSymbols]
     this.userSymbolPrices = [] // Reset price history
-    this.lastTransactionId = Math.max(...mockTransactions.map(t => 
+    this.positions = [] // Reset positions
+    this.lastTransactionId = Math.max(...mockTransactions.map(t =>
       parseInt(t.id.replace('mock-transaction-', ''))
     ))
-    
+    this.lastPositionId = 0
+
     // Save reset data to localStorage
     this.saveToLocalStorage()
-    
+
     console.log('🔄 Reset mock data to original values')
   }
 }
@@ -403,10 +478,13 @@ export const getClientMockDataStore = (): ClientMockDataStore => {
       getUserSymbolPrices: () => [],
       addUserSymbolPrice: async () => {},
       deleteUserSymbolPrice: async () => {},
+      getPositions: () => [],
+      addPosition: () => ({} as Position),
+      deletePosition: () => false,
       reset: () => {}
     } as unknown as ClientMockDataStore
   }
-  
+
   if (!instance) {
     instance = new ClientMockDataStore()
   }

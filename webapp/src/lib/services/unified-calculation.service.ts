@@ -413,11 +413,30 @@ export class UnifiedCalculationService {
     user: AuthUser,
     targetCurrency: SupportedCurrency = 'USD',
     includeClosedPositions: boolean = false,
+    explicitPositions?: Array<{ symbol: string }> // Optional: positions without transactions
   ): Promise<PortfolioPosition[]> {
     const currentDate = new Date().toISOString().split('T')[0]
 
-    // Calculate positions as of current date
+    // Calculate positions as of current date from transactions
     const unifiedPositions = this.calculatePositionsUpToDate(transactions, currentDate, undefined, includeClosedPositions)
+
+    // Add positions that exist but have no transactions (quantity = 0)
+    if (explicitPositions) {
+      const transactionSymbols = new Set(unifiedPositions.map(p => p.symbol))
+
+      for (const position of explicitPositions) {
+        if (!transactionSymbols.has(position.symbol)) {
+          // Add position with zero quantity - it exists but has no transactions yet
+          unifiedPositions.push({
+            symbol: position.symbol,
+            quantity: 0,
+            totalCost: 0,
+            avgCost: 0,
+            dividendIncome: 0
+          })
+        }
+      }
+    }
 
     if (unifiedPositions.length === 0) {
       return []

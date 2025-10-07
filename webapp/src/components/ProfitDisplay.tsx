@@ -28,7 +28,7 @@ export default function ProfitDisplay({
   const colorClass = getPnLColor(value)
 
   const formattedValue = format === 'percentage'
-    ? `${showSign && value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+    ? `${showSign && value > 0 ? '+' : ''}${value.toFixed(2)}%`
     : new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency

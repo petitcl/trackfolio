@@ -74,10 +74,24 @@ CREATE TABLE symbol_price_history (
     adjusted_close DECIMAL(20,8),
     data_source TEXT DEFAULT 'manual', -- 'manual', 'yahoo', 'alpha_vantage', etc.
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    
+
     -- One price record per symbol per date
     UNIQUE(symbol, date),
-    
+
+    -- Foreign key to symbols table
+    FOREIGN KEY (symbol) REFERENCES symbols(symbol) ON DELETE CASCADE
+);
+
+-- Positions table - tracks which symbols a user is tracking/holding
+CREATE TABLE positions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    symbol TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+
+    -- One position per user per symbol
+    UNIQUE(user_id, symbol),
+
     -- Foreign key to symbols table
     FOREIGN KEY (symbol) REFERENCES symbols(symbol) ON DELETE CASCADE
 );
@@ -93,6 +107,8 @@ CREATE INDEX idx_user_symbol_prices_date ON user_symbol_prices(price_date);
 CREATE INDEX idx_symbol_price_history_symbol_date ON symbol_price_history(symbol, date);
 CREATE INDEX idx_symbol_price_history_date ON symbol_price_history(date);
 CREATE INDEX idx_symbol_price_history_symbol ON symbol_price_history(symbol);
+CREATE INDEX idx_positions_user_id ON positions(user_id);
+CREATE INDEX idx_positions_user_symbol ON positions(user_id, symbol);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -123,6 +139,7 @@ ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE symbols ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_symbol_prices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE symbol_price_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE positions ENABLE ROW LEVEL SECURITY;
 
 
 -- Transactions policies - users can only access their own transactions
@@ -180,3 +197,13 @@ CREATE POLICY "Only service role can modify historical prices" ON symbol_price_h
 
 GRANT SELECT ON symbol_price_history TO authenticated;
 GRANT ALL ON symbol_price_history TO service_role;
+
+-- Positions policies - users can only access their own positions
+CREATE POLICY "Users can view own positions" ON positions
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own positions" ON positions
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own positions" ON positions
+    FOR DELETE USING (auth.uid() = user_id);

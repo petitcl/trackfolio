@@ -32,10 +32,6 @@ export default function AddHoldingPage() {
   const [name, setName] = useState('')
   const [assetType, setAssetType] = useState<AssetType>('stock')
   const [currency, setCurrency] = useState('USD')
-  const [quantity, setQuantity] = useState('')
-  const [purchasePrice, setPurchasePrice] = useState('')
-  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0])
-  const [notes, setNotes] = useState('')
 
   useEffect(() => {
     const loadUser = async () => {
@@ -101,52 +97,41 @@ export default function AddHoldingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!user) return
 
     try {
       setIsLoading(true)
 
-      if (user.isDemo) {
-        // For demo users, add to mock data store
-        getClientMockDataStore().addHolding({
-          symbol: symbol.toUpperCase(),
-          name: name,
-          assetType: assetType,
-          currency: currency,
-          quantity: parseFloat(quantity),
-          purchasePrice: parseFloat(purchasePrice),
-          purchaseDate: purchaseDate,
-          notes: notes || undefined,
-          isCustom: isCustom
-        })
-        
-        console.log('✅ Holding added to mock data store')
-      } else {
-        // For real users, use Supabase
-        const result = await portfolioService.addHolding(user, {
-          symbol: symbol.toUpperCase(),
-          name: name,
-          assetType: assetType,
-          currency: currency,
-          quantity: parseFloat(quantity),
-          purchasePrice: parseFloat(purchasePrice),
-          purchaseDate: purchaseDate,
-          notes: notes || undefined,
-          isCustom: isCustom
-        })
-        
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to add holding')
-        }
-        
-        console.log('✅ Holding added via Supabase')
+      // Create or get the symbol first
+      const symbolResult = await portfolioService.createOrGetSymbol({
+        symbol: symbol.toUpperCase(),
+        name: name,
+        asset_type: assetType,
+        currency: currency,
+        is_custom: isCustom,
+        created_by_user_id: isCustom ? user.id : null,
+        last_price: null
+      })
+
+      if (!symbolResult) {
+        throw new Error('Failed to create or get symbol')
       }
-      
-      router.push('/')
+
+      // Add the position using the new addPosition method
+      const result = await portfolioService.addPosition(user, symbol.toUpperCase())
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to add position')
+      }
+
+      console.log('✅ Position added successfully')
+
+      // Redirect to the holding detail page
+      router.push(`/holdings/${symbol.toUpperCase()}`)
     } catch (error) {
-      console.error('Error adding holding:', error)
-      alert(`Error adding holding: ${error instanceof Error ? error.message : 'Please try again.'}`)
+      console.error('Error adding position:', error)
+      alert(`Error adding position: ${error instanceof Error ? error.message : 'Please try again.'}`)
     } finally {
       setIsLoading(false)
     }
@@ -203,7 +188,7 @@ export default function AddHoldingPage() {
             </div>
 
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-              Add New Holding
+              Add New Position
             </h1>
 
             {/* Toggle between real and custom */}
@@ -367,66 +352,6 @@ export default function AddHoldingPage() {
                 </select>
               </div>
 
-              {/* Quantity */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Quantity
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="e.g., 100"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              {/* Purchase Price */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Purchase Price (per unit)
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={purchasePrice}
-                  onChange={(e) => setPurchasePrice(e.target.value)}
-                  placeholder="e.g., 150.00"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              {/* Purchase Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Purchase Date
-                </label>
-                <input
-                  type="date"
-                  value={purchaseDate}
-                  onChange={(e) => setPurchaseDate(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Notes (optional)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add any additional information..."
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
               {/* Submit Buttons */}
               <div className="flex space-x-4 pt-4">
                 <button
@@ -434,7 +359,7 @@ export default function AddHoldingPage() {
                   disabled={isLoading || (!isCustom && !selectedSymbol) || (isCustom && (!symbol || !name))}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isLoading ? 'Adding...' : 'Add Holding'}
+                  {isLoading ? 'Adding...' : 'Add Position'}
                 </button>
                 <button
                   type="button"
