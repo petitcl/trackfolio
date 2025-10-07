@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     const symbolType = mapAssetTypeToSymbolType(symbolData.asset_type)
     const baseCurrency: BaseCurrency = (symbolData.currency || 'USD') as BaseCurrency // Use symbol's currency, default to USD
     
-    // Fetch historical price data from Alpha Vantage
+    // Fetch historical price data
     console.log(`📈 Fetching historical prices for ${upperSymbol} (${symbolType}, ${baseCurrency})...`)
     const historicalPrices = await priceDataService.fetchHistoricalPrices(upperSymbol, symbolType, baseCurrency, 'full')
     
@@ -143,104 +143,60 @@ export async function POST(request: NextRequest) {
       provider: usedProvider
     }
 
-    // Check which dates we already have
-    const { data: existingRecords } = await supabase
+    // Get count of existing records before upsert for reporting
+    const { count: beforeCount } = await supabase
       .from('symbol_price_history')
-      .select('date')
+      .select('*', { count: 'exact', head: true })
       .eq('symbol', upperSymbol)
 
-    const existingDates = new Set(existingRecords?.map(r => r.date) || [])
+    const existingRecordCount = beforeCount || 0
 
-    // Prepare data for insertion/update
-    const newRecords: Array<{
-      symbol: string
-      date: string
-      open_price: number
-      high_price: number
-      low_price: number
-      close_price: number
-      volume: number
-      adjusted_close: number
-      data_source: string
-    }> = []
+    // Prepare all records for upsert
+    const records = historicalPrices.map(priceData => ({
+      symbol: upperSymbol,
+      date: priceData.date,
+      open_price: priceData.open_price || 0,
+      high_price: priceData.high_price || 0,
+      low_price: priceData.low_price || 0,
+      close_price: priceData.close_price,
+      volume: priceData.volume || 0,
+      adjusted_close: priceData.adjusted_close || priceData.close_price,
+      data_source: 'alpha_vantage'
+    }))
 
-    const updateRecords: Array<{
-      symbol: string
-      date: string
-      open_price: number
-      high_price: number
-      low_price: number
-      close_price: number
-      volume: number
-      adjusted_close: number
-      data_source: string
-    }> = []
+    // Upsert records in batches using ON CONFLICT DO UPDATE
+    const batchSize = 1000 // Supabase limit is 1000 rows per upsert
 
-    for (const priceData of historicalPrices) {
-      const record = {
-        symbol: upperSymbol,
-        date: priceData.date,
-        open_price: priceData.open_price || 0,
-        high_price: priceData.high_price || 0,
-        low_price: priceData.low_price || 0,
-        close_price: priceData.close_price,
-        volume: priceData.volume || 0,
-        adjusted_close: priceData.adjusted_close || priceData.close_price,
-        data_source: 'alpha_vantage'
-      }
+    for (let i = 0; i < records.length; i += batchSize) {
+      const batch = records.slice(i, i + batchSize)
 
-      if (existingDates.has(priceData.date)) {
-        updateRecords.push(record)
-      } else {
-        newRecords.push(record)
-      }
-    }
-
-    // Insert new records in batches
-    if (newRecords.length > 0) {
-      const batchSize = 1000 // Supabase limit is 1000 rows per insert
-      
-      for (let i = 0; i < newRecords.length; i += batchSize) {
-        const batch = newRecords.slice(i, i + batchSize)
-        
-        const { error: insertError } = await supabase
-          .from('symbol_price_history')
-          .insert(batch)
-
-        if (insertError) {
-          console.error(`Error inserting batch ${i / batchSize + 1}:`, insertError)
-          result.errors.push(`Failed to insert batch ${i / batchSize + 1}: ${insertError.message}`)
-        } else {
-          result.recordsInserted += batch.length
-        }
-      }
-    }
-
-    // Update existing records (if any)
-    for (const record of updateRecords) {
-      const { error: updateError } = await supabase
+      const { error: upsertError } = await supabase
         .from('symbol_price_history')
-        .update({
-          open_price: record.open_price,
-          high_price: record.high_price,
-          low_price: record.low_price,
-          close_price: record.close_price,
-          volume: record.volume,
-          adjusted_close: record.adjusted_close,
-          data_source: record.data_source
+        .upsert(batch, {
+          onConflict: 'symbol,date', // Unique constraint on (symbol, date)
+          ignoreDuplicates: false // Update existing records instead of ignoring
         })
-        .eq('symbol', record.symbol)
-        .eq('date', record.date)
 
-      if (updateError) {
-        console.error(`Error updating record for ${record.date}:`, updateError)
-        result.errors.push(`Failed to update ${record.date}: ${updateError.message}`)
-      } else {
-        result.recordsUpdated++
+      if (upsertError) {
+        console.error(`Error upserting batch ${i / batchSize + 1}:`, upsertError)
+        result.errors.push(`Failed to upsert batch ${i / batchSize + 1}: ${upsertError.message}`)
       }
     }
 
-    result.duplicatesSkipped = historicalPrices.length - result.recordsInserted - result.recordsUpdated
+    // records.forEach(r => console.log(`Upserting symbol ${r.symbol}, date ${r.date}`))
+
+    // Get count after upsert to determine what happened
+    const { count: afterCount } = await supabase
+      .from('symbol_price_history')
+      .select('*', { count: 'exact', head: true })
+      .eq('symbol', upperSymbol)
+
+    const finalRecordCount = afterCount || 0
+
+    // Calculate metrics
+    result.recordsInserted = Math.max(0, finalRecordCount - existingRecordCount)
+    result.recordsUpdated = historicalPrices.length - result.recordsInserted
+    result.duplicatesSkipped = 0 // With upsert, we don't skip, we update
 
     // Update the symbol's last_price with the most recent data
     if (historicalPrices.length > 0) {

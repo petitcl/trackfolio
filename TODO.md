@@ -11,16 +11,17 @@ Mark done item with ✅
 - ✅ Add performance view per period bucket showing 2024, 2025 performance separately
 - ✅ Add infinite scrolling to transaction history
 - [ ] Implement portfolio export and backup functionality
-- [ ] Redirect custom holding creation to holding detail page instead of homepage
-- [ ] Allow editing of custom holding details
+- [ ] Remove requirement for price = 0 transactions and simplify custom holding creation
 
 ## TODO P2
+- [ ] Add crypto holdings
+- [ ] Implement live price updates using Yahoo Finance API
+- [ ] Allow editing of custom holding details
+- [ ] Redirect custom holding creation to holding detail page instead of homepage
 - [ ] Style delete buttons for holdings, prices, and transactions as red/danger
-- [ ] Remove requirement for price = 0 transactions and simplify custom holding creation
 - [ ] Fix holding details quantity rounding error transforming 1.00 to 0.99998
 - [ ] Add multi custom holding CSV import functionality from home page
 - [ ] Refresh page when adding or editing custom prices or transactions on holding page
-- [ ] Implement live price updates using Yahoo Finance API
 - [ ] Add cursor pointer and hover states to all buttons
 
 ## TODO P3

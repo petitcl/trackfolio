@@ -25,6 +25,7 @@ export class YahooFinanceProvider implements IPriceProvider {
         logOptionsErrors: false
       }
     })
+    yahooFinance.suppressNotices(['yahooSurvey', 'ripHistorical'])
   }
 
   isAvailable(): boolean {
@@ -87,24 +88,24 @@ export class YahooFinanceProvider implements IPriceProvider {
         startDate.setFullYear(endDate.getFullYear() - 5) // 5 years for full
       }
 
-      const historical = await yahooFinance.historical(yahooSymbol, {
+      const chartData = await yahooFinance.chart(yahooSymbol, {
         period1: startDate,
         period2: endDate,
         interval: '1d'
       })
 
-      if (!historical || historical.length === 0) {
+      if (!chartData || !chartData.quotes || chartData.quotes.length === 0) {
         return []
       }
 
-      const prices: PriceData[] = historical.map(day => ({
+      const prices: PriceData[] = chartData.quotes.map(day => ({
         symbol,
         date: day.date.toISOString().split('T')[0],
         open_price: day.open || undefined,
         high_price: day.high || undefined,
         low_price: day.low || undefined,
-        close_price: day.close,
-        adjusted_close: day.adjClose || day.close,
+        close_price: day.close || 0,
+        adjusted_close: day.adjclose || day.close || 0,
         volume: day.volume || undefined,
         data_source: this.name,
         symbol_type: symbolType,
