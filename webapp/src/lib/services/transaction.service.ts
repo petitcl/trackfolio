@@ -1,8 +1,8 @@
-import { createClient } from '@/lib/supabase/client'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import { clientAuthService } from '@/lib/auth/client.auth.service'
-import type { Transaction, Symbol, Database, UserSymbolPrice, TransactionType } from '@/lib/supabase/types'
 import { getClientMockDataStore } from '@/lib/mockDataStoreClient'
+import { createClient } from '@/lib/supabase/client'
+import type { Database, Symbol, Transaction, UserSymbolPrice } from '@/lib/supabase/types'
 import { cacheService } from './cache.service'
 
 /**

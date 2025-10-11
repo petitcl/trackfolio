@@ -34,6 +34,7 @@ const defaultPortfolioData = (): PortfolioData => ({
     totalPnL: 0,
     realizedPnL: 0,
     unrealizedPnL: 0,
+    unrealizedPnlPercentage: 0,
     capitalGains: 0,
     dividends: 0,
     costBasis: 0,
