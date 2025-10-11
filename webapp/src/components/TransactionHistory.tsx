@@ -1,53 +1,36 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import type { Transaction, Symbol } from '@/lib/supabase/types'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
-import AddTransactionForm, { type TransactionFormData } from './AddTransactionForm'
-import { portfolioService } from '@/lib/services/portfolio.service'
-import ConfirmDialog from './ConfirmDialog'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
-import { transactionService } from '@/lib/services/transaction.service'
 import { historicalPriceService } from '@/lib/services/historical-price.service'
+import { portfolioService } from '@/lib/services/portfolio.service'
+import type { Symbol, Transaction } from '@/lib/supabase/types'
+import React, { useEffect, useState } from 'react'
+import AddTransactionForm, { type TransactionFormData } from './AddTransactionForm'
+import ConfirmDialog from './ConfirmDialog'
 
 interface TransactionHistoryProps {
   transactions: Transaction[]
-  symbol: string
-  symbolName: string
-  symbolCurrency?: string
+  symbol: Symbol
   user: AuthUser
   onTransactionUpdated?: () => void
   selectedCurrency?: SupportedCurrency
 }
 
-export default function TransactionHistory({ transactions, symbol, symbolName, symbolCurrency = 'USD', user, onTransactionUpdated, selectedCurrency = 'USD' }: TransactionHistoryProps) {
+export default function TransactionHistory({ transactions, symbol, user, onTransactionUpdated, selectedCurrency = 'USD' }: TransactionHistoryProps) {
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [symbolData, setSymbolData] = useState<Symbol | null>(null)
   const [bonusTransactionTotals, setBonusTransactionTotals] = useState<Map<string, number>>(new Map())
   const [displayedCount, setDisplayedCount] = useState(20)
 
-  useEffect(() => {
-    const fetchSymbolData = async () => {
-      try {
-        const symbols = await transactionService.getSymbols(user)
-        const currentSymbol = symbols.find(s => s.symbol === symbol.toUpperCase())
-        setSymbolData(currentSymbol || null)
-      } catch (error) {
-        console.error('Error fetching symbol data:', error)
-      }
-    }
-
-    fetchSymbolData()
-  }, [symbol, user])
+  const symbolName = symbol.name || 'Unknown Asset'
+  const symbolCurrency = symbol.currency || 'USD'
 
   useEffect(() => {
     const calculateBonusTransactionTotals = async () => {
-      if (!symbolData) return
-
       const bonusTransactions = transactions.filter(tx => tx.type === 'bonus')
       const totalsMap = new Map<string, number>()
 
@@ -57,7 +40,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
             transaction.symbol,
             transaction.date,
             user,
-            symbolData
+            symbol
           )
 
           if (historicalPrice !== null) {
@@ -72,10 +55,8 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
       setBonusTransactionTotals(totalsMap)
     }
 
-    if (symbolData) {
-      calculateBonusTransactionTotals()
-    }
-  }, [symbolData, transactions, user])
+    calculateBonusTransactionTotals()
+  }, [symbol, transactions, user])
 
   const handleEditTransaction = async (transactionData: TransactionFormData) => {
     if (!editingTransactionId) return
@@ -167,7 +148,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
         <div className="px-4 py-5 sm:px-6">
           <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">Transaction History</h3>
           <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-            All transactions for {symbol}
+            All transactions for {symbol.name}
           </p>
         </div>
         <div className="p-6 text-center">
@@ -190,7 +171,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
       <div className="px-4 py-5 sm:px-6">
         <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">Transaction History</h3>
         <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-          All transactions for {symbol}
+          All transactions for {symbol.name}
         </p>
       </div>
       <div className="overflow-x-auto">
@@ -209,8 +190,10 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {displayedTransactions.map((transaction) => {
+              const isCashMovement = ['dividend', 'deposit', 'withdrawal'].includes(transaction.type)
+
               let total: number
-              if (transaction.type === 'dividend') {
+              if (isCashMovement) {
                 total = transaction.amount || 0
               } else if (transaction.type === 'bonus') {
                 // For bonus transactions, use quantity × historical price at bonus date
@@ -232,7 +215,7 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
                             onClose={() => setEditingTransactionId(null)}
                             onSubmit={handleEditTransaction}
                             onDelete={() => initiateDeleteTransaction(transaction.id)}
-                            symbol={symbol}
+                            symbol={symbol.name}
                             symbolName={symbolName}
                             symbolCurrency={symbolCurrency}
                             isLoading={isUpdating}
@@ -258,10 +241,10 @@ export default function TransactionHistory({ transactions, symbol, symbolName, s
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                    {(transaction.type === 'dividend') ? '-' : transaction.quantity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 8 })}
+                    {(isCashMovement) ? '-' : transaction.quantity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 8 })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                    {(transaction.type === 'dividend' || transaction.type === 'bonus') ? '-' : formatCurrency(transaction.price_per_unit)}
+                    {(isCashMovement || transaction.type === 'bonus') ? '-' : formatCurrency(transaction.price_per_unit)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                     {formatCurrency(transaction.fees || 0)}

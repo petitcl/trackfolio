@@ -433,14 +433,6 @@ describe('Portfolio Integration Tests', () => {
       const latestDate = Math.max(...scenario.transactions.map(t => new Date(t.date).getTime()))
       const latestDateStr = new Date(latestDate).toISOString().split('T')[0]
 
-      const cumulativeInvested = unifiedCalculationService.calculateCumulativeInvestedForDate(
-        scenario.transactions,
-        latestDateStr
-      )
-
-      // Verify cumulative invested makes sense (should be positive for buy-heavy portfolios)
-      expect(cumulativeInvested).toBeGreaterThanOrEqual(0)
-
       // 5. Verify P&L percentage calculation
       // Note: The totalReturnPercentage now uses an average capital base formula
       // that accounts for cash flows during the period, so we can't simply verify

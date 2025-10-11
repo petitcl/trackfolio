@@ -10,8 +10,7 @@ interface UpdateBalanceModalProps {
   isOpen: boolean
   user: AuthUser
   symbol: Symbol
-  currentQuantity: number
-  currentPricePerUnit: number
+  currentBalance: number
   onUpdateComplete?: () => void
   onCancel?: () => void
 }
@@ -20,8 +19,7 @@ export default function UpdateBalanceModal({
   isOpen,
   user,
   symbol,
-  currentQuantity,
-  currentPricePerUnit,
+  currentBalance,
   onUpdateComplete,
   onCancel
 }: UpdateBalanceModalProps) {
@@ -34,27 +32,23 @@ export default function UpdateBalanceModal({
   // Get currency symbol
   const currencySymbol = CURRENCY_SYMBOLS[(symbol.currency as SupportedCurrency) || 'USD']
 
-  // Calculate current value
-  const currentValue = currentQuantity * currentPricePerUnit
-
-  // Calculate new price per unit preview
-  const calculateNewPricePerUnit = (): number | null => {
+  // Calculate balance change
+  const calculateBalanceChange = (): { amount: number; percentage: number } | null => {
     if (!newBalance || parseFloat(newBalance) <= 0) {
       return null
     }
 
     try {
-      return accountHoldingService.calculateNewPricePerUnit(
-        parseFloat(newBalance),
-        currentQuantity
-      )
+      const newBalanceNum = parseFloat(newBalance)
+      const change = newBalanceNum - currentBalance
+      const percentage = currentBalance > 0 ? (change / currentBalance) * 100 : 0
+      return { amount: change, percentage }
     } catch {
       return null
     }
   }
 
-  const newPricePerUnit = calculateNewPricePerUnit()
-  const balanceChange = newBalance ? parseFloat(newBalance) - currentValue : 0
+  const balanceChangeInfo = calculateBalanceChange()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,17 +65,11 @@ export default function UpdateBalanceModal({
       return
     }
 
-    if (currentQuantity <= 0) {
-      setError('Cannot update balance: current quantity is zero')
-      return
-    }
-
     setIsSubmitting(true)
 
     try {
       await accountHoldingService.updateAccountBalance(user, {
         symbol: symbol.symbol,
-        currentQuantity: currentQuantity,
         newBalance: parseFloat(newBalance),
         date: balanceDate,
         notes: notes || undefined
@@ -113,39 +101,18 @@ export default function UpdateBalanceModal({
 
       {/* Content */}
       <form onSubmit={handleSubmit} className="p-6">
-        {/* Current Holdings Info */}
+        {/* Current Balance Info */}
         <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6">
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-            Current Holdings
+            Current Account Balance
           </h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-gray-600 dark:text-gray-400">Quantity (Units)</p>
-              <p className="text-gray-900 dark:text-white font-medium">
-                {currentQuantity.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                })}
-              </p>
-            </div>
-            <div>
-              <p className="text-gray-600 dark:text-gray-400">Price per Unit</p>
-              <p className="text-gray-900 dark:text-white font-medium">
-                {currencySymbol}{currentPricePerUnit.toLocaleString(undefined, {
-                  minimumFractionDigits: 4,
-                  maximumFractionDigits: 4
-                })}
-              </p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-gray-600 dark:text-gray-400">Current Value</p>
-              <p className="text-gray-900 dark:text-white font-semibold text-lg">
-                {currencySymbol}{currentValue.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                })}
-              </p>
-            </div>
+          <div className="text-sm">
+            <p className="text-gray-900 dark:text-white font-semibold text-lg">
+              {currencySymbol}{currentBalance.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}
+            </p>
           </div>
         </div>
 
@@ -203,38 +170,26 @@ export default function UpdateBalanceModal({
         </div>
 
         {/* Preview Section */}
-        {newPricePerUnit !== null && (
+        {balanceChangeInfo && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
             <h3 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-3">
-              Preview
+              Balance Change
             </h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-blue-700 dark:text-blue-400">New Price per Unit</p>
-                <p className="text-blue-900 dark:text-blue-200 font-medium">
-                  {currencySymbol}{newPricePerUnit.toLocaleString(undefined, {
-                    minimumFractionDigits: 4,
-                    maximumFractionDigits: 4
-                  })}
-                </p>
-              </div>
-              <div>
-                <p className="text-blue-700 dark:text-blue-400">Balance Change</p>
-                <p className={`font-medium ${
-                  balanceChange >= 0
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-red-600 dark:text-red-400'
-                }`}>
-                  {balanceChange >= 0 ? '+' : ''}
-                  {currencySymbol}{balanceChange.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}
-                  {' '}
-                  ({balanceChange >= 0 ? '+' : ''}
-                  {((balanceChange / currentValue) * 100).toFixed(2)}%)
-                </p>
-              </div>
+            <div className="text-sm">
+              <p className={`font-medium ${
+                balanceChangeInfo.amount >= 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-red-600 dark:text-red-400'
+              }`}>
+                {balanceChangeInfo.amount >= 0 ? '+' : ''}
+                {currencySymbol}{balanceChangeInfo.amount.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+                {' '}
+                ({balanceChangeInfo.amount >= 0 ? '+' : ''}
+                {balanceChangeInfo.percentage.toFixed(2)}%)
+              </p>
             </div>
           </div>
         )}

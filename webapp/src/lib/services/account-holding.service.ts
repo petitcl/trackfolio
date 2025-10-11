@@ -1,9 +1,10 @@
-import { createClient } from '@/lib/supabase/client'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import { clientAuthService } from '@/lib/auth/client.auth.service'
-import type { Symbol, Database } from '@/lib/supabase/types'
 import { getClientMockDataStore } from '@/lib/mockDataStoreClient'
+import { createClient } from '@/lib/supabase/client'
+import type { Symbol } from '@/lib/supabase/types'
 import { cacheService } from './cache.service'
+import { SupportedCurrency } from './currency.service'
 
 /**
  * Metadata stored in the symbols.metadata JSONB field for account holdings
@@ -49,15 +50,16 @@ export class AccountHoldingService {
   }
 
   /**
-   * Get the latest price per unit for an account holding from user_symbol_prices
+   * Get the latest account balance from user_symbol_prices
+   * For account holdings, manual_price stores the total account balance
    */
-  async getCurrentPricePerUnit(user: AuthUser, symbol: string): Promise<number> {
+  async getCurrentBalance(user: AuthUser, symbol: string): Promise<number> {
     if (clientAuthService.isCurrentUserMock()) {
       const mockStore = getClientMockDataStore()
       const prices = mockStore.getUserSymbolPrices(symbol)
       const latestPrice = prices[0]
 
-      return latestPrice?.manual_price || 1
+      return latestPrice?.manual_price || 0
     }
 
     try {
@@ -71,44 +73,22 @@ export class AccountHoldingService {
         .single()
 
       if (error || !data) {
-        console.warn(`No price found for ${symbol}, defaulting to 1`)
-        return 1
+        console.warn(`No balance found for ${symbol}, defaulting to 0`)
+        return 0
       }
 
       return data.manual_price
     } catch (error) {
-      return this.handleError('fetching current price per unit', error, 1)
+      return this.handleError('fetching current balance', error, 0)
     }
-  }
-
-  /**
-   * Calculate quantity of units to add for a deposit
-   * quantity = depositAmount / currentPricePerUnit
-   */
-  calculateDepositUnits(depositAmount: number, currentPricePerUnit: number): number {
-    if (currentPricePerUnit === 0) {
-      throw new Error('Cannot calculate deposit units: price per unit is zero')
-    }
-    return depositAmount / currentPricePerUnit
-  }
-
-  /**
-   * Calculate new price per unit after balance update
-   * newPricePerUnit = newBalance / currentQuantity
-   */
-  calculateNewPricePerUnit(newBalance: number, currentQuantity: number): number {
-    if (currentQuantity === 0) {
-      throw new Error('Cannot calculate new price per unit: current quantity is zero')
-    }
-    return newBalance / currentQuantity
   }
 
   /**
    * Create a new account holding
    * This creates:
    * 1. Custom symbol with holding_type='account' and metadata
-   * 2. Initial transaction (buy) with quantity = initialValue units @ $1
-   * 3. Initial price entry in user_symbol_prices
+   * 2. Initial deposit transaction with amount = initialValue
+   * 3. Initial balance entry in user_symbol_prices (stores total balance)
    * 4. Position record
    */
   async createAccountHolding(user: AuthUser, params: CreateAccountHoldingParams): Promise<void> {
@@ -133,28 +113,28 @@ export class AccountHoldingService {
         last_updated: null
       })
 
-      // Create initial transaction: buy initialValue units @ $1
+      // Create initial deposit transaction
       mockStore.addTransaction({
         date: params.startDate,
         symbol: params.symbol,
-        type: 'buy',
-        quantity: params.initialValue,
+        type: 'deposit',
+        quantity: params.initialValue, // Store amount as quantity for simplicity
         pricePerUnit: 1,
         currency: params.currency,
         fees: 0,
         amount: params.initialValue,
-        notes: 'Initial account balance',
+        notes: 'Initial account deposit',
         broker: null
       })
 
-      // Create initial price entry
+      // Create initial balance entry (stores total account balance)
       mockStore.addUserSymbolPrice({
         id: crypto.randomUUID(),
         user_id: user.id,
         symbol: params.symbol,
-        manual_price: 1,
+        manual_price: params.initialValue, // Total balance, not price per unit
         price_date: params.startDate,
-        notes: 'Initial price per unit',
+        notes: 'Initial account balance',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -193,35 +173,35 @@ export class AccountHoldingService {
         throw new Error(`Failed to create symbol: ${symbolError.message}`)
       }
 
-      // 2. Create initial transaction (buy initialValue units @ $1)
+      // 2. Create initial deposit transaction
       const { error: transactionError } = await this.supabase
         .from('transactions')
         .insert({
           user_id: user.id,
           date: params.startDate,
           symbol: params.symbol,
-          type: 'buy',
-          quantity: params.initialValue,
+          type: 'deposit',
+          quantity: params.initialValue, // Store amount as quantity for simplicity
           price_per_unit: 1,
           currency: params.currency,
           fees: 0,
           amount: params.initialValue,
-          notes: 'Initial account balance'
+          notes: 'Initial account deposit'
         })
 
       if (transactionError) {
         throw new Error(`Failed to create initial transaction: ${transactionError.message}`)
       }
 
-      // 3. Create initial price entry
+      // 3. Create initial balance entry (stores total account balance)
       const { error: priceError } = await this.supabase
         .from('user_symbol_prices')
         .insert({
           user_id: user.id,
           symbol: params.symbol,
-          manual_price: 1,
+          manual_price: params.initialValue, // Total balance, not price per unit
           price_date: params.startDate,
-          notes: 'Initial price per unit'
+          notes: 'Initial account balance'
         })
 
       if (priceError) {
@@ -253,21 +233,18 @@ export class AccountHoldingService {
   }
 
   /**
-   * Update account balance by inserting a new price per unit
-   * Calculates: newPricePerUnit = newBalance / currentQuantity
+   * Update account balance by inserting a new balance snapshot
+   * Stores the total account balance directly (not price per unit)
    */
   async updateAccountBalance(
     user: AuthUser,
     params: {
       symbol: string
-      currentQuantity: number
       newBalance: number
       date: string
       notes?: string
     }
   ): Promise<void> {
-    const newPricePerUnit = this.calculateNewPricePerUnit(params.newBalance, params.currentQuantity)
-
     if (clientAuthService.isCurrentUserMock()) {
       const mockStore = getClientMockDataStore()
 
@@ -275,7 +252,7 @@ export class AccountHoldingService {
         id: crypto.randomUUID(),
         user_id: user.id,
         symbol: params.symbol,
-        manual_price: newPricePerUnit,
+        manual_price: params.newBalance, // Store total balance directly
         price_date: params.date,
         notes: params.notes || `Balance update to ${params.newBalance}`,
         created_at: new Date().toISOString(),
@@ -292,7 +269,7 @@ export class AccountHoldingService {
         .insert({
           user_id: user.id,
           symbol: params.symbol,
-          manual_price: newPricePerUnit,
+          manual_price: params.newBalance, // Store total balance directly
           price_date: params.date,
           notes: params.notes || `Balance update to ${params.newBalance}`
         })
@@ -310,28 +287,25 @@ export class AccountHoldingService {
 
   /**
    * Record a deposit transaction
-   * Calculates quantity based on current price per unit
+   * Stores amount directly - represents increase in cost basis
    */
   async recordDeposit(
     user: AuthUser,
-    symbol: string,
+    symbol: Symbol,
     amount: number,
     date: string,
     notes?: string
   ): Promise<void> {
-    const currentPrice = await this.getCurrentPricePerUnit(user, symbol)
-    const quantity = this.calculateDepositUnits(amount, currentPrice)
-
     if (clientAuthService.isCurrentUserMock()) {
       const mockStore = getClientMockDataStore()
 
       mockStore.addTransaction({
         date: date,
-        symbol: symbol,
+        symbol: symbol.symbol,
         type: 'deposit',
-        quantity: quantity,
-        pricePerUnit: currentPrice,
-        currency: 'USD', // TODO: get from symbol
+        quantity: 0,
+        pricePerUnit: 0,
+        currency: symbol.currency as SupportedCurrency,
         fees: 0,
         amount: amount,
         notes: notes || 'Account deposit',
@@ -348,11 +322,11 @@ export class AccountHoldingService {
         .insert({
           user_id: user.id,
           date: date,
-          symbol: symbol,
+          symbol: symbol.symbol,
           type: 'deposit',
-          quantity: quantity,
-          price_per_unit: currentPrice,
-          currency: 'USD', // TODO: get from symbol
+          quantity: 0,
+          price_per_unit: 0,
+          currency: symbol.currency as SupportedCurrency,
           fees: 0,
           amount: amount,
           notes: notes || 'Account deposit'
@@ -371,28 +345,25 @@ export class AccountHoldingService {
 
   /**
    * Record a withdrawal transaction
-   * Calculates quantity based on current price per unit
+   * Stores amount directly - represents decrease in cost basis
    */
   async recordWithdrawal(
     user: AuthUser,
-    symbol: string,
+    symbol: Symbol,
     amount: number,
     date: string,
     notes?: string
   ): Promise<void> {
-    const currentPrice = await this.getCurrentPricePerUnit(user, symbol)
-    const quantity = this.calculateDepositUnits(amount, currentPrice) // Same calculation as deposit
-
     if (clientAuthService.isCurrentUserMock()) {
       const mockStore = getClientMockDataStore()
 
       mockStore.addTransaction({
         date: date,
-        symbol: symbol,
+        symbol: symbol.symbol,
         type: 'withdrawal',
-        quantity: quantity,
-        pricePerUnit: currentPrice,
-        currency: 'USD', // TODO: get from symbol
+        quantity: 0,
+        pricePerUnit: 0,
+        currency: symbol.currency as SupportedCurrency,
         fees: 0,
         amount: amount,
         notes: notes || 'Account withdrawal',
@@ -409,11 +380,11 @@ export class AccountHoldingService {
         .insert({
           user_id: user.id,
           date: date,
-          symbol: symbol,
+          symbol: symbol.symbol,
           type: 'withdrawal',
-          quantity: quantity,
-          price_per_unit: currentPrice,
-          currency: 'USD', // TODO: get from symbol
+          quantity: 0,
+          price_per_unit: 0,
+          currency: symbol.currency as SupportedCurrency,
           fees: 0,
           amount: amount,
           notes: notes || 'Account withdrawal'

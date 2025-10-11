@@ -20,6 +20,8 @@ import { type TimeRange } from '@/lib/utils/timeranges'
 import { useRouter } from 'next/navigation'
 import React, { useCallback, useEffect, useState } from 'react'
 import ProfitDisplay from './ProfitDisplay'
+import { accountHoldingService } from '@/lib/services/account-holding.service'
+import { returnCalculationService } from '@/lib/services/return-calculation.service'
 
 interface DashboardProps {
   user: AuthUser
@@ -44,6 +46,20 @@ const defaultPortfolioData = (): PortfolioData => ({
     periodYears: 0
   }
 })
+
+const defaultSymbolData: Symbol = {
+  asset_type: "other",
+  created_at: "",
+  created_by_user_id: "",
+  currency: "",
+  holding_type: "",
+  is_custom: false,
+  last_price: 0,
+  last_updated: "",
+  metadata: {},
+  name: "",
+  symbol: ""
+};
 
 export default function Dashboard({ user }: DashboardProps) {
   const [dataLoading, setDataLoading] = useState(true)
@@ -149,21 +165,15 @@ export default function Dashboard({ user }: DashboardProps) {
   const formatCurrency = makeFormatCurrency(selectedCurrency)
 
   // Helper to get symbol metrics with fallback
-  const getHoldingMetrics = (symbol: string): { unrealizedPnL: number; realizedPnL: number; totalPnL: number; totalReturnPercentage: number } => {
+  const getHoldingMetrics = (symbol: string): ReturnMetrics => {
     const metrics = holdingsReturnMetrics.get(symbol)
     if (!metrics) {
       console.warn("Holding metrics now found for symbol", symbol)
-      return { unrealizedPnL: 0, realizedPnL: 0, totalPnL: 0, totalReturnPercentage: 0 }
+      return returnCalculationService.getEmptyReturnMetrics()
     }
 
-    return {
-      unrealizedPnL: metrics.unrealizedPnL,
-      realizedPnL: metrics.realizedPnL,
-      totalPnL: metrics.totalPnL,
-      totalReturnPercentage: metrics.totalReturnPercentage
-    }
+    return metrics
   }
-
 
   // Show loading state
   if (dataLoading) {
@@ -187,9 +197,6 @@ export default function Dashboard({ user }: DashboardProps) {
     )
   }
 
-  const holdingPeriod = portfolioData.returns.periodYears > 0 ? (portfolioData.returns.periodYears < 1 ?
-    `${Math.round(portfolioData.returns.periodYears * 365)} days` :
-    `${portfolioData.returns.periodYears.toFixed(1)} years`) : null
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
@@ -346,29 +353,52 @@ export default function Dashboard({ user }: DashboardProps) {
                   // Define order for asset types
                   const typeOrder: AssetType[] = ['stock', 'crypto', 'real_estate', 'other']
 
+                  // TODO: move all of this to service layer
                   typeOrder.forEach(assetType => {
                     const positions = positionsByType[assetType]
                     if (!positions || positions.length === 0) return
 
                     // Calculate totals for this asset type (only include active positions in totals)
-                    const activePositions = positions.filter(pos => pos.quantity > 0)
+                    const activePositions = positions.filter(pos => {
+                      const symbol = symbols.find(s => s.symbol === pos.symbol) || defaultSymbolData
+                      const isAccountHolding = symbol.holding_type === 'account'
+                      // console.log("isAccountHolding", isAccountHolding, pos.symbol);
+                      return isAccountHolding || pos.quantity > 0
+                    })
+
                     const typeTotalValue = activePositions.reduce((sum, pos) => sum + pos.value, 0)
                     const typeTotalUnrealizedPnL = activePositions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).unrealizedPnL, 0)
                     const typeTotalDividends = activePositions.reduce((sum, pos) => sum + pos.dividendIncome, 0)
                     const typeTotalReturn = typeTotalUnrealizedPnL + typeTotalDividends
                     const typeTotalRealizedPnL = positions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).realizedPnL, 0)
-                    const typeTotalCost = activePositions.reduce((sum, pos) => sum + (pos.avgCost * pos.quantity), 0)
+                    const typeTotalCost = activePositions.reduce((sum, pos) => {
+                      const symbol = symbols.find(s => s.symbol === pos.symbol) || defaultSymbolData
+                      const isAccountHolding = symbol.holding_type === 'account'
+                      if (isAccountHolding) return pos.value
+                      return sum + (pos.avgCost * pos.quantity)
+                    }, 0)
                     const typePnLPercentage = typeTotalCost > 0 ? (typeTotalUnrealizedPnL / typeTotalCost) * 100 : 0
                     const typeTotalReturnPercentage = typeTotalCost > 0 ? (typeTotalReturn / typeTotalCost) * 100 : 0
 
+                    // console.log({typeTotalValue, typeTotalReturn, typeTotalCost, typeTotalRealizedPnL, typeTotalUnrealizedPnL})
+
                     // Add individual positions
                     positions.forEach(position => {
+                      const symbol = symbols.find(s => s.symbol === position.symbol) || defaultSymbolData
                       const metrics = getHoldingMetrics(position.symbol)
-                      const isClosed = position.quantity === 0
-                      const totalCost = position.avgCost * position.quantity
-                      const pnlPercentage = totalCost > 0 ? (metrics.unrealizedPnL / totalCost) * 100 : 0
-                      const totalReturn = metrics.unrealizedPnL + position.dividendIncome
-                      const totalReturnPercentage = totalCost > 0 ? (totalReturn / totalCost) * 100 : 0
+                      const isAccountHolding = symbol.holding_type === 'account'
+
+                      // console.log("isAccountHolding", isAccountHolding, position.symbol);
+
+                      const isClosed = !isAccountHolding && position.quantity <= 0
+                      const unrealizedPnlPercentage = metrics.unrealizedPnlPercentage
+                      const totalReturn = metrics.totalPnL
+                      const totalReturnPercentage = metrics.totalReturnPercentage
+
+                      if (!showClosedPositions && isClosed) {
+                        return
+                      }
+
                       rows.push(
                         <tr key={position.symbol} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${isClosed ? 'opacity-60' : ''}`}>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -382,24 +412,24 @@ export default function Dashboard({ user }: DashboardProps) {
                                   {isClosed && <span className="ml-2 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded">CLOSED</span>}
                                 </div>
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                                  {symbols.find(s => s.symbol === position.symbol)?.name || 'Unknown'}
+                                  {symbol.name || 'Unknown'}
                                 </div>
                               </div>
                             </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-300'}`}>
                             <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
-                              {isClosed ? '-' : position.quantity.toLocaleString()}
+                              {isClosed || isAccountHolding ? '-' : position.quantity.toLocaleString()}
                             </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-300'}`}>
                             <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
-                              {isClosed ? '-' : formatCurrency(position.avgCost)}
+                              {isClosed || isAccountHolding ? '-' : formatCurrency(position.avgCost)}
                             </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-300'}`}>
                             <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
-                              {isClosed ? '-' : formatCurrency(position.currentPrice)}
+                              {isClosed || isAccountHolding ? '-' : formatCurrency(position.currentPrice)}
                             </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
@@ -410,7 +440,7 @@ export default function Dashboard({ user }: DashboardProps) {
                           <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? 'text-gray-500 dark:text-gray-400' : ''}`}>
                             <a href={`/holdings/${encodeURIComponent(position.symbol)}`} className="block w-full">
                               <div>{isClosed ? '-' : <ProfitDisplay value={metrics.unrealizedPnL} format="currency" currency={selectedCurrency} />}</div>
-                              <div className="text-xs">{isClosed ? '-' : <ProfitDisplay value={pnlPercentage} format="percentage" />}</div>
+                              <div className="text-xs">{isClosed ? '-' : <ProfitDisplay value={unrealizedPnlPercentage} format="percentage" />}</div>
                             </a>
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${isClosed ? '' : ''}`}>

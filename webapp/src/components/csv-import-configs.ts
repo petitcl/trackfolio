@@ -2,6 +2,7 @@ import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { Database } from '@/lib/supabase/types'
 import type { CsvImportConfig } from './BulkCsvImport'
 import { portfolioService } from '@/lib/services/portfolio.service'
+import { accountHoldingService } from '@/lib/services/account-holding.service'
 
 // Transaction Import Configuration
 export interface ParsedTransaction {
@@ -348,6 +349,95 @@ BTC,Bitcoin,buy,2024-01-25,0.5,25.00,42000.00,,USD,Coinbase,Crypto allocation`,
     return { success: successCount, errors }
   }
 }
+
+// Account Balance Import Configuration
+export interface ParsedAccountBalance {
+  symbol: string
+  date: string
+  balance: number
+  notes: string | null
+}
+
+export const accountBalanceImportConfig = (symbol: string): CsvImportConfig<ParsedAccountBalance> => ({
+  title: 'Import Account Balances',
+  description: `Import multiple account balance entries for ${symbol} from CSV`,
+  columns: [
+    { key: 'symbol', label: 'Symbol', required: true },
+    { key: 'date', label: 'Date', required: true, description: 'YYYY-MM-DD format' },
+    { key: 'balance', label: 'Balance', required: true },
+    { key: 'notes', label: 'Notes', required: false }
+  ],
+  sampleData: `symbol,date,balance,notes
+${symbol},2024-01-15,10000.00,Initial balance
+${symbol},2024-02-15,10250.50,Monthly update
+${symbol},2024-03-15,10180.75,Quarterly review`,
+  parseRow: (values: string[], header: string[]): ParsedAccountBalance | null => {
+    try {
+      // Handle balance with potential comma formatting (e.g., "10,000.00")
+      const balanceValue = values[header.indexOf('balance')] || '0'
+      const cleanedBalance = balanceValue.replace(/"/g, '').replace(/,/g, '')
+
+      return {
+        symbol: values[header.indexOf('symbol')] || symbol,
+        date: values[header.indexOf('date')],
+        balance: parseFloat(cleanedBalance),
+        notes: values[header.indexOf('notes')] || null
+      }
+    } catch {
+      return null
+    }
+  },
+  validateRow: (row: ParsedAccountBalance, index: number): string | null => {
+    if (!row.symbol) {
+      return `Row ${index}: Symbol is required`
+    }
+    if (!row.date || isNaN(new Date(row.date).getTime())) {
+      return `Row ${index}: Invalid date format`
+    }
+    if (isNaN(row.balance) || row.balance <= 0) {
+      return `Row ${index}: Balance must be a positive number`
+    }
+    return null
+  },
+  importRows: async (user: AuthUser, rows: ParsedAccountBalance[]) => {
+    const errors: string[] = []
+    let successCount = 0
+
+    // Get all symbols to validate the account exists
+    const symbols = await portfolioService.getSymbols(user)
+    const targetSymbol = symbols.find(s => s.symbol === rows[0]?.symbol)
+
+    if (!targetSymbol) {
+      errors.push('Account symbol not found in portfolio')
+      return { success: 0, errors }
+    }
+
+    // Check if this is an account holding
+    if (!accountHoldingService.isAccountHolding(targetSymbol)) {
+      errors.push('This symbol is not an account holding. Balance import only works for account holdings.')
+      return { success: 0, errors }
+    }
+
+    // Process each row
+    for (const [rowIndex, row] of rows.entries()) {
+      try {
+        // Simply store the balance snapshot - no quantity calculation needed
+        await accountHoldingService.updateAccountBalance(user, {
+          symbol: row.symbol,
+          newBalance: row.balance,
+          date: row.date,
+          notes: row.notes || undefined
+        })
+
+        successCount++
+      } catch (err) {
+        errors.push(`Row ${rowIndex + 2}: Error importing balance - ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+
+    return { success: successCount, errors }
+  }
+})
 
 // Multi-Symbol Price Import Configuration
 export interface ParsedMultiPrice {

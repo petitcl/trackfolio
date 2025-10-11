@@ -17,7 +17,6 @@ interface AddTransactionFormProps {
   initialData?: TransactionFormData
   isInline?: boolean
   isAccountHolding?: boolean
-  currentPricePerUnit?: number
 }
 
 export interface TransactionFormData {
@@ -54,7 +53,6 @@ export default function AddTransactionForm({
   initialData,
   isInline = false,
   isAccountHolding = false,
-  currentPricePerUnit = 1,
 }: AddTransactionFormProps) {
   const [formData, setFormData] = useState<TransactionFormData>(
     initialData || {
@@ -79,11 +77,11 @@ export default function AddTransactionForm({
       submitData.pricePerUnit = formData.amount / formData.quantity
     }
 
-    // For account holdings deposit/withdrawal, calculate quantity from amount
+    // For account holdings deposit/withdrawal, quantity = amount (simplified model)
     if (isAccountHolding && (formData.type === 'deposit' || formData.type === 'withdrawal')) {
       if (formData.amount && formData.amount > 0) {
-        submitData.quantity = formData.amount / currentPricePerUnit
-        submitData.pricePerUnit = currentPricePerUnit
+        submitData.quantity = formData.amount
+        submitData.pricePerUnit = 1
       }
     }
 
@@ -109,7 +107,7 @@ export default function AddTransactionForm({
       // When changing to deposit/withdrawal type for account holdings
       if (isAccountHolding && field === 'type' && (value === 'deposit' || value === 'withdrawal')) {
         updated.quantity = 0
-        updated.pricePerUnit = currentPricePerUnit
+        updated.pricePerUnit = 1
         updated.amount = 0
       }
 
@@ -122,7 +120,7 @@ export default function AddTransactionForm({
   // Filter transaction types based on whether it's an account holding
   const availableTransactionTypes = isAccountHolding
     ? TRANSACTION_TYPES.filter(t => ['deposit', 'withdrawal', 'dividend'].includes(t.value))
-    : TRANSACTION_TYPES
+    : TRANSACTION_TYPES.filter(t => !['deposit', 'withdrawal'].includes(t.value))
 
   const formContent = (
     <div className={isInline ? 'bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700' : 'bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto'}>
@@ -180,27 +178,19 @@ export default function AddTransactionForm({
                 {formData.type === 'deposit' ? 'Deposit Amount' : 'Withdrawal Amount'} *
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
-                  $
-                </span>
                 <input
                   type="number"
                   step="0.01"
                   value={formData.amount === 0 ? '0' : (formData.amount || '')}
                   onChange={(e) => handleChange('amount', e.target.value === '' ? undefined : parseFloat(e.target.value))}
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full pl-4 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                   min="0"
                   required
                   placeholder="Enter amount"
                 />
               </div>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Current price per unit: ${currentPricePerUnit.toFixed(4)}
-                {formData.amount && formData.amount > 0 && (
-                  <span className="ml-2">
-                    (= {(formData.amount / currentPricePerUnit).toFixed(2)} units)
-                  </span>
-                )}
+                Enter the {formData.type === 'deposit' ? 'deposit' : 'withdrawal'} amount in {symbolCurrency}
               </p>
             </div>
           ) : (

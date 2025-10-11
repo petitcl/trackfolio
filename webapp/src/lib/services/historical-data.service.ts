@@ -68,7 +68,6 @@ export class HistoricalDataService {
     }
   }
 
-
   /**
    * Filter historical data based on time range
    */

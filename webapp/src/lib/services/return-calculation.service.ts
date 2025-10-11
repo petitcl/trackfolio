@@ -16,6 +16,7 @@ export interface ReturnMetrics {
   totalPnL: number
   realizedPnL: number
   unrealizedPnL: number
+  unrealizedPnlPercentage: number
   capitalGains: number
   dividends: number
 
@@ -82,6 +83,8 @@ export interface BucketedReturnMetrics {
 interface Lot {
   quantity: number;
   costPerUnit: number;
+  // only for dividend & withdrawal
+  amount?: number;
 }
 
 /**
@@ -155,6 +158,44 @@ function computePortfolioStateAt(
         dividends += (tx.amount || 0);
         break;
 
+      case "deposit":
+        // Deposit adds a cash lot with amount field for FIFO tracking
+        // quantity is not used for cash positions, but we set to 1 for lot tracking
+        lotsBySymbol[tx.symbol].push({
+          quantity: 1,           // Placeholder for lot tracking (not used for cash)
+          costPerUnit: 0,        // Not meaningful for cash
+          amount: tx.amount || 0 // Actual cash amount deposited
+        });
+        totalInvested += tx.amount || 0;
+        break;
+
+      case "withdrawal":
+        // Withdrawal removes cash using FIFO - remove from oldest lots first
+        let remainingAmount = tx.amount || 0;
+        while (remainingAmount > 0 && lotsBySymbol[tx.symbol].length > 0) {
+          const lot = lotsBySymbol[tx.symbol][0];
+          const lotAmount = lot.amount || 0;
+
+          if (lotAmount <= 0) {
+            // Remove empty lot and continue
+            lotsBySymbol[tx.symbol].shift();
+            continue;
+          }
+
+          const amountUsed = Math.min(remainingAmount, lotAmount);
+
+          // Withdrawal from cash has no realized P&L (no gain/loss on cash)
+          // Just reduce the lot amount
+          lot.amount = lotAmount - amountUsed;
+          remainingAmount -= amountUsed;
+
+          // Remove lot if fully withdrawn
+          if (lot.amount <= 0) {
+            lotsBySymbol[tx.symbol].shift();
+          }
+        }
+        break;
+  
       case "bonus":
         if (tx.quantity > 0) lotsBySymbol[tx.symbol].push({ quantity: tx.quantity, costPerUnit: 0 });
         break;
@@ -165,7 +206,11 @@ function computePortfolioStateAt(
   let costBasis = 0;
   for (const symbol in lotsBySymbol) {
     for (const lot of lotsBySymbol[symbol]) {
-      costBasis += lot.quantity * lot.costPerUnit;
+      if (lot.amount) {
+        costBasis += lot.amount;
+      } else {
+        costBasis += lot.quantity * lot.costPerUnit;
+      }
     }
   }
 
@@ -273,6 +318,22 @@ function computePeriodPortfolioSummary(
   // Period total P&L = capital gains + dividends
   const periodTotalPnL = periodCapitalGains + periodDividends;
 
+  // console.log({
+  //   startDate,
+  //   endDate,
+  //   totalCurrentValue,
+  //   "endState.costBasis": endState.costBasis,
+  //   startValue,
+  //   "startState.costBasis": startState.costBasis,
+  //   unrealizedPnLStart,
+  //   unrealizedPnLEnd,
+  //   periodUnrealizedPnLChange,
+  //   periodRealizedPnL,
+  //   periodDividends,
+  //   periodCapitalGains,
+  //   periodTotalPnL,
+  // })
+
   // Annualized TWR uses full historical data (calculated separately)
   const annualizedReturn = computeAnnualizedTWR(histData, transactions);
 
@@ -320,6 +381,14 @@ function computeAnnualizedTWR(
           break;
         case "sell":
           totalProceeds += tx.price_per_unit * tx.quantity - (tx.fees || 0);
+          break;
+        case "deposit":
+          // Money put into the position
+          totalInvested += (tx.amount || 0);
+          break;
+        case "withdrawal":
+          // Money taken out of the position
+          totalProceeds += (tx.amount || 0);
           break;
       }
     }
@@ -410,12 +479,12 @@ function calculateXIRR(
         amount = (tx.amount || 0);
         break;
       case 'deposit':
-        // Money out (negative)
-        amount = -tx.price_per_unit;
+        // Money out (negative) - investor putting money into portfolio
+        amount = -(tx.amount || 0);
         break;
       case 'withdrawal':
-        // Money in (positive)
-        amount = tx.price_per_unit;
+        // Money in (positive) - investor taking money out of portfolio
+        amount = (tx.amount || 0);
         break;
       default:
         continue;
@@ -577,10 +646,10 @@ function computeNetInflowsForPeriod(
         netInflows -= (tx.price_per_unit * tx.quantity - (tx.fees || 0))
         break
       case 'deposit':
-        netInflows += tx.price_per_unit
+        netInflows += tx.amount || 0
         break
       case 'withdrawal':
-        netInflows -= tx.price_per_unit
+        netInflows -= tx.amount || 0
         break
       // Dividends excluded - tracked separately
     }
@@ -702,8 +771,16 @@ export class ReturnCalculationService {
     if (avgCapital > 0) {
       // Total return % = Total P&L / Average Capital
       // This shows the return relative to the average amount of capital deployed
+      // TODO: consider using Money Weighted Return or Time Wieghted Return instead of simple average capital
       totalReturnPercentage = (periodSummary.totalPnL / avgCapital) * 100
     }
+
+    // console.log({
+    //   startValue,
+    //   netInflows,
+    //   avgCapital,
+    //   totalReturnPercentage,
+    // })
 
     // Calculate XIRR for money-weighted return - ALWAYS use ALL transactions
     const finalValue = Object.values(endPoint.assetTypeValues).reduce((a, b) => a + b, 0)
@@ -718,6 +795,7 @@ export class ReturnCalculationService {
       totalPnL: periodSummary.totalPnL,
       realizedPnL: periodSummary.realizedPnL,
       unrealizedPnL: periodSummary.unrealizedPnL,
+      unrealizedPnlPercentage: (periodSummary.unrealizedPnL / (periodSummary.totalValue - periodSummary.unrealizedPnL)) * 100,
       capitalGains: periodSummary.capitalGains,
       dividends: periodSummary.dividends,
 
@@ -748,6 +826,7 @@ export class ReturnCalculationService {
       totalPnL: 0,
       realizedPnL: 0,
       unrealizedPnL: 0,
+      unrealizedPnlPercentage: 0,
       capitalGains: 0,
       dividends: 0,
       costBasis: 0,

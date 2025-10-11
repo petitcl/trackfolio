@@ -2,10 +2,12 @@
 Mark done item with ✅
 
 ## TODO P1
+- ✅ Improve support for cash positions / accounts V1
 - [ ] Add multi holding CSV import functionality from home page
 - [ ] Implement portfolio export and backup functionality
-- [ ] Improve support for cash positions / accounts
 - [ ] Make "add holding" a modal instead of a page
+- [ ] Add edit button on account balance history row
+- [ ] Add "add account balance" button to account balance history
 
 ## TODO P2
 - [ ] Add crypto holdings

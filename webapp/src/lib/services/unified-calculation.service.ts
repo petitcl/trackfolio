@@ -11,15 +11,16 @@ export interface PortfolioPosition {
   currentPrice: number
   value: number
   isCustom: boolean
-  dividendIncome: number // Track total dividend income received as cash
+  dividendIncome: number
 }
 
 interface UnifiedPosition {
   symbol: string
   quantity: number
-  totalCost: number
   avgCost: number
-  dividendIncome: number  // Track total dividend income received as cash
+  // totalAmount: number
+  totalCost: number
+  dividendIncome: number
 }
 
 /**
@@ -35,7 +36,8 @@ export class UnifiedCalculationService {
   private calculatePositionsUpToDate(
     transactions: Transaction[],
     date: string,
-    targetSymbol?: string,
+    targetSymbol: string | undefined,
+    allSymbols: Symbol[],
     includeClosedPositions?: boolean,
   ): UnifiedPosition[] {
     // For single holdings, include closed positions to continue tracking after liquidation
@@ -54,16 +56,17 @@ export class UnifiedCalculationService {
       const existing = positionMap.get(symbol) || {
         symbol,
         quantity: 0,
-        totalCost: 0,
         avgCost: 0,
+        totalAmount: 0,
+        totalCost: 0,
         dividendIncome: 0
       }
 
-      if (transaction.type === 'buy' || transaction.type === 'deposit') {
+      if (transaction.type === 'buy') {
         existing.quantity += transaction.quantity
         existing.totalCost += transaction.quantity * transaction.price_per_unit
         existing.avgCost = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
-      } else if (transaction.type === 'sell' || transaction.type === 'withdrawal') {
+      } else if (transaction.type === 'sell' ) {
         existing.quantity -= transaction.quantity
         if (existing.quantity <= 0) {
           if (!shouldIncludeClosedPositions) {
@@ -77,6 +80,18 @@ export class UnifiedCalculationService {
           // Maintain cost basis proportionally
           existing.totalCost = existing.quantity * existing.avgCost
         }
+      } else if (transaction.type === 'deposit') {
+        // Deposit adds to cost basis without changing quantity
+        // This represents cash added to the position (e.g., cash account deposit)
+        existing.totalCost += (transaction.amount || 0)
+        // avgCost remains unchanged - deposit doesn't affect cost per unit
+      } else if (transaction.type === 'withdrawal') {
+        // Withdrawal reduces cost basis without changing quantity
+        // This represents cash removed from the position (e.g., cash account withdrawal)
+        existing.totalCost -= (transaction.amount || 0)
+        // Prevent negative cost basis
+        existing.totalCost = Math.max(0, existing.totalCost)
+        // avgCost remains unchanged - withdrawal doesn't affect cost per unit
       } else if (transaction.type === 'dividend') {
         // Dividends can be either:
         // 1. Cash dividends (amount > 0, quantity = 0) - tracked as income
@@ -97,9 +112,19 @@ export class UnifiedCalculationService {
         existing.avgCost = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
       }
 
-      if (existing.quantity > 0 || (shouldIncludeClosedPositions && existing.quantity === 0)) {
+      const symbolData = allSymbols.find(s => s.symbol == symbol)!
+      const isAccount = symbolData?.holding_type === 'account'
+      if (existing.quantity > 0 || isAccount || (shouldIncludeClosedPositions && existing.quantity === 0)) {
         positionMap.set(symbol, existing)
       }
+      // if (symbol == 'BINANCE') {
+      //   console.log({
+      //     isAccount,
+      //     symbol,
+      //     existing,
+      //     added: positionMap.get(symbol),
+      //   })
+      // }
     })
 
     return Array.from(positionMap.values())
@@ -193,7 +218,7 @@ export class UnifiedCalculationService {
       
       // Calculate positions as of this date
       // For single holdings, include closed positions to continue generating data after liquidation
-      const positions = this.calculatePositionsUpToDate(transactions, currentDate, targetSymbol)
+      const positions = this.calculatePositionsUpToDate(transactions, currentDate, targetSymbol, symbols)
       
       if (positions.length === 0) {
         continue
@@ -201,7 +226,6 @@ export class UnifiedCalculationService {
 
       // Calculate total value and asset allocations
       let totalValue = 0
-      let targetSymbolValue = 0 // Track individual holding value separately
       const assetTypeValues: Record<string, number> = {
         stock: 0,
         crypto: 0,
@@ -256,7 +280,19 @@ export class UnifiedCalculationService {
 
         if (historicalPrice !== null) {
           result.validPrice = true
-          const positionValue = position.quantity * historicalPrice
+
+          // For account holdings, historicalPrice IS the account balance
+          // For regular holdings, positionValue = quantity × price
+          let positionValue: number
+          if (symbolData?.holding_type === 'account') {
+            // Account holdings: historicalPrice stores the full account balance
+            // (not a per-unit price), so use it directly as the position value
+            positionValue = historicalPrice
+          } else {
+            // Regular holdings: value = quantity × price
+            positionValue = position.quantity * historicalPrice
+          }
+
           result.positionValue = positionValue
 
           // Add console warning for implicit USD fallback
@@ -306,11 +342,19 @@ export class UnifiedCalculationService {
           convertedTotalValue += result.convertedPositionValue
 
           if (result.isTargetSymbol) {
-            targetSymbolValue = result.positionValue
             convertedTargetSymbolValue = result.convertedPositionValue
           }
 
-          assetTypeValues[result.assetType] += result.positionValue
+          // if (result.assetType == "crypto") {
+          //   console.log({
+          //     result,
+          //     assetTypeValues,
+          //     convertedAssetTypeValues,
+          //   })  
+          // }
+
+          // Use converted values for asset type tracking to ensure consistency with totalValue
+          assetTypeValues[result.assetType] += result.convertedPositionValue
           convertedAssetTypeValues[result.assetType] += result.convertedPositionValue
         }
 
@@ -355,11 +399,11 @@ export class UnifiedCalculationService {
 
       const convertedCostBasis = costBasisResults.reduce((sum, value) => sum + value, 0)
 
-      // Calculate allocations
+      // Calculate allocations using converted total value for consistency
       const assetTypeAllocations: Record<string, number> = {}
-      if (totalValue > 0) {
+      if (convertedTotalValue > 0) {
         for (const [assetType, value] of Object.entries(assetTypeValues)) {
-          assetTypeAllocations[assetType] = (value / totalValue) * 100
+          assetTypeAllocations[assetType] = (value / convertedTotalValue) * 100
         }
       }
 
@@ -418,7 +462,7 @@ export class UnifiedCalculationService {
     const currentDate = new Date().toISOString().split('T')[0]
 
     // Calculate positions as of current date from transactions
-    const unifiedPositions = this.calculatePositionsUpToDate(transactions, currentDate, undefined, includeClosedPositions)
+    const unifiedPositions = this.calculatePositionsUpToDate(transactions, currentDate, undefined, symbols, includeClosedPositions)
 
     // Add positions that exist but have no transactions (quantity = 0)
     if (explicitPositions) {
@@ -496,7 +540,16 @@ export class UnifiedCalculationService {
       }
 
       // Calculate value WITHOUT dividend income (as per user's requirement)
-      const value = position.quantity * convertedCurrentPrice
+      // For account holdings, the "price" is actually the full account balance
+      let value: number
+      if (symbolData?.holding_type === 'account') {
+        // Account holdings: finalCurrentPrice IS the account balance (already converted)
+        // Don't multiply by quantity (which is 0 for accounts)
+        value = convertedCurrentPrice
+      } else {
+        // Regular holdings: value = quantity × price
+        value = position.quantity * convertedCurrentPrice
+      }
 
       return {
         symbol: position.symbol,
@@ -512,140 +565,6 @@ export class UnifiedCalculationService {
     return portfolioPositions
   }
 
-  /**
-   * Calculate cumulative invested amount up to a specific date
-   * This includes all money put into the portfolio (purchases, deposits, fees)
-   */
-  calculateCumulativeInvestedForDate(transactions: Transaction[], date: string): number {
-    const investmentTransactions = transactions.filter(t => t.date <= date)
-
-    return investmentTransactions.reduce((sum, t) => {
-      if (t.type === 'buy') {
-        // Money going in: purchase + fees
-        return sum + (t.quantity * t.price_per_unit) + (t.fees || 0)
-      } else if (t.type === 'sell') {
-        // Money coming out: reduce invested amount by original cost basis
-        // Note: This is simplified - ideally we'd track the actual cost basis of sold shares
-        return sum - (t.quantity * t.price_per_unit) + (t.fees || 0)
-      } else if (t.type === 'deposit') {
-        // Cash deposits
-        return sum + (t.quantity * t.price_per_unit)
-      } else if (t.type === 'withdrawal') {
-        // Cash withdrawals
-        return sum - (t.quantity * t.price_per_unit)
-      }
-      // Dividends and bonuses don't count as "invested" money
-      return sum
-    }, 0)
-  }
-
-  /**
-   * Calculate portfolio value for positions on a specific date
-   * Returns null if any symbol lacks historical price data
-   *
-   * Note: This method is available for backward compatibility but the recommended
-   * approach is to use calculateUnifiedHistoricalData() for comprehensive results
-   */
-  async calculatePortfolioValueForDate(
-    positions: PortfolioPosition[],
-    date: string,
-    user: AuthUser,
-    symbols: Symbol[]
-  ): Promise<number | null> {
-    // Process all positions in parallel
-    const priceResults = await Promise.all(positions.map(async (position) => {
-      const symbolData = symbols.find(s => s.symbol === position.symbol) || null
-      const historicalPrice = await historicalPriceService.getHistoricalPriceForDate(
-        position.symbol,
-        date,
-        user,
-        symbolData
-      )
-
-      return {
-        price: historicalPrice,
-        quantity: position.quantity
-      }
-    }))
-
-    // If ANY symbol lacks historical data, skip the entire date
-    if (priceResults.some(result => result.price === null)) {
-      return null
-    }
-
-    // Calculate total value
-    const totalValue = priceResults.reduce((sum, result) => {
-      return sum + (result.quantity * (result.price || 0))
-    }, 0)
-
-    return totalValue
-  }
-
-  /**
-   * Calculate asset type allocations for positions on a specific date
-   * Returns null if any symbol lacks historical price data
-   *
-   * Note: This method is available for backward compatibility but the recommended
-   * approach is to use calculateUnifiedHistoricalData() for comprehensive results
-   */
-  async calculateAssetTypeAllocations(
-    positions: PortfolioPosition[],
-    symbols: Symbol[],
-    date: string,
-    user: AuthUser
-  ): Promise<{ allocations: Record<string, number>; values: Record<string, number> } | null> {
-    const assetTypeValues: Record<string, number> = {
-      stock: 0,
-      crypto: 0,
-      real_estate: 0,
-      cash: 0,
-      currency: 0,
-      other: 0
-    }
-
-    // Process all positions in parallel
-    const results = await Promise.all(positions.map(async (position) => {
-      const symbolData = symbols.find(s => s.symbol === position.symbol)
-      const assetType = symbolData?.asset_type || 'other'
-      const historicalPrice = await historicalPriceService.getHistoricalPriceForDate(
-        position.symbol,
-        date,
-        user,
-        symbolData || null
-      )
-
-      return {
-        assetType,
-        price: historicalPrice,
-        quantity: position.quantity
-      }
-    }))
-
-    // If ANY symbol lacks historical data, skip the entire date
-    if (results.some(result => result.price === null)) {
-      return null
-    }
-
-    // Aggregate results
-    for (const result of results) {
-      const historicalValue = result.quantity * (result.price || 0)
-      assetTypeValues[result.assetType] += historicalValue
-    }
-
-    const totalPortfolioValue = Object.values(assetTypeValues).reduce((sum, value) => (sum || 0) + (value || 0), 0)
-    const assetTypeAllocations: Record<string, number> = {}
-
-    if (totalPortfolioValue > 0) {
-      Object.keys(assetTypeValues).forEach(assetType => {
-        assetTypeAllocations[assetType] = (assetTypeValues[assetType] / totalPortfolioValue) * 100
-      })
-    }
-
-    return {
-      allocations: assetTypeAllocations,
-      values: assetTypeValues
-    }
-  }
 }
 
 // Singleton instance

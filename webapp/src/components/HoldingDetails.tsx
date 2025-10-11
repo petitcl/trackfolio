@@ -1,28 +1,28 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import type { AuthUser } from '@/lib/auth/client.auth.service'
-import type { Transaction, Symbol } from '@/lib/supabase/types'
-import { portfolioService, type PortfolioPosition, type PortfolioData, type ReturnMetrics, type BucketedReturnMetrics } from '@/lib/services/portfolio.service'
-import ValueEvolutionChart from './charts/ValueEvolutionChart'
-import BucketedReturnsChart from './BucketedReturnsChart'
-import TimeRangeSelector from './TimeRangeSelector'
-import type { HistoricalDataPoint } from '@/lib/mockData'
-import QuickActions from './QuickActions'
-import DemoModeBanner from './DemoModeBanner'
-import ConfirmDialog from './ConfirmDialog'
-import PriceManagement from './PriceManagement'
-import TransactionManagement from './TransactionManagement'
-import { type SupportedCurrency } from '@/lib/services/currency.service'
-import DetailedHoldingReturns from './DetailedHoldingReturns'
 import Header from '@/components/Header'
-import { formatPercent, getAssetTypeIcon, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
-import { type TimeRange } from '@/lib/utils/timeranges'
-import ProfitDisplay from './ProfitDisplay'
+import type { AuthUser } from '@/lib/auth/client.auth.service'
+import type { HistoricalDataPoint } from '@/lib/mockData'
 import { accountHoldingService } from '@/lib/services/account-holding.service'
-import UpdateBalanceModal from './UpdateBalanceModal'
+import { type SupportedCurrency } from '@/lib/services/currency.service'
+import { portfolioService, type BucketedReturnMetrics, type PortfolioPosition, type ReturnMetrics } from '@/lib/services/portfolio.service'
+import type { Symbol, Transaction } from '@/lib/supabase/types'
+import { getAssetTypeIcon, makeFormatCurrency } from '@/lib/utils/formatting'
+import { type TimeRange } from '@/lib/utils/timeranges'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import BalanceManagement from './BalanceManagement'
+import BucketedReturnsChart from './BucketedReturnsChart'
+import ValueEvolutionChart from './charts/ValueEvolutionChart'
+import ConfirmDialog from './ConfirmDialog'
+import DemoModeBanner from './DemoModeBanner'
+import DetailedHoldingReturns from './DetailedHoldingReturns'
+import PriceManagement from './PriceManagement'
+import ProfitDisplay from './ProfitDisplay'
+import QuickActions from './QuickActions'
+import TimeRangeSelector from './TimeRangeSelector'
+import TransactionManagement from './TransactionManagement'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -33,21 +33,34 @@ interface HoldingDetailsProps {
 
 interface HoldingData {
   position: PortfolioPosition | null
-  symbol: Symbol | null
+  symbol: Symbol
   transactions: Transaction[]
   historicalData: HistoricalDataPoint[]
-  detailedReturns: ReturnMetrics | null
+  detailedReturns: ReturnMetrics
   bucketedReturns: BucketedReturnMetrics | null
 }
 
+const defaultSymbolData: Symbol = {
+  asset_type: "other",
+  created_at: "",
+  created_by_user_id: "",
+  currency: "",
+  holding_type: "",
+  is_custom: false,
+  last_price: 0,
+  last_updated: "",
+  metadata: {},
+  name: "",
+  symbol: ""
+};
+
 export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD', onCurrencyChange }: HoldingDetailsProps) {
   const [loading, setLoading] = useState(true)
-  const [holdingData, setHoldingData] = useState<HoldingData | null>(null)
+  const [holdingData, setHoldingData] = useState<HoldingData | null>()
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<TimeRange>('all')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [showUpdateBalanceModal, setShowUpdateBalanceModal] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -81,7 +94,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
 
         setHoldingData({
           position,
-          symbol: symbolData || null,
+          symbol: symbolData || defaultSymbolData,
           transactions: symbolTransactions,
           historicalData,
           detailedReturns,
@@ -133,12 +146,6 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
     }
   }
 
-  const handleUpdateBalanceComplete = () => {
-    setShowUpdateBalanceModal(false)
-    // Reload holding data to reflect the updated balance
-    window.location.reload()
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -178,22 +185,21 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
   console.log('HoldingDetails - detailedReturns', detailedReturns);
   console.log('HoldingDetails - bucketedReturns', bucketedReturns)
 
-  const currentValue = detailedReturns
-    ? detailedReturns.costBasis + detailedReturns.unrealizedPnL
-    : position?.value || 0
-  const costBasis = detailedReturns?.costBasis || (position ? position.quantity * position.avgCost : 0)
+  const currentValue = detailedReturns.totalValue
+  // const currentValue = detailedReturns.costBasis + detailedReturns.unrealizedPnL
+  const costBasis = detailedReturns.costBasis
   const currentPrice = currentValue && position?.quantity ? currentValue / position.quantity : position?.currentPrice || 0
   const quantity = position?.quantity || 0
-  const realizedPnL = detailedReturns?.realizedPnL || 0
-  const unrealizedPnL = detailedReturns?.unrealizedPnL || 0
-  const totalReturn = detailedReturns?.totalPnL || (unrealizedPnL + realizedPnL)
-  const totalInvested = detailedReturns?.totalInvested || 0
-  const totalReturnPercentage = detailedReturns?.totalReturnPercentage || 0
+  const totalReturn = detailedReturns.totalPnL
+  const totalReturnPercentage = detailedReturns.totalReturnPercentage
   const averageCostBasis = quantity > 0 ? costBasis / quantity : 0
-  const annualizedReturn = detailedReturns?.moneyWeightedReturn ?? 0
-  const holdingPeriod = detailedReturns && detailedReturns.periodYears > 0 ? (detailedReturns.periodYears < 1 ?
+  const annualizedReturn = detailedReturns.moneyWeightedReturn
+  const holdingPeriod = detailedReturns.periodYears > 0 ? (detailedReturns.periodYears < 1 ?
   `${Math.round(detailedReturns.periodYears * 365)} days` :
   `${detailedReturns.periodYears.toFixed(1)} years`) : null
+
+  const isAccountHolding = accountHoldingService.isAccountHolding(symbolData)
+  const isClosedPosition = !isAccountHolding && quantity <= 0
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -275,9 +281,11 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                     <dd className="text-lg font-medium text-gray-900 dark:text-white">
                       {formatCurrency(currentValue)}
                     </dd>
-                    <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {quantity.toLocaleString()} × {formatCurrency(currentPrice)}
-                    </dd>
+                    { !isAccountHolding && 
+                        <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {quantity.toLocaleString()} × {formatCurrency(currentPrice)}
+                        </dd>                  
+                    }
                   </dl>
                 </div>
               </div>
@@ -297,9 +305,12 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
                     <dd className="text-lg font-medium text-gray-900 dark:text-white">
                       {formatCurrency(costBasis)}
                     </dd>
-                    <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {quantity > 0 ? `Avg: ${formatCurrency(averageCostBasis)}` : 'Position closed'}
-                    </dd>
+                    {
+                      !isAccountHolding && 
+                      <dd className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {isClosedPosition ? 'Position closed' : `Avg: ${formatCurrency(averageCostBasis)}`}
+                      </dd>
+                    }
                   </dl>
                 </div>
               </div>
@@ -395,11 +406,9 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
         <div className="mb-8">
           <TransactionManagement
             user={user}
-            symbol={symbol}
-            symbolName={symbolData?.name || 'Unknown Asset'}
+            symbol={symbolData}
             transactions={transactions}
             selectedCurrency={selectedCurrency}
-            symbolCurrency={symbolData?.currency || 'USD'}
             onTransactionUpdated={() => {
               // Reload the holding data when transactions are updated
               window.location.reload() // Temporary solution - in production this should be more elegant
@@ -407,8 +416,16 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
           />
         </div>
 
-        {/* Price Management (for custom assets only) */}
-        {symbolData?.is_custom && (
+        {/* Balance Management (for account holdings) or Price Management (for custom assets) */}
+        {isAccountHolding ? (
+          <div className="mb-8">
+            <BalanceManagement
+              user={user}
+              symbol={symbol}
+              selectedCurrency={selectedCurrency}
+            />
+          </div>
+        ) : symbolData?.is_custom ? (
           <div className="mb-8">
             <PriceManagement
               user={user}
@@ -417,19 +434,12 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
               symbolCurrency={symbolData?.currency || 'USD'}
             />
           </div>
-        )}
+        ) : null}
 
         {/* Quick Actions */}
         <QuickActions
           title={`${symbol} Actions`}
           actions={[
-            // Add Update Balance button for account holdings
-            ...(symbolData && accountHoldingService.isAccountHolding(symbolData) && quantity > 0 ? [{
-              id: 'update-balance',
-              icon: '💰',
-              label: 'Update Balance',
-              onClick: () => setShowUpdateBalanceModal(true)
-            }] : []),
             {
               id: 'export-data',
               icon: '📤',
@@ -459,19 +469,6 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
           isLoading={isDeleting}
           loadingText="Deleting..."
         />
-
-        {/* Update Balance Modal for Account Holdings */}
-        {symbolData && (
-          <UpdateBalanceModal
-            isOpen={showUpdateBalanceModal}
-            user={user}
-            symbol={symbolData}
-            currentQuantity={quantity}
-            currentPricePerUnit={currentPrice}
-            onUpdateComplete={handleUpdateBalanceComplete}
-            onCancel={() => setShowUpdateBalanceModal(false)}
-          />
-        )}
 
       </main>
     </div>
