@@ -189,7 +189,9 @@ class ClientMockDataStore {
         last_price: holding.purchasePrice,
         last_updated: new Date().toISOString(),
         created_at: new Date().toISOString(),
-        currency: holding.currency
+        currency: holding.currency,
+        holding_type: 'standard',
+        metadata: {}
       }
       this.symbols.push(newSymbol)
     }
@@ -393,6 +395,21 @@ class ClientMockDataStore {
       this.initialize()
     }
     return [...this.positions]
+  }
+
+  addSymbol(symbol: Symbol): void {
+    if (!this.initialized && typeof window !== 'undefined') {
+      this.initialize()
+    }
+
+    // Check if symbol already exists
+    const existingSymbol = this.symbols.find(s => s.symbol === symbol.symbol)
+    if (existingSymbol) {
+      return
+    }
+
+    this.symbols.push(symbol)
+    this.saveToLocalStorage()
   }
 
   addPosition(symbol: string, userId: string): Position {

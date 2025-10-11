@@ -23,6 +23,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: false,
     created_by_user_id: null,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   {
@@ -34,6 +36,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: false,
     created_by_user_id: null,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   {
@@ -45,6 +49,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: false,
     created_by_user_id: null,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   {
@@ -56,6 +62,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: false,
     created_by_user_id: null,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   {
@@ -67,6 +75,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: false,
     created_by_user_id: null,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   {
@@ -78,6 +88,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: false,
     created_by_user_id: null,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   {
@@ -89,6 +101,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: false,
     created_by_user_id: null,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   // Currency pairs for FX tracking
@@ -101,6 +115,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: false,
     created_by_user_id: null,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   {
@@ -112,6 +128,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: false,
     created_by_user_id: null,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   {
@@ -123,6 +141,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: false,
     created_by_user_id: null,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   // Custom investments
@@ -135,6 +155,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: true,
     created_by_user_id: MOCK_USER_ID,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   {
@@ -146,6 +168,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: true,
     created_by_user_id: MOCK_USER_ID,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   {
@@ -157,6 +181,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: true,
     created_by_user_id: MOCK_USER_ID,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   },
   {
@@ -168,6 +194,8 @@ export const mockSymbols: Symbol[] = [
     last_updated: new Date().toISOString(),
     is_custom: true,
     created_by_user_id: MOCK_USER_ID,
+    holding_type: 'standard',
+    metadata: {},
     created_at: new Date().toISOString()
   }
 ]

@@ -99,9 +99,11 @@ export type Database = {
           created_at: string
           created_by_user_id: string | null
           currency: string | null
+          holding_type: string
           is_custom: boolean
           last_price: number | null
           last_updated: string | null
+          metadata: Json
           name: string
           symbol: string
         }
@@ -110,9 +112,11 @@ export type Database = {
           created_at?: string
           created_by_user_id?: string | null
           currency?: string | null
+          holding_type?: string
           is_custom?: boolean
           last_price?: number | null
           last_updated?: string | null
+          metadata?: Json
           name: string
           symbol: string
         }
@@ -121,9 +125,11 @@ export type Database = {
           created_at?: string
           created_by_user_id?: string | null
           currency?: string | null
+          holding_type?: string
           is_custom?: boolean
           last_price?: number | null
           last_updated?: string | null
+          metadata?: Json
           name?: string
           symbol?: string
         }

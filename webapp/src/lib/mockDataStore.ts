@@ -131,7 +131,9 @@ class MockDataStore {
         last_price: holding.purchasePrice,
         last_updated: new Date().toISOString(),
         created_at: new Date().toISOString(),
-        currency: 'USD'
+        currency: 'USD',
+        holding_type: 'standard',
+        metadata: {}
       }
       this.symbols.push(newSymbol)
     }

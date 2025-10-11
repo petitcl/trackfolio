@@ -21,6 +21,8 @@ import Header from '@/components/Header'
 import { formatPercent, getAssetTypeIcon, getPnLColor, makeFormatCurrency } from '@/lib/utils/formatting'
 import { type TimeRange } from '@/lib/utils/timeranges'
 import ProfitDisplay from './ProfitDisplay'
+import { accountHoldingService } from '@/lib/services/account-holding.service'
+import UpdateBalanceModal from './UpdateBalanceModal'
 
 interface HoldingDetailsProps {
   user: AuthUser
@@ -45,6 +47,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
   const [timeRange, setTimeRange] = useState<TimeRange>('all')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showUpdateBalanceModal, setShowUpdateBalanceModal] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -110,11 +113,11 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
 
   const handleDeleteHolding = async () => {
     if (!holdingData) return
-    
+
     setIsDeleting(true)
     try {
       const result = await portfolioService.deleteHolding(user, symbol)
-      
+
       if (result.success) {
         console.log(`✅ Successfully deleted holding: ${symbol}`)
         router.push('/')
@@ -128,6 +131,12 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
       setError('An unexpected error occurred while deleting the holding')
       setIsDeleting(false)
     }
+  }
+
+  const handleUpdateBalanceComplete = () => {
+    setShowUpdateBalanceModal(false)
+    // Reload holding data to reflect the updated balance
+    window.location.reload()
   }
 
   if (loading) {
@@ -414,9 +423,16 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
         <QuickActions
           title={`${symbol} Actions`}
           actions={[
+            // Add Update Balance button for account holdings
+            ...(symbolData && accountHoldingService.isAccountHolding(symbolData) && quantity > 0 ? [{
+              id: 'update-balance',
+              icon: '💰',
+              label: 'Update Balance',
+              onClick: () => setShowUpdateBalanceModal(true)
+            }] : []),
             {
               id: 'export-data',
-              icon: '📤', 
+              icon: '📤',
               label: 'Export Data',
               onClick: () => console.log('Export data for', symbol)
             },
@@ -443,6 +459,19 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
           isLoading={isDeleting}
           loadingText="Deleting..."
         />
+
+        {/* Update Balance Modal for Account Holdings */}
+        {symbolData && (
+          <UpdateBalanceModal
+            isOpen={showUpdateBalanceModal}
+            user={user}
+            symbol={symbolData}
+            currentQuantity={quantity}
+            currentPricePerUnit={currentPrice}
+            onUpdateComplete={handleUpdateBalanceComplete}
+            onCancel={() => setShowUpdateBalanceModal(false)}
+          />
+        )}
 
       </main>
     </div>

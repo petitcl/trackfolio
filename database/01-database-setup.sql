@@ -36,11 +36,13 @@ CREATE TABLE symbols (
     last_updated TIMESTAMPTZ,
     is_custom BOOLEAN DEFAULT FALSE NOT NULL,
     created_by_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    holding_type TEXT DEFAULT 'standard' NOT NULL,
+    metadata JSONB DEFAULT '{}'::jsonb NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    
+
     -- Ensure custom symbols have a creator
-    CONSTRAINT custom_symbol_has_creator 
-        CHECK ((is_custom = TRUE AND created_by_user_id IS NOT NULL) OR 
+    CONSTRAINT custom_symbol_has_creator
+        CHECK ((is_custom = TRUE AND created_by_user_id IS NOT NULL) OR
                (is_custom = FALSE AND created_by_user_id IS NULL))
 );
 

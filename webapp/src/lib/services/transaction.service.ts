@@ -131,7 +131,9 @@ export class TransactionService {
           last_updated: new Date().toISOString(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          currency: 'USD'
+          currency: 'USD',
+          holding_type: 'standard',
+          metadata: {}
         } as Symbol
       }
 
