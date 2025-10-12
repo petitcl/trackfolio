@@ -8,6 +8,7 @@ import DemoModeBanner from '@/components/DemoModeBanner'
 import EnhancedPortfolioOverview from '@/components/EnhancedPortfolioOverview'
 import Header from '@/components/Header'
 import MultiBulkImportModal from '@/components/MultiBulkImportModal'
+import AddHoldingModal from '@/components/AddHoldingModal'
 import QuickActions from '@/components/QuickActions'
 import TimeRangeSelector from '@/components/TimeRangeSelector'
 import { type AuthUser } from '@/lib/auth/client.auth.service'
@@ -75,6 +76,7 @@ export default function Dashboard({ user }: DashboardProps) {
     currencyService.getPreferredCurrency()
   )
   const [showBulkImport, setShowBulkImport] = useState(false)
+  const [showAddHolding, setShowAddHolding] = useState(false)
   const [showClosedPositions, setShowClosedPositions] = useState(false)
   const router = useRouter()
 
@@ -167,6 +169,20 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const handleBulkImportCancel = () => {
     setShowBulkImport(false)
+  }
+
+  const handleAddHolding = () => {
+    setShowAddHolding(true)
+  }
+
+  const handleAddHoldingComplete = (symbol: string) => {
+    setShowAddHolding(false)
+    // Navigate to the newly created holding
+    router.push(`/holdings/${symbol}`)
+  }
+
+  const handleAddHoldingCancel = () => {
+    setShowAddHolding(false)
   }
 
   const formatCurrency = makeFormatCurrency(selectedCurrency)
@@ -523,7 +539,7 @@ export default function Dashboard({ user }: DashboardProps) {
               id: 'add-holding',
               icon: '📈',
               label: 'Add Holding',
-              onClick: () => router.push('/add-holding')
+              onClick: handleAddHolding
             },
             {
               id: 'bulk-import',
@@ -551,6 +567,26 @@ export default function Dashboard({ user }: DashboardProps) {
                 user={user}
                 onImportComplete={handleBulkImportComplete}
                 onCancel={handleBulkImportCancel}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Add Holding Modal */}
+        {showAddHolding && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={handleAddHoldingCancel}
+            />
+
+            {/* Modal Content */}
+            <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <AddHoldingModal
+                user={user}
+                onHoldingAdded={handleAddHoldingComplete}
+                onCancel={handleAddHoldingCancel}
               />
             </div>
           </div>

@@ -9,7 +9,7 @@ Mark done item with ✅
 - ✅ Fix wrong total return in holding details 
 - [ ] Add multi holding CSV import functionality from home page
 - [ ] Implement portfolio export and backup functionality
-- [ ] Make "add holding" a modal instead of a page
+- ✅ Make "add holding" a modal instead of a page
 - [ ] Add edit button on account balance history row
 - [ ] Add "add account balance" button to account balance history
 - [ ] Make bonus count as dividends
