@@ -165,7 +165,7 @@ export class YahooFinanceProvider implements IPriceProvider {
         // Yahoo uses format like BTC-USD, ETH-USD
         return symbol.includes('-') ? symbol : `${symbol}-USD`
       
-      case 'currency':
+      case 'cash':
         // Convert EURUSD to EUR=X format
         if (symbol.length === 6) {
           const from = symbol.slice(0, 3)
@@ -191,7 +191,7 @@ export class YahooFinanceProvider implements IPriceProvider {
       case 'cryptocurrency':
         return 'Cryptocurrency'
       case 'currency':
-        return 'Currency'
+        return 'Cash'
       case 'mutualfund':
         return 'Mutual Fund'
       case 'index':

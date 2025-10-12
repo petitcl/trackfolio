@@ -112,7 +112,7 @@ export default function PortfolioRepartitionHistoryChart({
   }
 
   // Data is already processed by the service - create chart data directly using assetTypeValues
-  const assetTypes = ['stock', 'crypto', 'real_estate', 'cash', 'currency', 'other']
+  const assetTypes = ['stock', 'crypto', 'real_estate', 'cash', 'other']
 
   // Create datasets for stacked bar chart using absolute values or percentages
   const datasets = assetTypes.map(assetType => {

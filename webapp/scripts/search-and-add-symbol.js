@@ -51,8 +51,8 @@ if (!['search', 'add'].includes(command)) {
 }
 
 // Validate asset type if provided
-if (assetType && !['stock', 'etf', 'crypto', 'currency', 'cash', 'real_estate', 'other'].includes(assetType.toLowerCase())) {
-  console.error('❌ Error: Invalid asset type. Must be one of: stock, etf, crypto, currency, cash, real_estate, other')
+if (assetType && !['stock', 'etf', 'crypto', 'cash', 'real_estate', 'other'].includes(assetType.toLowerCase())) {
+  console.error('❌ Error: Invalid asset type. Must be one of: stock, etf, crypto, cash, real_estate, other')
   process.exit(1)
 }
 

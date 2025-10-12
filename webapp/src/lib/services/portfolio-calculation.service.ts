@@ -121,8 +121,7 @@ import { cacheService } from './cache.service'
  *   - 'stock' - Public equities
  *   - 'crypto' - Cryptocurrencies
  *   - 'real_estate' - Property, REITs
- *   - 'cash' - Cash accounts, money market
- *   - 'currency' - Foreign currency holdings
+ *   - 'cash' - Cash accounts, money market, foreign currency holdings
  *   - 'other' - Everything else (collectibles, private equity, etc.)
  *
  * ============================================================================
@@ -1131,7 +1130,7 @@ export class PortfolioCalculationService {
         // Calculate average allocations and values
         const avgAllocations: Record<string, number> = {}
         const avgValues: Record<string, number> = {}
-        const assetTypes = ['stock', 'crypto', 'real_estate', 'cash', 'currency', 'other']
+        const assetTypes = ['stock', 'crypto', 'real_estate', 'cash', 'other']
 
         assetTypes.forEach(assetType => {
           const totalAllocations = points.reduce((sum, p) => {

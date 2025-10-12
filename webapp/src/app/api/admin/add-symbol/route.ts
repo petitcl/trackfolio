@@ -148,13 +148,13 @@ export async function POST(request: NextRequest) {
     if (currencyPattern.test(upperSymbol) || commonCurrencyPairs.includes(upperSymbol) || 
         symbolName.toLowerCase().includes('dollar') || symbolName.toLowerCase().includes('euro') || 
         symbolName.toLowerCase().includes('yen') || symbolName.toLowerCase().includes('pound')) {
-      detectedAssetType = 'currency'
+      detectedAssetType = 'cash'
     }
 
     // Try to get current price to verify symbol exists (only for market-tradeable assets)
     let currentPrice: number | undefined
     let priceProvider: string | undefined
-    const marketTypes = ['stock', 'crypto', 'currency'] as const
+    const marketTypes = ['stock', 'crypto', 'cash'] as const
     
     if (marketTypes.includes(detectedAssetType as any)) {
       try {

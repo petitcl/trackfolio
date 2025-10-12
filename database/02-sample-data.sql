@@ -11,10 +11,10 @@ INSERT INTO symbols (symbol, name, asset_type, currency, last_price, last_update
     ('VTI', 'Vanguard Total Stock Market ETF', 'stock', 'USD', 245.60, NOW(), FALSE, NULL),
     ('BTC', 'Bitcoin', 'crypto', 'USD', 43500.00, NOW(), FALSE, NULL),
     ('ETH', 'Ethereum', 'crypto', 'USD', 2650.00, NOW(), FALSE, NULL),
-    -- Major currency pairs
-    ('EURUSD', 'Euro/US Dollar', 'currency', 'USD', 1.0850, NOW(), FALSE, NULL),
-    ('GBPUSD', 'British Pound/US Dollar', 'currency', 'USD', 1.2650, NOW(), FALSE, NULL),
-    ('EURGBP', 'Euro/British Pound', 'currency', 'EUR', 0.8580, NOW(), FALSE, NULL)
+    -- Major currency pairs (treated as cash)
+    ('EURUSD', 'Euro/US Dollar', 'cash', 'USD', 1.0850, NOW(), FALSE, NULL),
+    ('GBPUSD', 'British Pound/US Dollar', 'cash', 'USD', 1.2650, NOW(), FALSE, NULL),
+    ('EURGBP', 'Euro/British Pound', 'cash', 'EUR', 0.8580, NOW(), FALSE, NULL)
 ON CONFLICT (symbol) DO NOTHING;
 
 -- Add some custom user investments

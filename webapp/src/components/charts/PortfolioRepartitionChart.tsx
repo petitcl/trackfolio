@@ -44,7 +44,7 @@ export default function PortfolioRepartitionChart({
   }
   
   // Define all possible asset types to ensure consistent legend
-  const allAssetTypes = ['stock', 'crypto', 'real_estate', 'cash', 'currency', 'other']
+  const allAssetTypes = ['stock', 'crypto', 'real_estate', 'cash', 'other']
   
   // Create a map of existing data for quick lookup
   const dataMap = new Map(data.map(item => [item.assetType, item]))

@@ -92,10 +92,10 @@ export function mapAssetTypeToSymbolType(assetType: string): SymbolType {
       return 'stock'
     case 'crypto':
       return 'crypto'
-    case 'currency':
-      return 'currency'
+    case 'cash':
+      return 'cash'
     default:
-      // For cash, real_estate, other - these don't have market data
+      // For real_estate, other - these don't have market data
       throw new Error(`Asset type '${assetType}' does not support market data fetching`)
   }
 }

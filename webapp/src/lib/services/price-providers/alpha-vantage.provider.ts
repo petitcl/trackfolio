@@ -63,7 +63,7 @@ export class AlphaVantageProvider implements IPriceProvider {
           lastUpdated: latestPrice.date,
           provider: this.name
         }
-      } else if (symbolType === 'currency') {
+      } else if (symbolType === 'cash') {
         const cleanSymbol = symbol.replace('/', '')
         
         if (cleanSymbol.length !== 6) {
@@ -118,7 +118,7 @@ export class AlphaVantageProvider implements IPriceProvider {
     try {
       if (symbolType === 'crypto') {
         return await this.fetchCryptocurrencyData(symbol, baseCurrency)
-      } else if (symbolType === 'currency') {
+      } else if (symbolType === 'cash') {
         const cleanSymbol = symbol.replace('/', '')
         
         if (cleanSymbol.length !== 6) {
@@ -355,7 +355,7 @@ export class AlphaVantageProvider implements IPriceProvider {
         adjusted_close: parseFloat(dayData['4. close']),
         volume: 0,
         data_source: this.name,
-        symbol_type: 'currency',
+        symbol_type: 'cash',
         base_currency: toCurrency as BaseCurrency,
         provider: this.name
       })
