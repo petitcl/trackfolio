@@ -242,11 +242,11 @@ export interface PortfolioPosition {
   quantity: number         // Number of shares/units held (0 for closed positions)
   avgCost: number          // Average cost basis per unit
   currentPrice: number     // Current market/manual price (in target currency)
+  dividends: number        // Total dividends received (in target currency)
   value: number            // Current total value (quantity × currentPrice for standard, balance for accounts)
   isCustom: boolean        // true for user-created assets (real estate, collectibles, private equity)
   isAccount: boolean       // true for account holdings (cash accounts, trading accounts) where holding_type='account'
   isClosed: boolean        // true for closed positions (quantity <= 0) that are not accounts
-  dividendIncome: number   // Total dividends received (in target currency)
 }
 
 /**
@@ -331,7 +331,7 @@ interface UnifiedPosition {
   quantity: number
   avgCost: number
   totalCost: number
-  dividendIncome: number
+  dividends: number
 }
 
 // FIFO lot for precise cost basis tracking
@@ -402,7 +402,7 @@ export class PortfolioCalculationService {
         quantity: 0,
         avgCost: 0,
         totalCost: 0,
-        dividendIncome: 0
+        dividends: 0,
       }
 
       if (transaction.type === 'buy') {
@@ -438,7 +438,7 @@ export class PortfolioCalculationService {
           existing.avgCost = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
         } else {
           // Cash dividend - track as income
-          existing.dividendIncome += (transaction.amount || 0)
+          existing.dividends += (transaction.amount || 0)
         }
       } else if (transaction.type === 'bonus') {
         // Bonus shares - add to position
@@ -523,7 +523,7 @@ export class PortfolioCalculationService {
             quantity: 0,
             totalCost: 0,
             avgCost: 0,
-            dividendIncome: 0
+            dividends: 0
           })
         }
       }
@@ -568,7 +568,7 @@ export class PortfolioCalculationService {
       // Convert to target currency if needed
       const symbolCurrency = (symbolData?.currency || 'USD') as SupportedCurrency
       let convertedCurrentPrice = finalCurrentPrice
-      let convertedDividendIncome = position.dividendIncome
+      let convertedDividendIncome = position.dividends
 
       if (symbolCurrency !== targetCurrency) {
         try {
@@ -580,7 +580,7 @@ export class PortfolioCalculationService {
             currentDate
           )
           convertedCurrentPrice = finalCurrentPrice * conversionRate
-          convertedDividendIncome = position.dividendIncome * conversionRate
+          convertedDividendIncome = position.dividends * conversionRate
         } catch (error) {
           console.warn(`Failed to convert ${position.symbol} from ${symbolCurrency} to ${targetCurrency}:`, error)
         }
@@ -609,7 +609,7 @@ export class PortfolioCalculationService {
         isCustom: symbolData?.is_custom || false,
         isAccount: isAccount,
         isClosed: isClosed,
-        dividendIncome: convertedDividendIncome
+        dividends: convertedDividendIncome,
       }
     }))
 

@@ -360,24 +360,30 @@ export default function Dashboard({ user }: DashboardProps) {
                     if (!positions || positions.length === 0) return
 
                     // Calculate totals for this asset type (only include active positions in totals)
-                    const activePositions = positions.filter(pos => {
-                      const symbol = symbols.find(s => s.symbol === pos.symbol) || defaultSymbolData
-                      const isAccountHolding = symbol.holding_type === 'account'
-                      // console.log("isAccountHolding", isAccountHolding, pos.symbol);
-                      return isAccountHolding || pos.quantity > 0
-                    })
+                    const activePositions = positions.filter(pos => !pos.isClosed)
 
                     const typeTotalValue = activePositions.reduce((sum, pos) => sum + pos.value, 0)
                     const typeTotalUnrealizedPnL = activePositions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).unrealizedPnL, 0)
-                    const typeTotalDividends = activePositions.reduce((sum, pos) => sum + pos.dividendIncome, 0)
+                    const typeTotalDividends = activePositions.reduce((sum, pos) => sum + pos.dividends, 0)
                     const typeTotalReturn = typeTotalUnrealizedPnL + typeTotalDividends
                     const typeTotalRealizedPnL = positions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).realizedPnL, 0)
                     const typeTotalCost = activePositions.reduce((sum, pos) => {
-                      const symbol = symbols.find(s => s.symbol === pos.symbol) || defaultSymbolData
-                      const isAccountHolding = symbol.holding_type === 'account'
-                      if (isAccountHolding) return pos.value
-                      return sum + (pos.avgCost * pos.quantity)
+                      const metrics = getHoldingMetrics(pos.symbol)
+                      return metrics.costBasis
+                      // const symbol = symbols.find(s => s.symbol === pos.symbol) || defaultSymbolData
+                      // const isAccountHolding = symbol.holding_type === 'account'
+                      // if (isAccountHolding) return pos.value
+                      // return sum + (pos.avgCost * pos.quantity)
                     }, 0)
+
+                    console.log({
+                      assetType,
+                      typeTotalValue,
+                      typeTotalCost,
+                      typeTotalUnrealizedPnL,
+                      typeTotalReturn,
+                      typeTotalDividends,
+                    });
                     const typePnLPercentage = typeTotalCost > 0 ? (typeTotalUnrealizedPnL / typeTotalCost) * 100 : 0
                     const typeTotalReturnPercentage = typeTotalCost > 0 ? (typeTotalReturn / typeTotalCost) * 100 : 0
 
@@ -387,14 +393,13 @@ export default function Dashboard({ user }: DashboardProps) {
                     positions.forEach(position => {
                       const symbol = symbols.find(s => s.symbol === position.symbol) || defaultSymbolData
                       const metrics = getHoldingMetrics(position.symbol)
-                      const isAccountHolding = symbol.holding_type === 'account'
-
-                      // console.log("isAccountHolding", isAccountHolding, position.symbol);
-
-                      const isClosed = !isAccountHolding && position.quantity <= 0
+                      const isAccountHolding = position.isAccount
+                      const isClosed = position.isClosed
                       const unrealizedPnlPercentage = metrics.unrealizedPnlPercentage
                       const totalReturn = metrics.totalPnL
                       const totalReturnPercentage = metrics.totalReturnPercentage
+
+                      // console.log("isAccountHolding", isAccountHolding, position.symbol);
 
                       if (!showClosedPositions && isClosed) {
                         return

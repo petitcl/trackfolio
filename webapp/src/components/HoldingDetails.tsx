@@ -63,7 +63,7 @@ export const defaultPortfolioPosition: PortfolioPosition = {
   isCustom: false,
   isAccount: false,
   isClosed: false,
-  dividendIncome: 0,
+  dividends: 0,
 }
 
 export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD', onCurrencyChange }: HoldingDetailsProps) {
