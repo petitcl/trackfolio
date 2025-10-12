@@ -6,7 +6,7 @@ Mark done item with ✅
 - ✅ Add crypto holdings
 - ✅ Remove asset_type currency (use cash instead)
 - ✅ Fix total return percentage vs unrealized PNL percentage
-- [ ] Fix total return for account holding
+- ✅ Fix wrong total return in holding details 
 - [ ] Add multi holding CSV import functionality from home page
 - [ ] Implement portfolio export and backup functionality
 - [ ] Make "add holding" a modal instead of a page
@@ -14,6 +14,7 @@ Mark done item with ✅
 - [ ] Add "add account balance" button to account balance history
 - [ ] Make bonus count as dividends
 - [ ] Allow editing of custom holding details
+- [ ] Fix wrong unrealized P&L on closed holdings
 
 ## TODO P2
 - [ ] Implement live price updates using Yahoo Finance API

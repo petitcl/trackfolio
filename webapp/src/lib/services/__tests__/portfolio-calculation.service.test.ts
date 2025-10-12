@@ -1731,4 +1731,166 @@ describe('PortfolioCalculationService', () => {
     })
   })
 
+  describe('Historical Data Dividend Filtering', () => {
+    it('should only include dividends from target symbol when generating single holding historical data', async () => {
+      // This test verifies that when calculating historical data for a single holding,
+      // only dividends from that specific holding are included in cumulativeDividends,
+      // not dividends from other holdings in the portfolio
+
+      const mockUser: AuthUser = {
+        id: 'test-user-dividend-filter',
+        email: 'test@example.com',
+      }
+
+      const symbols: Symbol[] = [
+        {
+          symbol: 'AAPL',
+          name: 'Apple Inc.',
+          asset_type: 'stock',
+          currency: 'USD',
+          last_price: 150.0,
+          last_updated: '2025-10-11T00:00:00Z',
+          is_custom: false,
+          created_by_user_id: null,
+          created_at: '2022-01-01T00:00:00Z'
+        },
+        {
+          symbol: 'BINANCE_ACCOUNT',
+          name: 'Binance Trading Account',
+          asset_type: 'other',
+          currency: 'USD',
+          last_price: null,
+          last_updated: null,
+          is_custom: true,
+          created_by_user_id: mockUser.id,
+          holding_type: 'account',
+          created_at: '2022-01-01T00:00:00Z'
+        }
+      ]
+
+      // Transactions: AAPL has dividends, Binance account has none
+      const transactions: Transaction[] = [
+        // AAPL buy
+        {
+          id: '1',
+          user_id: mockUser.id,
+          symbol: 'AAPL',
+          type: 'buy',
+          date: '2022-01-01',
+          quantity: 100,
+          price_per_unit: 100.0,
+          fees: 10.0,
+          created_at: '2022-01-01T00:00:00Z'
+        },
+        // AAPL dividend
+        {
+          id: '2',
+          user_id: mockUser.id,
+          symbol: 'AAPL',
+          type: 'dividend',
+          date: '2022-06-01',
+          quantity: 0,
+          price_per_unit: 0,
+          amount: 500.0, // $500 dividend from AAPL
+          fees: 0,
+          created_at: '2022-06-01T00:00:00Z'
+        },
+        // Binance account deposit
+        {
+          id: '3',
+          user_id: mockUser.id,
+          symbol: 'BINANCE_ACCOUNT',
+          type: 'deposit',
+          date: '2022-01-01',
+          quantity: 0,
+          price_per_unit: 0,
+          amount: 5000.0,
+          fees: 0,
+          created_at: '2022-01-01T00:00:00Z'
+        }
+      ]
+
+      // Mock historical prices
+      const originalFetch = historicalPriceService.fetchHistoricalPrices
+      historicalPriceService.fetchHistoricalPrices = async (symbol: string) => {
+        const priceMap = new Map<string, number>()
+        if (symbol === 'AAPL') {
+          priceMap.set('2022-01-01', 100.0)
+          priceMap.set('2022-06-01', 150.0)
+          priceMap.set('2025-10-11', 150.0)
+        } else if (symbol === 'BINANCE_ACCOUNT') {
+          // Account balance remains at 5000 (no gains)
+          priceMap.set('2022-01-01', 5000.0)
+          priceMap.set('2022-06-01', 5000.0)
+          priceMap.set('2025-10-11', 5000.0)
+        }
+        return priceMap
+      }
+
+      try {
+        // Calculate historical data for Binance account only
+        const binanceHistoricalData = await service.calculateHistoricalData(
+          mockUser,
+          transactions,
+          symbols,
+          'USD',
+          { targetSymbol: 'BINANCE_ACCOUNT' }
+        )
+
+        // Find a data point after the AAPL dividend was paid (2022-06-01)
+        const dataPointAfterDividend = binanceHistoricalData.find(
+          point => point.date >= '2022-06-02'
+        )
+
+        expect(dataPointAfterDividend).toBeDefined()
+
+        if (dataPointAfterDividend) {
+          console.log('Binance account historical data point:', {
+            date: dataPointAfterDividend.date,
+            totalValue: dataPointAfterDividend.totalValue,
+            costBasis: dataPointAfterDividend.costBasis,
+            cumulativeDividends: dataPointAfterDividend.cumulativeDividends
+          })
+
+          // CRITICAL ASSERTION: Binance account should have ZERO cumulative dividends
+          // even though the portfolio contains AAPL with $500 in dividends
+          expect(dataPointAfterDividend.cumulativeDividends).toBe(0)
+
+          // Additional checks
+          expect(dataPointAfterDividend.totalValue).toBe(5000) // Account balance
+          expect(dataPointAfterDividend.costBasis).toBe(5000) // Total deposits
+        }
+
+        // Also verify AAPL historical data includes its dividends
+        const aaplHistoricalData = await service.calculateHistoricalData(
+          mockUser,
+          transactions,
+          symbols,
+          'USD',
+          { targetSymbol: 'AAPL' }
+        )
+
+        const aaplDataPointAfterDividend = aaplHistoricalData.find(
+          point => point.date >= '2022-06-02'
+        )
+
+        expect(aaplDataPointAfterDividend).toBeDefined()
+
+        if (aaplDataPointAfterDividend) {
+          console.log('AAPL historical data point:', {
+            date: aaplDataPointAfterDividend.date,
+            totalValue: aaplDataPointAfterDividend.totalValue,
+            costBasis: aaplDataPointAfterDividend.costBasis,
+            cumulativeDividends: aaplDataPointAfterDividend.cumulativeDividends
+          })
+
+          // AAPL should have $500 in cumulative dividends
+          expect(aaplDataPointAfterDividend.cumulativeDividends).toBe(500)
+        }
+      } finally {
+        historicalPriceService.fetchHistoricalPrices = originalFetch
+      }
+    })
+  })
+
 });

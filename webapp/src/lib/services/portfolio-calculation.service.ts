@@ -882,6 +882,15 @@ export class PortfolioCalculationService {
       // Use FIFO logic to get accurate cost basis and cumulative dividends
       const portfolioState = this.computePortfolioStateAt(transactions, currentDate)
 
+      // For single holdings, filter dividends to only include target symbol's dividends
+      let cumulativeDividends = portfolioState.dividends
+      if (targetSymbol) {
+        // Recalculate dividends for target symbol only
+        const targetTransactions = transactions.filter(tx => tx.symbol === targetSymbol)
+        const targetState = this.computePortfolioStateAt(targetTransactions, currentDate)
+        cumulativeDividends = targetState.dividends
+      }
+
       // Calculate total value and asset allocations
       let totalValue = 0
       const assetTypeValues: Record<string, number> = {
@@ -1031,14 +1040,14 @@ export class PortfolioCalculationService {
         : convertedTotalValue
 
       // Convert cumulative dividends to target currency
-      let convertedDividends = portfolioState.dividends
+      let convertedDividends = cumulativeDividends
       if (targetSymbol) {
         const symbolData = symbols.find(s => s.symbol === targetSymbol)
         const fromCurrency = (symbolData?.currency || 'USD') as SupportedCurrency
         if (fromCurrency !== targetCurrency) {
           try {
             const conversionRate = await currencyService.getExchangeRate(fromCurrency, targetCurrency, user, symbols, currentDate)
-            convertedDividends = portfolioState.dividends * conversionRate
+            convertedDividends = cumulativeDividends * conversionRate
           } catch (error) {
             console.warn(`Failed to convert dividends from ${fromCurrency} to ${targetCurrency}:`, error)
           }
