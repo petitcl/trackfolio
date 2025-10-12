@@ -32,7 +32,7 @@ interface HoldingDetailsProps {
 }
 
 interface HoldingData {
-  position: PortfolioPosition | null
+  position: PortfolioPosition
   symbol: Symbol
   transactions: Transaction[]
   historicalData: HistoricalDataPoint[]
@@ -53,6 +53,18 @@ const defaultSymbolData: Symbol = {
   name: "",
   symbol: ""
 };
+
+export const defaultPortfolioPosition: PortfolioPosition = {
+  symbol: '',
+  quantity: 0,
+  avgCost: 0,
+  currentPrice: 0,
+  value: 0,
+  isCustom: false,
+  isAccount: false,
+  isClosed: false,
+  dividendIncome: 0,
+}
 
 export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD', onCurrencyChange }: HoldingDetailsProps) {
   const [loading, setLoading] = useState(true)
@@ -93,12 +105,12 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
         }
 
         setHoldingData({
-          position,
+          position: position || defaultPortfolioPosition,
           symbol: symbolData || defaultSymbolData,
           transactions: symbolTransactions,
           historicalData,
           detailedReturns,
-          bucketedReturns
+          bucketedReturns,
         })
         const calculationEndTime = performance.now()
 
@@ -188,8 +200,8 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
   const currentValue = detailedReturns.totalValue
   // const currentValue = detailedReturns.costBasis + detailedReturns.unrealizedPnL
   const costBasis = detailedReturns.costBasis
-  const currentPrice = currentValue && position?.quantity ? currentValue / position.quantity : position?.currentPrice || 0
-  const quantity = position?.quantity || 0
+  const currentPrice = currentValue && position.quantity ? currentValue / position.quantity : position.currentPrice || 0
+  const quantity = position.quantity
   const totalReturn = detailedReturns.totalPnL
   const totalReturnPercentage = detailedReturns.totalReturnPercentage
   const averageCostBasis = quantity > 0 ? costBasis / quantity : 0
@@ -198,8 +210,9 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
   `${Math.round(detailedReturns.periodYears * 365)} days` :
   `${detailedReturns.periodYears.toFixed(1)} years`) : null
 
-  const isAccountHolding = accountHoldingService.isAccountHolding(symbolData)
-  const isClosedPosition = !isAccountHolding && quantity <= 0
+  // Use flags from PortfolioPosition instead of recalculating
+  const isAccountHolding = position.isAccount
+  const isClosedPosition = position.isClosed
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

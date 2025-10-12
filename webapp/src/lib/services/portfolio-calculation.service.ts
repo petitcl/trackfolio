@@ -231,16 +231,22 @@ import { cacheService } from './cache.service'
 
 
 /**
- * Not sure what this represents
+ * Represents a single holding's current state in the portfolio.
+ * This is the public interface used by UI components to display positions.
+ *
+ * Contains calculated values like current price, total value, and dividend income.
+ * Includes flags to distinguish between different holding types (custom vs market, account vs standard).
  */
 export interface PortfolioPosition {
-  symbol: string
-  quantity: number
-  avgCost: number
-  currentPrice: number
-  value: number
-  isCustom: boolean
-  dividendIncome: number
+  symbol: string           // Symbol identifier (e.g., "AAPL", "BTC", "MY_HOUSE")
+  quantity: number         // Number of shares/units held (0 for closed positions)
+  avgCost: number          // Average cost basis per unit
+  currentPrice: number     // Current market/manual price (in target currency)
+  value: number            // Current total value (quantity × currentPrice for standard, balance for accounts)
+  isCustom: boolean        // true for user-created assets (real estate, collectibles, private equity)
+  isAccount: boolean       // true for account holdings (cash accounts, trading accounts) where holding_type='account'
+  isClosed: boolean        // true for closed positions (quantity <= 0) that are not accounts
+  dividendIncome: number   // Total dividends received (in target currency)
 }
 
 /**
@@ -581,14 +587,18 @@ export class PortfolioCalculationService {
       }
 
       // Calculate value WITHOUT dividend income
+      const isAccount = symbolData?.holding_type === 'account'
       let value: number
-      if (symbolData?.holding_type === 'account') {
+      if (isAccount) {
         // Account holdings: finalCurrentPrice IS the account balance (already converted)
         value = convertedCurrentPrice
       } else {
         // Regular holdings: value = quantity × price
         value = position.quantity * convertedCurrentPrice
       }
+
+      // Determine if position is closed (quantity <= 0 AND not an account)
+      const isClosed = !isAccount && position.quantity <= 0
 
       return {
         symbol: position.symbol,
@@ -597,6 +607,8 @@ export class PortfolioCalculationService {
         currentPrice: convertedCurrentPrice,
         value: value,
         isCustom: symbolData?.is_custom || false,
+        isAccount: isAccount,
+        isClosed: isClosed,
         dividendIncome: convertedDividendIncome
       }
     }))
