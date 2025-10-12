@@ -9,6 +9,7 @@ import EnhancedPortfolioOverview from '@/components/EnhancedPortfolioOverview'
 import Header from '@/components/Header'
 import MultiBulkImportModal from '@/components/MultiBulkImportModal'
 import AddHoldingModal from '@/components/AddHoldingModal'
+import Modal from '@/components/Modal'
 import QuickActions from '@/components/QuickActions'
 import TimeRangeSelector from '@/components/TimeRangeSelector'
 import { type AuthUser } from '@/lib/auth/client.auth.service'
@@ -553,44 +554,30 @@ export default function Dashboard({ user }: DashboardProps) {
         />
 
         {/* Bulk Import Modal */}
-        {showBulkImport && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={handleBulkImportCancel}
-            />
-
-            {/* Modal Content */}
-            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <MultiBulkImportModal
-                user={user}
-                onImportComplete={handleBulkImportComplete}
-                onCancel={handleBulkImportCancel}
-              />
-            </div>
-          </div>
-        )}
+        <Modal
+          isOpen={showBulkImport}
+          onClose={handleBulkImportCancel}
+          maxWidth="max-w-4xl"
+        >
+          <MultiBulkImportModal
+            user={user}
+            onImportComplete={handleBulkImportComplete}
+            onCancel={handleBulkImportCancel}
+          />
+        </Modal>
 
         {/* Add Holding Modal */}
-        {showAddHolding && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={handleAddHoldingCancel}
-            />
-
-            {/* Modal Content */}
-            <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <AddHoldingModal
-                user={user}
-                onHoldingAdded={handleAddHoldingComplete}
-                onCancel={handleAddHoldingCancel}
-              />
-            </div>
-          </div>
-        )}
+        <Modal
+          isOpen={showAddHolding}
+          onClose={handleAddHoldingCancel}
+          maxWidth="max-w-2xl"
+        >
+          <AddHoldingModal
+            user={user}
+            onHoldingAdded={handleAddHoldingComplete}
+            onCancel={handleAddHoldingCancel}
+          />
+        </Modal>
 
       </main>
     </div>

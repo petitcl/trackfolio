@@ -1,6 +1,8 @@
 'use client'
 
 import React from 'react'
+import Modal from './Modal'
+import ModalActions, { type ModalActionVariant } from './ModalActions'
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -10,7 +12,7 @@ interface ConfirmDialogProps {
   message: string
   confirmText?: string
   cancelText?: string
-  confirmButtonClass?: string
+  confirmVariant?: ModalActionVariant
   isLoading?: boolean
   loadingText?: string
 }
@@ -23,60 +25,51 @@ export default function ConfirmDialog({
   message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  confirmButtonClass = 'bg-red-600 hover:bg-red-700 text-white',
+  confirmVariant = 'danger',
   isLoading = false,
   loadingText = 'Processing...'
 }: ConfirmDialogProps) {
-  if (!isOpen) return null
+  const handleConfirm = () => {
+    onConfirm()
+    // Don't auto-close when loading - let the parent handle it
+    if (!isLoading) {
+      onClose()
+    }
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
-      {/* Dialog */}
-      <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="max-w-md"
+      closeOnBackdropClick={!isLoading}
+    >
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
           {title}
         </h3>
-        
+
         <p className="text-gray-600 dark:text-gray-300 mb-6">
           {message}
         </p>
-        
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            disabled={isLoading}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {cancelText}
-          </button>
-          <button
-            onClick={() => {
-              onConfirm()
-              // Don't auto-close when loading - let the parent handle it
-              if (!isLoading) {
-                onClose()
-              }
-            }}
-            disabled={isLoading}
-            className={`px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${confirmButtonClass}`}
-          >
-            {isLoading ? (
-              <span className="flex items-center">
-                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                {loadingText}
-              </span>
-            ) : (
-              confirmText
-            )}
-          </button>
-        </div>
+
+        <ModalActions
+          layout="between"
+          secondaryAction={{
+            label: cancelText,
+            onClick: onClose,
+            disabled: isLoading,
+            variant: 'secondary'
+          }}
+          primaryAction={{
+            label: confirmText,
+            onClick: handleConfirm,
+            variant: confirmVariant,
+            loading: isLoading,
+            loadingText: loadingText
+          }}
+        />
       </div>
-    </div>
+    </Modal>
   )
 }

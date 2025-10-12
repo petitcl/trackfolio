@@ -299,7 +299,7 @@ export default function TransactionHistory({ transactions, symbol, user, onTrans
         title="Delete Transaction"
         message="Are you sure you want to delete this transaction? This action cannot be undone."
         confirmText="Delete"
-        confirmButtonClass="bg-red-600 hover:bg-red-700 text-white"
+        confirmVariant="danger"
         isLoading={isDeleting}
         loadingText="Deleting..."
       />

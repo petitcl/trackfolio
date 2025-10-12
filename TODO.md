@@ -7,13 +7,16 @@ Mark done item with ✅
 - ✅ Remove asset_type currency (use cash instead)
 - ✅ Fix total return percentage vs unrealized PNL percentage
 - ✅ Fix wrong total return in holding details 
+- ✅ Make "add holding" a modal instead of a page
+- ✅ Uniformize modal buttons & backgrop styles
 - [ ] Add multi holding CSV import functionality from home page
 - [ ] Implement portfolio export and backup functionality
-- ✅ Make "add holding" a modal instead of a page
 - [ ] Add edit button on account balance history row
 - [ ] Add "add account balance" button to account balance history
 - [ ] Make bonus count as dividends
 - [ ] Allow editing of custom holding details
+- [ ] Disable tx types where it makes no sense
+- [ ] Disable tx fields where it makes no sense
 - [ ] Fix wrong unrealized P&L on closed holdings
 
 ## TODO P2

@@ -6,6 +6,7 @@ import { portfolioService } from '@/lib/services/portfolio.service'
 import { accountHoldingService, type CreateAccountHoldingParams } from '@/lib/services/account-holding.service'
 import type { AssetType } from '@/lib/supabase/types'
 import debounce from 'lodash/debounce'
+import ModalActions from './ModalActions'
 
 type HoldingType = 'market' | 'custom' | 'account'
 type AccountType = 'crypto_exchange' | 'stock_broker' | 'retirement' | 'bank'
@@ -462,27 +463,34 @@ export default function AddHoldingModal({
         </div>
 
         {/* Submit Buttons */}
-        <div className="flex space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700 mt-6">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={
+        <ModalActions
+          className="pt-6 border-t border-gray-200 dark:border-gray-700 mt-6"
+          layout="between"
+          secondaryAction={{
+            label: 'Cancel',
+            onClick: onCancel || (() => {}),
+            variant: 'secondary'
+          }}
+          primaryAction={{
+            label: holdingType === 'account' ? 'Create Account Holding' : 'Add Position',
+            onClick: () => {
+              // Form submit is handled by the form onSubmit
+              const form = document.querySelector('form')
+              if (form) {
+                const submitEvent = new Event('submit', { cancelable: true, bubbles: true })
+                form.dispatchEvent(submitEvent)
+              }
+            },
+            variant: 'primary',
+            loading: isLoading,
+            loadingText: 'Adding...',
+            disabled:
               isLoading ||
               (holdingType === 'market' && !selectedSymbol) ||
               (holdingType === 'custom' && (!symbol || !name)) ||
               (holdingType === 'account' && (!accountSymbol || !accountName || !initialValue || !startDate))
-            }
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Adding...' : holdingType === 'account' ? 'Create Account Holding' : 'Add Position'}
-          </button>
-        </div>
+          }}
+        />
       </form>
     </div>
   )

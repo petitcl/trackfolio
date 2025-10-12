@@ -236,7 +236,7 @@ export default function BalanceHistory({
         title="Delete Balance Entry"
         message="Are you sure you want to delete this balance entry? This action cannot be undone."
         confirmText="Delete"
-        confirmButtonClass="bg-red-600 hover:bg-red-700 text-white"
+        confirmVariant="danger"
         isLoading={isDeleting}
         loadingText="Deleting..."
       />

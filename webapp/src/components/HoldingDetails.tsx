@@ -454,12 +454,6 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
           title={`${symbol} Actions`}
           actions={[
             {
-              id: 'export-data',
-              icon: '📤',
-              label: 'Export Data',
-              onClick: () => console.log('Export data for', symbol)
-            },
-            {
               id: 'delete-holding',
               icon: '🗑️',
               label: 'Delete Holding',
@@ -478,7 +472,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
           title="Delete Holding"
           message={`Are you sure you want to delete ${symbol}? This will permanently delete all transactions${holdingData?.symbol?.is_custom ? ', custom prices, and the custom symbol' : ' and custom prices'} associated with this holding. This action cannot be undone.`}
           confirmText="Delete Holding"
-          confirmButtonClass="bg-red-600 hover:bg-red-700 text-white"
+          confirmVariant="danger"
           isLoading={isDeleting}
           loadingText="Deleting..."
         />

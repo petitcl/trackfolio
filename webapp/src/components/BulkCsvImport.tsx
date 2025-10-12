@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
+import ModalActions from './ModalActions'
 
 export interface CsvImportColumn {
   key: string
@@ -402,22 +403,22 @@ export default function BulkCsvImport<T>({
         {renderPreviewTable()}
 
         {/* Action Buttons */}
-        <div className="flex justify-between">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Cancel
-          </button>
-          
-          <button
-            onClick={handleImport}
-            disabled={importing || parsedRows.length === 0 || errors.length > 0}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {importing ? 'Importing...' : `Import ${parsedRows.length} Rows`}
-          </button>
-        </div>
+        <ModalActions
+          layout="between"
+          secondaryAction={{
+            label: 'Cancel',
+            onClick: onCancel || (() => {}),
+            variant: 'secondary'
+          }}
+          primaryAction={{
+            label: `Import ${parsedRows.length} Rows`,
+            onClick: handleImport,
+            variant: 'primary',
+            loading: importing,
+            loadingText: 'Importing...',
+            disabled: importing || parsedRows.length === 0 || errors.length > 0
+          }}
+        />
       </div>
     </div>
   )
