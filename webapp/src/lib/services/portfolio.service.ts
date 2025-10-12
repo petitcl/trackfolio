@@ -1,12 +1,10 @@
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import { historicalPriceService } from './historical-price.service'
-import { unifiedCalculationService, type PortfolioPosition } from './unified-calculation.service'
-import { historicalDataService } from './historical-data.service'
+import { portfolioCalculationService, type PortfolioPosition, type ReturnMetrics, type BucketedReturnMetrics } from './portfolio-calculation.service'
 import { transactionService } from './transaction.service'
 import { positionService } from './position.service'
 import { type SupportedCurrency } from './currency.service'
-import { returnCalculationService, type ReturnMetrics, type BucketedReturnMetrics } from './return-calculation.service'
 import { getStartDateForTimeRange, type TimeRange } from '../utils/timeranges'
 
 // Re-export types for external components
@@ -69,9 +67,9 @@ export class PortfolioService {
         startDate = filterStartDate.toISOString().split('T')[0]
       }
 
-      // Calculate positions using unified calculation service (already in target currency)
+      // Calculate positions using portfolio calculation service (already in target currency)
       // This will include positions with transactions AND positions without transactions (treated as closed)
-      const calculatedPositions = await unifiedCalculationService.calculateCurrentPositions(
+      const calculatedPositions = await portfolioCalculationService.calculateCurrentPositions(
         transactions,
         symbols,
         user,
@@ -83,8 +81,8 @@ export class PortfolioService {
       // Calculate unified return metrics (always present, defaults to zeros if insufficient data)
       let returns: ReturnMetrics
       try {
-        const historicalData = await historicalDataService.buildHistoricalData(user, transactions, symbols, targetCurrency)
-        returns = returnCalculationService.calculatePortfolioReturnMetrics(
+        const historicalData = await portfolioCalculationService.calculateHistoricalData(user, transactions, symbols, targetCurrency)
+        returns = portfolioCalculationService.calculatePortfolioReturnMetrics(
           transactions,
           historicalData,
           symbols,
@@ -92,7 +90,7 @@ export class PortfolioService {
         )
       } catch (error) {
         console.warn('Could not calculate return metrics:', error)
-        returns = returnCalculationService.getEmptyReturnMetrics()
+        returns = portfolioCalculationService.getEmptyReturnMetrics()
       }
 
       return {
@@ -117,22 +115,21 @@ export class PortfolioService {
     console.log('📊 Building portfolio historical data for user')
     const transactions = await transactionService.getTransactions(user)
     const symbols = await transactionService.getSymbols(user)
-    return await historicalDataService.buildHistoricalData(user, transactions, symbols, targetCurrency)
+    return await portfolioCalculationService.calculateHistoricalData(user, transactions, symbols, targetCurrency)
   }
 
   async getPortfolioHistoricalDataByTimeRange(user: AuthUser, timeRange: TimeRange, targetCurrency: SupportedCurrency = 'USD'): Promise<HistoricalDataPoint[]> {
     const transactions = await transactionService.getTransactions(user)
     const symbols = await transactionService.getSymbols(user)
-    return await historicalDataService.getHistoricalDataByTimeRange(user, transactions, symbols, timeRange, targetCurrency)
+    return await portfolioCalculationService.getHistoricalDataByTimeRange(user, transactions, symbols, timeRange, targetCurrency)
   }
 
   async getHoldingHistoricalData(user: AuthUser, symbol: string, targetCurrency: SupportedCurrency = 'USD'): Promise<HistoricalDataPoint[]> {
     console.log('📊 Building holding historical data for:', symbol)
     const transactions = await transactionService.getTransactions(user)
     const symbols = await transactionService.getSymbols(user)
-    return await historicalDataService.buildHistoricalData(user, transactions, symbols, targetCurrency, {
-      symbol,
-      useSimplePriceLookup: true
+    return await portfolioCalculationService.calculateHistoricalData(user, transactions, symbols, targetCurrency, {
+      targetSymbol: symbol
     })
   }
 
@@ -153,7 +150,7 @@ export class PortfolioService {
 
       if (transactions.length === 0 || historicalData.length < 2) {
         console.log('📊 Insufficient data for detailed return calculation')
-        return returnCalculationService.getEmptyReturnMetrics()
+        return portfolioCalculationService.getEmptyReturnMetrics()
       }
 
       // Apply time range filter if specified
@@ -165,7 +162,7 @@ export class PortfolioService {
       }
 
       // Calculate unified return metrics
-      const returns = returnCalculationService.calculatePortfolioReturnMetrics(
+      const returns = portfolioCalculationService.calculatePortfolioReturnMetrics(
         transactions,
         historicalData,
         symbols,
@@ -175,7 +172,7 @@ export class PortfolioService {
       return returns
     } catch (error) {
       console.error('❌ Error calculating holding detailed returns:', error)
-      return returnCalculationService.getEmptyReturnMetrics()
+      return portfolioCalculationService.getEmptyReturnMetrics()
     }
   }
 
@@ -228,12 +225,12 @@ export class PortfolioService {
         return {
           buckets: [],
           timePeriod: 'year',
-          totalMetrics: returnCalculationService.getEmptyReturnMetrics()
+          totalMetrics: portfolioCalculationService.getEmptyReturnMetrics()
         }
       }
 
       // Calculate bucketed return metrics
-      return returnCalculationService.calculateBucketedPortfolioMetrics(
+      return portfolioCalculationService.calculateBucketedPortfolioMetrics(
         transactions,
         historicalData,
         symbols,
@@ -244,7 +241,7 @@ export class PortfolioService {
       return {
         buckets: [],
         timePeriod: 'year',
-        totalMetrics: returnCalculationService.getEmptyReturnMetrics()
+        totalMetrics: portfolioCalculationService.getEmptyReturnMetrics()
       }
     }
   }
@@ -268,12 +265,12 @@ export class PortfolioService {
         return {
           buckets: [],
           timePeriod: 'year',
-          totalMetrics: returnCalculationService.getEmptyReturnMetrics()
+          totalMetrics: portfolioCalculationService.getEmptyReturnMetrics()
         }
       }
 
       // Calculate bucketed return metrics
-      return returnCalculationService.calculateBucketedHoldingMetrics(
+      return portfolioCalculationService.calculateBucketedHoldingMetrics(
         transactions,
         historicalData,
         symbols,
@@ -284,7 +281,7 @@ export class PortfolioService {
       return {
         buckets: [],
         timePeriod: 'year',
-        totalMetrics: returnCalculationService.getEmptyReturnMetrics()
+        totalMetrics: portfolioCalculationService.getEmptyReturnMetrics()
       }
     }
   }
@@ -343,7 +340,7 @@ export class PortfolioService {
   private getEmptyPortfolio(): PortfolioData {
     return {
       positions: [],
-      returns: returnCalculationService.getEmptyReturnMetrics()
+      returns: portfolioCalculationService.getEmptyReturnMetrics()
     }
   }
 
