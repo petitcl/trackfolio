@@ -181,7 +181,7 @@ export class PortfolioService {
    * Returns a map of symbol -> return metrics
    * OPTIMIZED: Processes symbols in parallel for faster initial load
    */
-  async getAllHoldingsReturnsMetrics(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<Map<string, ReturnMetrics>> {
+  async getReturnsMetricsByHolding(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<Map<string, ReturnMetrics>> {
     const transactions = await transactionService.getTransactions(user)
 
     const symbols = new Set<string>()
@@ -283,6 +283,101 @@ export class PortfolioService {
         timePeriod: 'year',
         totalMetrics: portfolioCalculationService.getEmptyReturnMetrics()
       }
+    }
+  }
+
+  /**
+   * Calculate return metrics grouped by asset type
+   * Returns a map of asset type -> return metrics (similar to assetTypeAllocations/assetTypeValues)
+   */
+  async getReturnMetricsByAssetType(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange): Promise<Map<string, ReturnMetrics>> {
+    try {
+      console.log('📊 Calculating return metrics by asset type: timeRange:', timeRange)
+
+      const [transactions, symbols] = await Promise.all([
+        transactionService.getTransactions(user),
+        transactionService.getSymbols(user)
+      ])
+
+      if (transactions.length === 0) {
+        console.log('📊 No transactions found')
+        return new Map()
+      }
+
+      // Group transactions by asset type
+      const transactionsByAssetType = new Map<string, typeof transactions>()
+
+      for (const transaction of transactions) {
+        const symbol = symbols.find(s => s.symbol === transaction.symbol)
+        const assetType = symbol?.asset_type || 'other'
+
+        if (!transactionsByAssetType.has(assetType)) {
+          transactionsByAssetType.set(assetType, [])
+        }
+        transactionsByAssetType.get(assetType)!.push(transaction)
+      }
+
+      // Calculate return metrics for each asset type in parallel
+      const assetTypes = Array.from(transactionsByAssetType.keys())
+      const metricsPromises = assetTypes.map(async (assetType) => {
+        const assetTransactions = transactionsByAssetType.get(assetType)!
+
+        try {
+          // Calculate historical data for this asset type's transactions
+          // Use cacheContext to ensure each asset type has a unique cache entry
+          const historicalData = await portfolioCalculationService.calculateHistoricalData(
+            user,
+            assetTransactions,
+            symbols,
+            targetCurrency,
+            { cacheContext: `assetType:${assetType}` }
+          )
+
+          if (historicalData.length < 2) {
+            return {
+              assetType,
+              metrics: portfolioCalculationService.getEmptyReturnMetrics()
+            }
+          }
+
+          // Apply time range filter if specified
+          let startDate: string | undefined
+          if (timeRange && timeRange !== 'all') {
+            const filterStartDate: Date = getStartDateForTimeRange(timeRange)
+            startDate = filterStartDate.toISOString().split('T')[0]
+          }
+
+          // Calculate return metrics
+          const metrics = portfolioCalculationService.calculatePortfolioReturnMetrics(
+            assetTransactions,
+            historicalData,
+            symbols,
+            { startDate }
+          )
+
+          return { assetType, metrics }
+        } catch (error) {
+          console.warn(`Failed to calculate metrics for asset type ${assetType}:`, error)
+          return {
+            assetType,
+            metrics: portfolioCalculationService.getEmptyReturnMetrics()
+          }
+        }
+      })
+
+      const results = await Promise.all(metricsPromises)
+
+      // Convert array results to Map
+      const metricsMap = new Map<string, ReturnMetrics>()
+      results.forEach(({ assetType, metrics }) => {
+        metricsMap.set(assetType, metrics)
+      })
+
+      console.log(`📊 Calculated return metrics for ${metricsMap.size} asset types`)
+      return metricsMap
+    } catch (error) {
+      console.error('❌ Error calculating asset type return metrics:', error)
+      return new Map()
     }
   }
 

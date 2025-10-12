@@ -3,6 +3,7 @@ Mark done item with ✅
 
 ## TODO P1
 - ✅ Improve support for cash positions / accounts V1
+- [ ] Fix total return percentage vs unrealized PNL percentage
 - [ ] Add multi holding CSV import functionality from home page
 - [ ] Implement portfolio export and backup functionality
 - [ ] Make "add holding" a modal instead of a page

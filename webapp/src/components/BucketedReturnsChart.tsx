@@ -12,10 +12,10 @@ import {
   ChartOptions
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
-import type { BucketedReturnMetrics } from '@/lib/services/return-calculation.service'
 import type { TimePeriod } from '@/lib/utils/timeranges'
 import { CHART_COLORS } from '@/lib/constants/chartColors'
 import { CURRENCY_SYMBOLS } from '@/lib/services/currency.service'
+import { BucketedReturnMetrics } from '@/lib/services/portfolio-calculation.service'
 
 ChartJS.register(
   CategoryScale,

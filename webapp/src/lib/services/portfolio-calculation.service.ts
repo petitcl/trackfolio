@@ -792,15 +792,22 @@ export class PortfolioCalculationService {
     targetCurrency: SupportedCurrency = 'USD',
     options?: {
       targetSymbol?: string // If provided, calculates for single holding only
+      cacheContext?: string // Additional context for cache key (e.g., asset type)
     }
   ): Promise<HistoricalDataPoint[]> {
     try {
-      const { targetSymbol } = options || {}
+      const { targetSymbol, cacheContext } = options || {}
 
-      // Generate cache key based on user, symbol (or 'portfolio'), and currency
-      const cacheKey = targetSymbol
-        ? cacheService.Keys.holdingHistoricalData(user.id, targetSymbol, targetCurrency)
-        : cacheService.Keys.historicalData(user.id, targetCurrency)
+      // Generate cache key based on user, symbol (or 'portfolio'), currency, and optional context
+      let cacheKey: string
+      if (targetSymbol) {
+        cacheKey = cacheService.Keys.holdingHistoricalData(user.id, targetSymbol, targetCurrency)
+      } else if (cacheContext) {
+        // When called with filtered data (e.g., by asset type), include context in cache key
+        cacheKey = `${cacheService.Keys.historicalData(user.id, targetCurrency)}:${cacheContext}`
+      } else {
+        cacheKey = cacheService.Keys.historicalData(user.id, targetCurrency)
+      }
 
       // Use cache with 5 minute TTL for portfolio-level calculations (expensive)
       return await cacheService.getOrFetch(

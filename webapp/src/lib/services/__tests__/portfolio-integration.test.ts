@@ -1,12 +1,9 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { Transaction, Symbol } from '@/lib/supabase/types'
-import { unifiedCalculationService } from '../unified-calculation.service'
 import { portfolioService } from '../portfolio.service'
 import { transactionService } from '../transaction.service'
-import { historicalDataService } from '../historical-data.service'
-import { returnCalculationService } from '../return-calculation.service'
-import { currencyService } from '../currency.service'
+import { historicalPriceService } from '../historical-price.service'
 
 // Mock Supabase client
 jest.mock('@/lib/supabase/client', () => ({
@@ -550,5 +547,214 @@ describe('Portfolio Integration Tests', () => {
     expect(portfolioData.positions).toHaveLength(0)
 
     console.log('✅ Empty portfolio handled correctly')
+  })
+})
+
+// Test asset type return metrics
+describe('PortfolioService - Asset Type Return Metrics', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('should calculate return metrics grouped by asset type', async () => {
+    // Create a diversified portfolio with multiple asset types
+    const mockUser = {
+      id: 'test-user-diversified',
+      email: 'diversified@example.com',
+      isDemo: true
+    } as AuthUser
+
+    const transactions: Transaction[] = [
+      // Stock transactions
+      {
+        id: 'txn-stock-1',
+        user_id: 'test-user-diversified',
+        symbol: 'AAPL',
+        type: 'buy' as const,
+        quantity: 10,
+        price_per_unit: 150.00,
+        date: '2023-01-15',
+        fees: 9.99,
+        currency: 'USD',
+        broker: 'Test Broker',
+        notes: 'Stock purchase',
+        created_at: '2023-01-15T10:00:00Z',
+        updated_at: '2023-01-15T10:00:00Z'
+      },
+      // Crypto transactions
+      {
+        id: 'txn-crypto-1',
+        user_id: 'test-user-diversified',
+        symbol: 'BTC',
+        type: 'buy' as const,
+        quantity: 0.5,
+        price_per_unit: 40000.00,
+        date: '2023-02-01',
+        fees: 50.00,
+        currency: 'USD',
+        broker: 'Crypto Exchange',
+        notes: 'Crypto purchase',
+        created_at: '2023-02-01T10:00:00Z',
+        updated_at: '2023-02-01T10:00:00Z'
+      },
+      // Real estate transaction
+      {
+        id: 'txn-re-1',
+        user_id: 'test-user-diversified',
+        symbol: 'HOUSE_1',
+        type: 'buy' as const,
+        quantity: 1,
+        price_per_unit: 300000.00,
+        date: '2023-03-01',
+        fees: 5000.00,
+        currency: 'USD',
+        broker: null,
+        notes: 'Real estate purchase',
+        created_at: '2023-03-01T10:00:00Z',
+        updated_at: '2023-03-01T10:00:00Z'
+      }
+    ]
+
+    const symbols: Symbol[] = [
+      {
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        asset_type: 'stock' as const,
+        currency: 'USD',
+        last_price: 185.50,
+        last_updated: '2024-01-01T00:00:00Z',
+        is_custom: false,
+        created_by_user_id: null,
+        created_at: '2024-01-01T00:00:00Z',
+      },
+      {
+        symbol: 'BTC',
+        name: 'Bitcoin',
+        asset_type: 'crypto' as const,
+        currency: 'USD',
+        last_price: 45000.00,
+        last_updated: '2024-01-01T00:00:00Z',
+        is_custom: false,
+        created_by_user_id: null,
+        created_at: '2024-01-01T00:00:00Z',
+      },
+      {
+        symbol: 'HOUSE_1',
+        name: 'Primary Residence',
+        asset_type: 'real_estate' as const,
+        currency: 'USD',
+        last_price: 320000.00,
+        last_updated: '2024-01-01T00:00:00Z',
+        is_custom: true,
+        created_by_user_id: 'test-user-diversified',
+        created_at: '2024-01-01T00:00:00Z',
+      }
+    ]
+
+    // Mock transaction service
+    jest.spyOn(transactionService, 'getTransactions').mockResolvedValue(transactions)
+    jest.spyOn(transactionService, 'getSymbols').mockResolvedValue(symbols)
+
+    // Mock historical price service to return valid prices
+    jest.spyOn(historicalPriceService, 'getHistoricalPriceForDate').mockImplementation(
+      async (symbol: string, date: string) => {
+        if (symbol === 'AAPL') return 185.50
+        if (symbol === 'BTC') return 45000.00
+        if (symbol === 'HOUSE_1') return 320000.00
+        return null
+      }
+    )
+
+    // Calculate asset type return metrics
+    const assetTypeMetrics = await portfolioService.getReturnMetricsByAssetType(mockUser, 'USD')
+
+    // Verify we got metrics for all asset types present in the portfolio
+    expect(assetTypeMetrics.size).toBeGreaterThan(0)
+    expect(assetTypeMetrics.has('stock')).toBe(true)
+    expect(assetTypeMetrics.has('crypto')).toBe(true)
+    expect(assetTypeMetrics.has('real_estate')).toBe(true)
+
+    // Check stock metrics
+    const stockMetrics = assetTypeMetrics.get('stock')!
+    expect(stockMetrics).toBeDefined()
+    expect(stockMetrics.totalValue).toBeGreaterThan(0)
+    expect(stockMetrics.costBasis).toBeGreaterThan(0)
+    expect(stockMetrics.totalInvested).toBeGreaterThan(0)
+
+    // Check crypto metrics
+    const cryptoMetrics = assetTypeMetrics.get('crypto')!
+    expect(cryptoMetrics).toBeDefined()
+    expect(cryptoMetrics.totalValue).toBeGreaterThan(0)
+    expect(cryptoMetrics.costBasis).toBeGreaterThan(0)
+
+    // Check real estate metrics
+    const reMetrics = assetTypeMetrics.get('real_estate')!
+    expect(reMetrics).toBeDefined()
+    expect(reMetrics.totalValue).toBeGreaterThan(0)
+    expect(reMetrics.costBasis).toBeGreaterThan(0)
+  })
+
+  it('should handle empty portfolio gracefully', async () => {
+    const mockUser = {
+      id: 'test-user-empty',
+      email: 'empty@example.com',
+      isDemo: true
+    } as AuthUser
+
+    jest.spyOn(transactionService, 'getTransactions').mockResolvedValue([])
+    jest.spyOn(transactionService, 'getSymbols').mockResolvedValue([])
+
+    const assetTypeMetrics = await portfolioService.getReturnMetricsByAssetType(mockUser, 'USD')
+
+    expect(assetTypeMetrics.size).toBe(0)
+  })
+
+  it('should support time range filtering', async () => {
+    const mockUser = {
+      id: 'test-user-timerange',
+      email: 'timerange@example.com',
+      isDemo: true
+    } as AuthUser
+
+    const transactions: Transaction[] = [
+      {
+        id: 'txn-1',
+        user_id: 'test-user-timerange',
+        symbol: 'AAPL',
+        type: 'buy' as const,
+        quantity: 10,
+        price_per_unit: 150.00,
+        date: '2023-01-15',
+        fees: 9.99,
+        currency: 'USD',
+        broker: 'Test Broker',
+        notes: 'Stock purchase',
+        created_at: '2023-01-15T10:00:00Z',
+        updated_at: '2023-01-15T10:00:00Z'
+      }
+    ]
+
+    const symbols: Symbol[] = [
+      {
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        asset_type: 'stock' as const,
+        currency: 'USD',
+        last_price: 185.50,
+        last_updated: '2024-01-01T00:00:00Z',
+        is_custom: false,
+        created_by_user_id: null,
+        created_at: '2024-01-01T00:00:00Z',
+      }
+    ]
+
+    jest.spyOn(transactionService, 'getTransactions').mockResolvedValue(transactions)
+    jest.spyOn(transactionService, 'getSymbols').mockResolvedValue(symbols)
+
+    // Calculate with time range
+    const assetTypeMetrics = await portfolioService.getReturnMetricsByAssetType(mockUser, 'USD', '1y')
+
+    expect(assetTypeMetrics.size).toBeGreaterThan(0)
+    expect(assetTypeMetrics.has('stock')).toBe(true)
   })
 })

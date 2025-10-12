@@ -20,8 +20,7 @@ import { type TimeRange } from '@/lib/utils/timeranges'
 import { useRouter } from 'next/navigation'
 import React, { useCallback, useEffect, useState } from 'react'
 import ProfitDisplay from './ProfitDisplay'
-import { accountHoldingService } from '@/lib/services/account-holding.service'
-import { returnCalculationService } from '@/lib/services/return-calculation.service'
+import { portfolioCalculationService } from '@/lib/services/portfolio-calculation.service'
 
 interface DashboardProps {
   user: AuthUser
@@ -69,8 +68,9 @@ export default function Dashboard({ user }: DashboardProps) {
   const [symbols, setSymbols] = useState<Symbol[]>([])
   const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([])
   const [repartitionData, setRepartitionData] = useState<Array<{ assetType: string; value: number; percentage: number }>>([])
-  const [holdingsReturnMetrics, setHoldingsReturnMetrics] = useState<Map<string, ReturnMetrics>>(new Map())
   const [bucketedReturnMetrics, setBucketedReturnMetrics] = useState<BucketedReturnMetrics | null>(null)
+  const [returnMetricsByHolding, setReturnsMetricsByHolding] = useState<Map<string, ReturnMetrics>>(new Map())
+  const [returnMetricsByAssetType, setReturnMetricsByAssetType] = useState<Map<string, ReturnMetrics>>(new Map())
   const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>(
     currencyService.getPreferredCurrency()
   )
@@ -91,15 +91,17 @@ export default function Dashboard({ user }: DashboardProps) {
         symbolsData,
         historical,
         repartition,
-        holdingsReturnMetrics,
+        returnMetricsByHolding,
         portfolioBucketedReturnMetrics,
+        returnsMetricsByAssetType,
       ] = await Promise.all([
         portfolioService.getPortfolioData(user, selectedCurrency, selectedTimeRange, includeClosedPositions),
         portfolioService.getSymbols(user),
         portfolioService.getPortfolioHistoricalData(user, selectedCurrency),
         portfolioService.getPortfolioRepartitionData(user, selectedCurrency, selectedTimeRange),
-        portfolioService.getAllHoldingsReturnsMetrics(user, selectedCurrency, selectedTimeRange),
+        portfolioService.getReturnsMetricsByHolding(user, selectedCurrency, selectedTimeRange),
         portfolioService.getPortfolioBucketedReturnMetrics(user, selectedTimeRange, selectedCurrency),
+        portfolioService.getReturnMetricsByAssetType(user, selectedCurrency, selectedTimeRange),
       ])
       const apiEndTime = performance.now()
 
@@ -108,16 +110,19 @@ export default function Dashboard({ user }: DashboardProps) {
       setSymbols(symbolsData)
       setHistoricalData(historical)
       setRepartitionData(repartition)
-      setHoldingsReturnMetrics(holdingsReturnMetrics)
+      setReturnsMetricsByHolding(returnMetricsByHolding)
       setBucketedReturnMetrics(portfolioBucketedReturnMetrics)
+      setReturnMetricsByAssetType(returnsMetricsByAssetType)
       const calculationEndTime = performance.now()
 
       console.log("portfolio", portfolio);
       console.log("symbols", symbolsData);
       console.log("historical last point", historical.at(-1));
       console.log("repartition", repartition);
-      console.log("holdings return metrics", holdingsReturnMetrics);
       console.log("portfolio bucketed return metrics", portfolioBucketedReturnMetrics);
+
+      console.log("return metrics by holding", returnMetricsByHolding);
+      console.log("return metrics by asset type", returnsMetricsByAssetType);
 
       const totalTime = performance.now() - startTime
       const apiTime = apiEndTime - apiStartTime
@@ -134,8 +139,9 @@ export default function Dashboard({ user }: DashboardProps) {
       setSymbols([])
       setHistoricalData([])
       setRepartitionData([])
-      setHoldingsReturnMetrics(new Map())
+      setReturnsMetricsByHolding(new Map())
       setBucketedReturnMetrics(null)
+      setReturnMetricsByAssetType(new Map())
     } finally {
       setDataLoading(false)
     }
@@ -167,10 +173,10 @@ export default function Dashboard({ user }: DashboardProps) {
 
   // Helper to get symbol metrics with fallback
   const getHoldingMetrics = (symbol: string): ReturnMetrics => {
-    const metrics = holdingsReturnMetrics.get(symbol)
+    const metrics = returnMetricsByHolding.get(symbol)
     if (!metrics) {
       console.warn("Holding metrics now found for symbol", symbol)
-      return returnCalculationService.getEmptyReturnMetrics()
+      return portfolioCalculationService.getEmptyReturnMetrics()
     }
 
     return metrics
@@ -354,27 +360,36 @@ export default function Dashboard({ user }: DashboardProps) {
                   // Define order for asset types
                   const typeOrder: AssetType[] = ['stock', 'crypto', 'real_estate', 'other']
 
-                  // TODO: move all of this to service layer
                   typeOrder.forEach(assetType => {
                     const positions = positionsByType[assetType]
                     if (!positions || positions.length === 0) return
 
+                    const assetTypeReturnMetrics = returnMetricsByAssetType.get(assetType)
+                    if (!assetTypeReturnMetrics) {
+                      return
+                    }
+
                     // Calculate totals for this asset type (only include active positions in totals)
                     const activePositions = positions.filter(pos => !pos.isClosed)
 
-                    const typeTotalValue = activePositions.reduce((sum, pos) => sum + pos.value, 0)
-                    const typeTotalUnrealizedPnL = activePositions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).unrealizedPnL, 0)
-                    const typeTotalDividends = activePositions.reduce((sum, pos) => sum + pos.dividends, 0)
+                    const typeTotalValue = assetTypeReturnMetrics.totalValue
+                    const typeTotalUnrealizedPnL = assetTypeReturnMetrics.unrealizedPnL
+                    const typeTotalDividends = assetTypeReturnMetrics.dividends
                     const typeTotalReturn = typeTotalUnrealizedPnL + typeTotalDividends
-                    const typeTotalRealizedPnL = positions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).realizedPnL, 0)
-                    const typeTotalCost = activePositions.reduce((sum, pos) => {
-                      const metrics = getHoldingMetrics(pos.symbol)
-                      return metrics.costBasis
-                      // const symbol = symbols.find(s => s.symbol === pos.symbol) || defaultSymbolData
-                      // const isAccountHolding = symbol.holding_type === 'account'
-                      // if (isAccountHolding) return pos.value
-                      // return sum + (pos.avgCost * pos.quantity)
-                    }, 0)
+                    const typeTotalRealizedPnL = assetTypeReturnMetrics.realizedPnL
+                    const typeTotalCost = assetTypeReturnMetrics.costBasis
+                    const typePnLPercentage = assetTypeReturnMetrics.unrealizedPnlPercentage
+                    const typeTotalReturnPercentage = assetTypeReturnMetrics.totalReturnPercentage
+
+                    // const typeTotalValue = activePositions.reduce((sum, pos) => sum + pos.value, 0)
+                    // const typeTotalUnrealizedPnL = activePositions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).unrealizedPnL, 0)
+                    // const typeTotalDividends = activePositions.reduce((sum, pos) => sum + pos.dividends, 0)
+                    // const typeTotalReturn = typeTotalUnrealizedPnL + typeTotalDividends
+                    // const typeTotalRealizedPnL = positions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).realizedPnL, 0)
+                    // const typeTotalCost = activePositions.reduce((sum, pos) => {
+                    //   const metrics = getHoldingMetrics(pos.symbol)
+                    //   return metrics.costBasis
+                    // }, 0)
 
                     console.log({
                       assetType,
@@ -384,8 +399,6 @@ export default function Dashboard({ user }: DashboardProps) {
                       typeTotalReturn,
                       typeTotalDividends,
                     });
-                    const typePnLPercentage = typeTotalCost > 0 ? (typeTotalUnrealizedPnL / typeTotalCost) * 100 : 0
-                    const typeTotalReturnPercentage = typeTotalCost > 0 ? (typeTotalReturn / typeTotalCost) * 100 : 0
 
                     // console.log({typeTotalValue, typeTotalReturn, typeTotalCost, typeTotalRealizedPnL, typeTotalUnrealizedPnL})
 
