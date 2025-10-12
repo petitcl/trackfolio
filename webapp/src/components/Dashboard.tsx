@@ -381,26 +381,14 @@ export default function Dashboard({ user }: DashboardProps) {
                     const typePnLPercentage = assetTypeReturnMetrics.unrealizedPnlPercentage
                     const typeTotalReturnPercentage = assetTypeReturnMetrics.totalReturnPercentage
 
-                    // const typeTotalValue = activePositions.reduce((sum, pos) => sum + pos.value, 0)
-                    // const typeTotalUnrealizedPnL = activePositions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).unrealizedPnL, 0)
-                    // const typeTotalDividends = activePositions.reduce((sum, pos) => sum + pos.dividends, 0)
-                    // const typeTotalReturn = typeTotalUnrealizedPnL + typeTotalDividends
-                    // const typeTotalRealizedPnL = positions.reduce((sum, pos) => sum + getHoldingMetrics(pos.symbol).realizedPnL, 0)
-                    // const typeTotalCost = activePositions.reduce((sum, pos) => {
-                    //   const metrics = getHoldingMetrics(pos.symbol)
-                    //   return metrics.costBasis
-                    // }, 0)
-
-                    console.log({
-                      assetType,
-                      typeTotalValue,
-                      typeTotalCost,
-                      typeTotalUnrealizedPnL,
-                      typeTotalReturn,
-                      typeTotalDividends,
-                    });
-
-                    // console.log({typeTotalValue, typeTotalReturn, typeTotalCost, typeTotalRealizedPnL, typeTotalUnrealizedPnL})
+                    // console.log({
+                    //   assetType,
+                    //   typeTotalValue,
+                    //   typeTotalCost,
+                    //   typeTotalUnrealizedPnL,
+                    //   typeTotalReturn,
+                    //   typeTotalDividends,
+                    // });
 
                     // Add individual positions
                     positions.forEach(position => {

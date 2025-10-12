@@ -1561,13 +1561,26 @@ export class PortfolioCalculationService {
     // Calculate total return percentage for the period
     let totalReturnPercentage = 0
 
-    const startValue = Object.values(startPoint.assetTypeValues).reduce((a, b) => a + b, 0)
-    const netInflows = this.computeNetInflowsForPeriod(transactions, startPoint.date, endPoint.date)
+    // For lifetime returns (full period from first transaction to now),
+    // use cost basis as the denominator to match unrealizedPnlPercentage logic.
+    // This ensures consistency: when there are no realized gains or dividends,
+    // totalReturnPercentage == unrealizedPnlPercentage.
+    //
+    // For filtered date ranges (future enhancement), we could use time-weighted
+    // average capital (startValue + netInflows/2) instead.
+    const useSimpleCostBasisReturn = true
 
-    const avgCapital = startValue + (netInflows / 2)
+    if (useSimpleCostBasisReturn && periodSummary.costBasis > 0) {
+      totalReturnPercentage = (periodSummary.totalPnL / periodSummary.costBasis) * 100
+    } else {
+      // Fallback to time-weighted average capital approach
+      const startValue = Object.values(startPoint.assetTypeValues).reduce((a, b) => a + b, 0)
+      const netInflows = this.computeNetInflowsForPeriod(transactions, startPoint.date, endPoint.date)
+      const avgCapital = startValue + (netInflows / 2)
 
-    if (avgCapital > 0) {
-      totalReturnPercentage = (periodSummary.totalPnL / avgCapital) * 100
+      if (avgCapital > 0) {
+        totalReturnPercentage = (periodSummary.totalPnL / avgCapital) * 100
+      }
     }
 
     // Calculate XIRR - ALWAYS use ALL transactions
@@ -1581,7 +1594,7 @@ export class PortfolioCalculationService {
       totalPnL: periodSummary.totalPnL,
       realizedPnL: periodSummary.realizedPnL,
       unrealizedPnL: periodSummary.unrealizedPnL,
-      unrealizedPnlPercentage: (periodSummary.unrealizedPnL / (periodSummary.totalValue - periodSummary.unrealizedPnL)) * 100,
+      unrealizedPnlPercentage: periodSummary.costBasis > 0 ? (periodSummary.unrealizedPnL / periodSummary.costBasis) * 100 : 0,
       capitalGains: periodSummary.capitalGains,
       dividends: periodSummary.dividends,
       costBasis: periodSummary.costBasis,

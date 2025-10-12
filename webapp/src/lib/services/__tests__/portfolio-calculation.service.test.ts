@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
-import { unifiedCalculationService, type PortfolioPosition } from '../unified-calculation.service';
+import { portfolioCalculationService, type PortfolioPosition } from '../portfolio-calculation.service';
 import { historicalPriceService } from '../historical-price.service';
 import type { Transaction, Symbol } from '@/lib/supabase/types';
 import type { AuthUser } from '@/lib/auth/client.auth.service';
 
 describe('PortfolioCalculationService', () => {
-  // Using unified calculation service directly (PortfolioCalculationService migrated)
-  const service = unifiedCalculationService;
+  const service = portfolioCalculationService;
 
   // Test data scenarios
   const mockSymbols: Symbol[] = [
@@ -1618,6 +1617,116 @@ describe('PortfolioCalculationService', () => {
         })
       } finally {
         historicalPriceService.getHistoricalPriceForDate = originalGetHistoricalPrice
+      }
+    })
+  })
+
+  describe('Return Percentage Consistency', () => {
+    it('should have matching totalReturnPercentage and unrealizedPnlPercentage when no realized PnL or dividends', async () => {
+      // This test verifies the bug fix for totalReturnPercentage calculation
+      // When there are no realized gains or dividends, the total return %
+      // should equal the unrealized PnL %
+
+      const mockUser: AuthUser = {
+        id: 'test-user-returns',
+        email: 'test@example.com',
+      }
+
+      const symbols: Symbol[] = [
+        {
+          symbol: 'VWCE.DE',
+          name: 'Vanguard FTSE All-World UCITS ETF',
+          asset_type: 'stock',
+          currency: 'EUR',
+          last_price: 110.0,
+          last_updated: '2025-10-11T00:00:00Z',
+          is_custom: false,
+          created_by_user_id: null,
+          created_at: '2022-01-01T00:00:00Z'
+        }
+      ]
+
+      // Transactions that result in a simple buy-and-hold scenario
+      const transactions: Transaction[] = [
+        {
+          id: '1',
+          user_id: mockUser.id,
+          symbol: 'VWCE.DE',
+          type: 'buy',
+          date: '2022-01-18',
+          quantity: 100,
+          price_per_unit: 100.0,
+          fees: 10.0,
+          created_at: '2022-01-18T00:00:00Z'
+        },
+        {
+          id: '2',
+          user_id: mockUser.id,
+          symbol: 'VWCE.DE',
+          type: 'buy',
+          date: '2023-06-15',
+          quantity: 500,
+          price_per_unit: 102.0,
+          fees: 20.0,
+          created_at: '2023-06-15T00:00:00Z'
+        }
+      ]
+
+      // Mock historical prices
+      const originalFetch = historicalPriceService.fetchHistoricalPrices
+      historicalPriceService.fetchHistoricalPrices = async (symbol: string) => {
+        const priceMap = new Map<string, number>()
+        // Set consistent prices for the holding period
+        priceMap.set('2022-01-18', 100.0)
+        priceMap.set('2023-06-15', 102.0)
+        priceMap.set('2025-10-11', 110.0)
+        return priceMap
+      }
+
+      try {
+        const historicalData = await service.calculateHistoricalData(
+          mockUser,
+          transactions,
+          symbols,
+          'EUR',
+          { targetSymbol: 'VWCE.DE' }
+        )
+
+        const metrics = service.calculatePortfolioReturnMetrics(
+          transactions,
+          historicalData,
+          symbols
+        )
+
+        console.log('Return metrics:', {
+          totalPnL: metrics.totalPnL,
+          realizedPnL: metrics.realizedPnL,
+          unrealizedPnL: metrics.unrealizedPnL,
+          dividends: metrics.dividends,
+          costBasis: metrics.costBasis,
+          totalValue: metrics.totalValue,
+          totalReturnPercentage: metrics.totalReturnPercentage,
+          unrealizedPnlPercentage: metrics.unrealizedPnlPercentage
+        })
+
+        // Verify no realized PnL or dividends
+        expect(metrics.realizedPnL).toBe(0)
+        expect(metrics.dividends).toBe(0)
+
+        // When there are no realized gains or dividends:
+        // - totalPnL should equal unrealizedPnL
+        expect(metrics.totalPnL).toBeCloseTo(metrics.unrealizedPnL, 2)
+
+        // - totalReturnPercentage should equal unrealizedPnlPercentage
+        // This is the main assertion for the bug fix
+        expect(metrics.totalReturnPercentage).toBeCloseTo(metrics.unrealizedPnlPercentage, 2)
+
+        // Both percentages should be calculated as: gain / cost_basis * 100
+        const expectedPercentage = (metrics.unrealizedPnL / metrics.costBasis) * 100
+        expect(metrics.totalReturnPercentage).toBeCloseTo(expectedPercentage, 2)
+        expect(metrics.unrealizedPnlPercentage).toBeCloseTo(expectedPercentage, 2)
+      } finally {
+        historicalPriceService.fetchHistoricalPrices = originalFetch
       }
     })
   })

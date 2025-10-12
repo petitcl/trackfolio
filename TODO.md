@@ -5,7 +5,8 @@ Mark done item with ✅
 - ✅ Improve support for cash positions / accounts V1
 - ✅ Add crypto holdings
 - ✅ Remove asset_type currency (use cash instead)
-- [ ] Fix total return percentage vs unrealized PNL percentage
+- ✅ Fix total return percentage vs unrealized PNL percentage
+- [ ] Fix total return for account holding
 - [ ] Add multi holding CSV import functionality from home page
 - [ ] Implement portfolio export and backup functionality
 - [ ] Make "add holding" a modal instead of a page

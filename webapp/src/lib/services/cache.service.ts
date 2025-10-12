@@ -49,7 +49,7 @@ export class CacheService {
     // Check if we already have an in-flight request for this key
     const existingPromise = this.promiseCache.get(key)
     if (existingPromise) {
-      console.debug(`🔄 Singleflight: Using existing promise for key: ${key}`)
+      // console.debug(`🔄 Singleflight: Using existing promise for key: ${key}`)
       return existingPromise
     }
 
@@ -74,7 +74,7 @@ export class CacheService {
 
       // Cache the result
       this.set(key, data, ttl)
-      console.debug(`✅ Cached data for key: ${key} (TTL: ${ttl}ms)`)
+      // console.debug(`✅ Cached data for key: ${key} (TTL: ${ttl}ms)`)
 
       return data
     } catch (error) {
@@ -103,7 +103,7 @@ export class CacheService {
       return null
     }
 
-    console.debug(`💾 Cache hit for key: ${key}`)
+    // console.debug(`💾 Cache hit for key: ${key}`)
     return entry.data
   }
 
@@ -123,7 +123,7 @@ export class CacheService {
    */
   invalidate(key: string): void {
     this.cache.delete(key)
-    console.debug(`🗑️ Invalidated cache for key: ${key}`)
+    console.log(`🗑️ Invalidated cache for key: ${key}`)
   }
 
   /**
