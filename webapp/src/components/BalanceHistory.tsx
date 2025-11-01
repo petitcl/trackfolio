@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { UserSymbolPrice } from '@/lib/supabase/types'
 import { portfolioService } from '@/lib/services/portfolio.service'
+import AddBalanceForm, { type BalanceFormData } from './AddBalanceForm'
 import ConfirmDialog from './ConfirmDialog'
 import { currencyService, type SupportedCurrency } from '@/lib/services/currency.service'
 import ProfitDisplay from './ProfitDisplay'
@@ -21,12 +22,15 @@ export default function BalanceHistory({
   symbol,
   onBalanceUpdated,
   selectedCurrency = 'USD',
+  symbolCurrency = 'USD',
 }: BalanceHistoryProps) {
   const [prices, setPrices] = useState<UserSymbolPrice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [displayedCount, setDisplayedCount] = useState(20)
   const [hasMore, setHasMore] = useState(false)
+  const [editingBalanceId, setEditingBalanceId] = useState<string | null>(null)
+  const [isUpdating, setIsUpdating] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [priceToDelete, setPriceToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -49,6 +53,28 @@ export default function BalanceHistory({
     loadBalanceHistory()
   }, [loadBalanceHistory])
 
+  const handleEditBalance = async (balanceData: BalanceFormData) => {
+    if (!editingBalanceId) return
+
+    setIsUpdating(true)
+    try {
+      await portfolioService.updateUserSymbolPrice(user, editingBalanceId, {
+        symbol,
+        manual_price: balanceData.balance,
+        price_date: balanceData.date,
+        notes: balanceData.notes.trim() || null
+      })
+      setEditingBalanceId(null)
+      await loadBalanceHistory()
+      onBalanceUpdated?.()
+    } catch (err) {
+      console.error('Error updating balance:', err)
+      alert('Failed to update balance')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   const handleDeleteBalance = async () => {
     if (!priceToDelete) return
 
@@ -70,6 +96,14 @@ export default function BalanceHistory({
   const initiateDeleteBalance = (priceId: string) => {
     setPriceToDelete(priceId)
     setShowDeleteConfirm(true)
+  }
+
+  const getEditFormData = (price: UserSymbolPrice): BalanceFormData => {
+    return {
+      balance: price.manual_price,
+      date: price.price_date,
+      notes: price.notes || ''
+    }
   }
 
   const formatCurrency = (amount: number) => {
@@ -170,6 +204,32 @@ export default function BalanceHistory({
                   ? displayedPrices[index + 1].manual_price
                   : null
                 const balanceChange = calculateBalanceChange(currentBalance, previousBalance)
+                const isEditing = editingBalanceId === price.id
+
+                if (isEditing) {
+                  return (
+                    <React.Fragment key={price.id}>
+                      <tr>
+                        <td colSpan={5} className="px-0 py-0">
+                          <div className="p-4 bg-gray-50 dark:bg-gray-900 border-l-4 border-blue-500">
+                            <AddBalanceForm
+                              user={user}
+                              symbol={symbol}
+                              symbolCurrency={symbolCurrency}
+                              onBalanceAdded={handleEditBalance}
+                              onCancel={() => setEditingBalanceId(null)}
+                              onDelete={() => initiateDeleteBalance(price.id)}
+                              editMode={true}
+                              initialData={getEditFormData(price)}
+                              isInline={true}
+                              isLoading={isUpdating}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  )
+                }
 
                 return (
                   <tr key={price.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -199,6 +259,13 @@ export default function BalanceHistory({
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                      <button
+                        onClick={() => setEditingBalanceId(price.id)}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
+                        title="Edit balance entry"
+                      >
+                        ✏️
+                      </button>
                       <button
                         onClick={() => initiateDeleteBalance(price.id)}
                         className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 transition-colors"

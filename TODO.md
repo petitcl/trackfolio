@@ -5,10 +5,10 @@ Mark done item with ✅
 - ✅ Fix Portfolio Repartition last value
 - ✅ Disable tx types where it makes no sense
 - ✅ Disable tx fields where it makes no sense
+- ✅ Add edit button on account balance history row
+- ✅ Add "add account balance" button to account balance history
 - [ ] Add multi holding CSV import functionality from home page
 - [ ] Implement portfolio export and backup functionality
-- [ ] Add edit button on account balance history row
-- [ ] Add "add account balance" button to account balance history
 - [ ] Make bonus count as dividends
 - [ ] Allow editing of custom holding details
 - [ ] Fix wrong unrealized P&L on closed holdings

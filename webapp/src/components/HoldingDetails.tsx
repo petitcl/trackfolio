@@ -436,6 +436,7 @@ export default function HoldingDetails({ user, symbol, selectedCurrency = 'USD',
               user={user}
               symbol={symbol}
               selectedCurrency={selectedCurrency}
+              symbolCurrency={symbolData?.currency || 'USD'}
             />
           </div>
         ) : symbolData?.is_custom ? (
