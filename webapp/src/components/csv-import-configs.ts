@@ -92,9 +92,12 @@ ${symbol},sell,25,55.00,,2024-03-10,9.99,USD,Interactive Brokers,Partial sale`,
     }
     return null
   },
+
   importRows: async (user: AuthUser, rows: ParsedTransaction[]) => {
     const errors: string[] = []
     let successCount = 0
+
+    const symbols = await portfolioService.getSymbols(user)
 
     for (const row of rows) {
       try {
@@ -104,8 +107,9 @@ ${symbol},sell,25,55.00,,2024-03-10,9.99,USD,Interactive Brokers,Partial sale`,
           pricePerUnit = row.amount / row.quantity;
         }
         
+        const symbol = symbols.find(s => s.symbol == row.symbol)!
         const result = await portfolioService.addTransactionForUser(user, {
-          symbol: row.symbol,
+          symbol: symbol,
           type: row.type,
           quantity: row.quantity,
           pricePerUnit: pricePerUnit,
@@ -326,7 +330,7 @@ BTC,Bitcoin,buy,2024-01-25,0.5,25.00,42000.00,,USD,Coinbase,Crypto allocation`,
           pricePerUnit = row.amount / row.quantity;
         }
 
-        const symbol = symbols.find(s => s.symbol == row.symbol)!!
+        const symbol = symbols.find(s => s.symbol == row.symbol)!
         const result = await portfolioService.addTransactionForUser(user, {
           symbol: symbol,
           type: row.type,

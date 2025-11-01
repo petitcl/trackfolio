@@ -105,7 +105,7 @@ export default function PortfolioRepartitionChart({
           Portfolio Repartition
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Asset allocation by type ({timeRange.toUpperCase()})
+          Current asset allocation by type
         </p>
       </div>
       <div className="h-80">

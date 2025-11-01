@@ -93,7 +93,6 @@ export default function Dashboard({ user }: DashboardProps) {
         portfolio,
         symbolsData,
         historical,
-        repartition,
         returnMetricsByHolding,
         portfolioBucketedReturnMetrics,
         returnsMetricsByAssetType,
@@ -101,7 +100,6 @@ export default function Dashboard({ user }: DashboardProps) {
         portfolioService.getPortfolioData(user, selectedCurrency, selectedTimeRange, includeClosedPositions),
         portfolioService.getSymbols(user),
         portfolioService.getPortfolioHistoricalData(user, selectedCurrency),
-        portfolioService.getPortfolioRepartitionData(user, selectedCurrency, selectedTimeRange),
         portfolioService.getReturnsMetricsByHolding(user, selectedCurrency, selectedTimeRange),
         portfolioService.getPortfolioBucketedReturnMetrics(user, selectedTimeRange, selectedCurrency),
         portfolioService.getReturnMetricsByAssetType(user, selectedCurrency, selectedTimeRange),
@@ -109,6 +107,10 @@ export default function Dashboard({ user }: DashboardProps) {
       const apiEndTime = performance.now()
 
       const calculationStartTime = performance.now()
+
+      // Calculate current repartition from positions (real-time data)
+      const repartition = portfolioService.getCurrentPortfolioRepartition(portfolio.positions, symbolsData)
+
       setPortfolioData(portfolio)
       setSymbols(symbolsData)
       setHistoricalData(historical)

@@ -6,6 +6,7 @@ import { TransactionData, transactionService } from './transaction.service'
 import { positionService } from './position.service'
 import { type SupportedCurrency } from './currency.service'
 import { getStartDateForTimeRange, type TimeRange } from '../utils/timeranges'
+import type { Symbol } from '@/lib/supabase/types'
 
 // Re-export types for external components
 export type { PortfolioPosition, ReturnMetrics, BucketedReturnMetrics }
@@ -379,6 +380,46 @@ export class PortfolioService {
       console.error('❌ Error calculating asset type return metrics:', error)
       return new Map()
     }
+  }
+
+  /**
+   * Get current portfolio repartition calculated directly from positions
+   * This provides real-time allocation based on current holdings
+   */
+  getCurrentPortfolioRepartition(
+    positions: PortfolioPosition[],
+    symbols: Symbol[]
+  ): Array<{ assetType: string; value: number; percentage: number }> {
+    console.log('📊 Calculating current portfolio repartition from positions')
+
+    // Group positions by asset type
+    const repartitionMap = new Map<string, number>()
+    let totalValue = 0
+
+    positions.forEach(position => {
+      // Skip closed positions for current repartition
+      if (position.isClosed) return
+
+      // Find the asset type from symbols
+      const symbol = symbols.find(s => s.symbol === position.symbol)
+      const assetType = symbol?.asset_type || 'other'
+
+      const currentValue = repartitionMap.get(assetType) || 0
+      repartitionMap.set(assetType, currentValue + position.value)
+      totalValue += position.value
+    })
+
+    // Calculate percentages
+    const result = Array.from(repartitionMap.entries())
+      .map(([assetType, value]) => ({
+        assetType,
+        value,
+        percentage: totalValue > 0 ? (value / totalValue) * 100 : 0
+      }))
+      .filter(item => item.value > 0) // Only include asset types with value
+
+    console.log('📊 Current portfolio repartition:', result.length, 'asset types, total value:', totalValue)
+    return result
   }
 
   async getPortfolioRepartitionData(user: AuthUser, targetCurrency: SupportedCurrency = 'USD', timeRange?: TimeRange, date?: string): Promise<Array<{
