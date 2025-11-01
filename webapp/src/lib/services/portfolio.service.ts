@@ -2,7 +2,7 @@ import type { AuthUser } from '@/lib/auth/client.auth.service'
 import type { HistoricalDataPoint } from '@/lib/mockData'
 import { historicalPriceService } from './historical-price.service'
 import { portfolioCalculationService, type PortfolioPosition, type ReturnMetrics, type BucketedReturnMetrics } from './portfolio-calculation.service'
-import { transactionService } from './transaction.service'
+import { TransactionData, transactionService } from './transaction.service'
 import { positionService } from './position.service'
 import { type SupportedCurrency } from './currency.service'
 import { getStartDateForTimeRange, type TimeRange } from '../utils/timeranges'
@@ -444,11 +444,11 @@ export class PortfolioService {
     return transactionService.createOrGetSymbol(symbolData)
   }
 
-  async addTransactionForUser(user: AuthUser, transactionData: any) {
+  async addTransactionForUser(user: AuthUser, transactionData: TransactionData) {
     return transactionService.addTransactionForUser(user, transactionData)
   }
 
-  async updateTransactionForUser(user: AuthUser, transactionId: string, transactionData: any) {
+  async updateTransactionForUser(user: AuthUser, transactionId: string, transactionData: TransactionData) {
     return transactionService.updateTransactionForUser(user, transactionId, transactionData)
   }
 

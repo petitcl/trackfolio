@@ -315,6 +315,8 @@ BTC,Bitcoin,buy,2024-01-25,0.5,25.00,42000.00,,USD,Coinbase,Crypto allocation`,
       return { success: 0, errors }
     }
 
+    const symbols = await portfolioService.getSymbols(user)
+
     // Import all rows
     for (const [rowIndex, row] of rows.entries()) {
       try {
@@ -323,9 +325,10 @@ BTC,Bitcoin,buy,2024-01-25,0.5,25.00,42000.00,,USD,Coinbase,Crypto allocation`,
         if (row.type === 'bonus' && row.amount && row.quantity > 0) {
           pricePerUnit = row.amount / row.quantity;
         }
-        
+
+        const symbol = symbols.find(s => s.symbol == row.symbol)!!
         const result = await portfolioService.addTransactionForUser(user, {
-          symbol: row.symbol,
+          symbol: symbol,
           type: row.type,
           quantity: row.quantity,
           pricePerUnit: pricePerUnit,

@@ -9,6 +9,7 @@ Mark done item with ✅
 - ✅ Fix wrong total return in holding details 
 - ✅ Make "add holding" a modal instead of a page
 - ✅ Uniformize modal buttons & backgrop styles
+- [ ] Fix Portfolio Repartition last value
 - [ ] Add multi holding CSV import functionality from home page
 - [ ] Implement portfolio export and backup functionality
 - [ ] Add edit button on account balance history row

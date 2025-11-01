@@ -5,6 +5,19 @@ import { createClient } from '@/lib/supabase/client'
 import type { Database, Symbol, Transaction, UserSymbolPrice } from '@/lib/supabase/types'
 import { cacheService } from './cache.service'
 
+export interface TransactionData {
+  symbol: Symbol
+  type: Database["public"]["Enums"]["transaction_type"]
+  quantity: number
+  pricePerUnit: number
+  date: string
+  notes?: string | null
+  fees?: number
+  amount?: number | null
+  currency?: string
+  broker?: string | null
+}
+
 /**
  * Service responsible for CRUD operations on transactions, symbols, and user prices
  * Handles both real users (Supabase) and demo users (mock data store)
@@ -188,23 +201,12 @@ export class TransactionService {
   /**
    * Add a new transaction - supports both real and demo users
    */
-  async addTransactionForUser(user: AuthUser, transactionData: {
-    symbol: string
-    type: Database["public"]["Enums"]["transaction_type"]
-    quantity: number
-    pricePerUnit: number
-    date: string
-    notes?: string | null
-    fees?: number
-    amount?: number | null
-    currency?: string
-    broker?: string | null
-  }): Promise<{ success: boolean; transaction?: Transaction; error?: string }> {
+  async addTransactionForUser(user: AuthUser, transactionData: TransactionData): Promise<{ success: boolean; transaction?: Transaction; error?: string }> {
     try {
       if (user.isDemo) {
         // For demo users, add to mock data store
         const transaction = getClientMockDataStore().addTransaction({
-          symbol: transactionData.symbol,
+          symbol: transactionData.symbol.symbol.toUpperCase(),
           type: transactionData.type,
           quantity: transactionData.quantity,
           pricePerUnit: transactionData.pricePerUnit,
@@ -226,7 +228,7 @@ export class TransactionService {
         // For real users, use Supabase
         const transaction = await this.addTransaction({
           user_id: user.id,
-          symbol: transactionData.symbol,
+          symbol: transactionData.symbol.symbol.toUpperCase(),
           type: transactionData.type,
           quantity: transactionData.quantity,
           price_per_unit: transactionData.pricePerUnit,
@@ -272,6 +274,7 @@ export class TransactionService {
     broker?: string | null
   }): Promise<Transaction | null> {
     try {
+      console.log(transactionData);
       const { data: transaction, error } = await this.supabase
         .from('transactions')
         .insert({
@@ -458,7 +461,7 @@ export class TransactionService {
       
       // Add the buy transaction using the unified method
       const transactionResult = await this.addTransactionForUser(user, {
-        symbol: holdingData.symbol,
+        symbol: symbol,
         type: 'buy',
         quantity: holdingData.quantity,
         pricePerUnit: holdingData.purchasePrice,

@@ -40,6 +40,32 @@ const TRANSACTION_TYPES: { value: TransactionType; label: string; description: s
   { value: 'withdrawal', label: 'Withdrawal', description: 'Cash withdrawal' },
 ]
 
+interface FieldConfig {
+  enabled: boolean;
+  disabled: boolean;
+  required: boolean;
+}
+
+type FieldKey = 'quantity' | 'price_per_unit' | 'amount'
+
+const fieldMandatory: FieldConfig = {
+  enabled: true,
+  disabled: false,
+  required: true,
+}
+
+const fieldOptional: FieldConfig = {
+  enabled: true,
+  disabled: false,
+  required: false,
+}
+
+const fieldDisabled: FieldConfig = {
+  enabled: false,
+  disabled: true,
+  required: false,
+}
+
 export default function AddTransactionForm({
   isOpen,
   onClose,
@@ -121,6 +147,20 @@ export default function AddTransactionForm({
   const availableTransactionTypes = isAccountHolding
     ? TRANSACTION_TYPES.filter(t => ['deposit', 'withdrawal', 'dividend'].includes(t.value))
     : TRANSACTION_TYPES.filter(t => !['deposit', 'withdrawal'].includes(t.value))
+
+  const getFieldConfig = (fieldKey: FieldKey): FieldConfig => {
+    const txType = formData.type
+    switch (fieldKey) {
+      case 'quantity':
+        return ["dividend"].includes(txType) ? fieldDisabled : fieldMandatory
+      case 'price_per_unit':
+        return ["bonus", "dividend"].includes(txType) ? fieldDisabled : fieldMandatory
+      case 'amount':
+        return ["bonus"].includes(txType) ? fieldDisabled : fieldMandatory
+      }
+    return fieldMandatory
+  }
+
 
   const formContent = (
     <div className={isInline ? 'bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700' : 'bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto'}>
@@ -206,9 +246,9 @@ export default function AddTransactionForm({
                   value={formData.quantity === 0 ? '0' : (formData.quantity || '')}
                   onChange={(e) => handleChange('quantity', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
                   className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${(formData.type === 'dividend') ? 'disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed' : ''}`}
-                  required={formData.type !== 'dividend'}
+                  required={getFieldConfig('quantity').required}
                   min="0"
-                  disabled={formData.type === 'bonus' || formData.type === 'dividend'}
+                  disabled={getFieldConfig('quantity').disabled}
                 />
               </div>
               <div>
@@ -223,7 +263,7 @@ export default function AddTransactionForm({
                   className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${(formData.type === 'bonus' || formData.type === 'dividend') ? 'disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed' : ''}`}
                   required={formData.type !== 'bonus' && formData.type !== 'dividend' || (!formData.amount || formData.amount <= 0)}
                   min="0"
-                  disabled={formData.type === 'bonus' || formData.type === 'dividend'}
+                  disabled={getFieldConfig('price_per_unit').disabled}
                 />
               </div>
               <div>
@@ -237,7 +277,7 @@ export default function AddTransactionForm({
                   onChange={(e) => handleChange('amount', e.target.value === '' ? undefined : parseFloat(e.target.value))}
                   className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${formData.type === 'bonus' ? 'disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed' : ''}`}
                   min="0"
-                  disabled={formData.type === 'bonus'}
+                  disabled={getFieldConfig('amount').disabled}
                 />
               </div>
             </div>
@@ -327,7 +367,7 @@ export default function AddTransactionForm({
                 </button>
               )}
             </div>
-            
+
             <div className="flex space-x-3">
               <button
                 type="button"
