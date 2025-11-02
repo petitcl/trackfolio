@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation'
 import React, { useCallback, useEffect, useState } from 'react'
 import ProfitDisplay from './ProfitDisplay'
 import { portfolioCalculationService } from '@/lib/services/portfolio-calculation.service'
+import { exportService } from '@/lib/services/export.service'
 
 interface DashboardProps {
   user: AuthUser
@@ -79,6 +80,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [showBulkImport, setShowBulkImport] = useState(false)
   const [showAddHolding, setShowAddHolding] = useState(false)
   const [showClosedPositions, setShowClosedPositions] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const router = useRouter()
 
   // Unified loader for portfolio data
@@ -186,6 +188,18 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const handleAddHoldingCancel = () => {
     setShowAddHolding(false)
+  }
+
+  const handleExportData = async () => {
+    try {
+      setIsExporting(true)
+      await exportService.downloadExport(user)
+    } catch (error) {
+      console.error('Export failed:', error)
+      alert('Failed to export data. Please try again.')
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const formatCurrency = makeFormatCurrency(selectedCurrency)
@@ -549,6 +563,13 @@ export default function Dashboard({ user }: DashboardProps) {
               icon: '📊',
               label: 'Bulk Import',
               onClick: handleBulkImport
+            },
+            {
+              id: 'export-data',
+              icon: '📥',
+              label: isExporting ? 'Exporting...' : 'Export Data',
+              onClick: handleExportData,
+              disabled: isExporting
             }
           ]}
           columns={3}
