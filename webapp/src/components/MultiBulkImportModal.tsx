@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import MultiBulkTransactionImport from './MultiBulkTransactionImport'
 import MultiBulkPriceImport from './MultiBulkPriceImport'
+import MultiBulkHoldingImport from './MultiBulkHoldingImport'
 
 interface MultiBulkImportModalProps {
   user: AuthUser
@@ -11,7 +12,7 @@ interface MultiBulkImportModalProps {
   onCancel?: () => void
 }
 
-type ImportTab = 'transactions' | 'prices'
+type ImportTab = 'transactions' | 'prices' | 'holdings'
 
 export default function MultiBulkImportModal({ 
   user, 
@@ -32,6 +33,12 @@ export default function MultiBulkImportModal({
       label: 'Prices',
       icon: '💰',
       description: 'Import custom price valuations for multiple symbols'
+    },
+    {
+      id: 'holdings' as ImportTab,
+      label: 'Holdings',
+      icon: '🏦',
+      description: 'Import market, custom, and account holdings in one CSV'
     }
   ]
 
@@ -50,6 +57,14 @@ export default function MultiBulkImportModal({
           <MultiBulkPriceImport
             user={user}
             onPricesImported={onImportComplete}
+            onCancel={onCancel}
+          />
+        )
+      case 'holdings':
+        return (
+          <MultiBulkHoldingImport
+            user={user}
+            onHoldingsImported={onImportComplete}
             onCancel={onCancel}
           />
         )
