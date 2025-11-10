@@ -55,32 +55,36 @@ export const getGroupByTimePeriodForTimeRange = (range: TimeRange): TimePeriod =
 export const getTimePeriodBucketsForTimePeriod = (startDate: Date, endDate: Date, groupByPeriod: TimePeriod): Set<string> => {
     const allPeriods = new Set<string>()
 
+    // Use UTC to avoid timezone issues with date calculations
+    const d = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()))
+    const end = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()))
+
     // Generate all periods between start and end date
-    for (let d = new Date(startDate); d <= endDate;) {
+    while (d <= end) {
       let key: string
 
       switch (groupByPeriod) {
         case 'day':
           key = d.toISOString().split('T')[0]
-          d.setDate(d.getDate() + 1)
+          d.setUTCDate(d.getUTCDate() + 1)
           break
         case 'week':
           const weekStart = new Date(d)
-          weekStart.setDate(d.getDate() - d.getDay())
+          weekStart.setUTCDate(d.getUTCDate() - d.getUTCDay())
           key = weekStart.toISOString().split('T')[0]
-          d.setDate(d.getDate() + 7)
+          d.setUTCDate(d.getUTCDate() + 7)
           break
         case 'month':
-          key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-          d.setMonth(d.getMonth() + 1)
+          key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+          d.setUTCMonth(d.getUTCMonth() + 1)
           break
         case 'quarter':
-          key = `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`
-          d.setMonth(d.getMonth() + 3)
+          key = `${d.getUTCFullYear()}-Q${Math.floor(d.getUTCMonth() / 3) + 1}`
+          d.setUTCMonth(d.getUTCMonth() + 3)
           break
         case 'year':
-          key = `${d.getFullYear()}`
-          d.setFullYear(d.getFullYear() + 1)
+          key = `${d.getUTCFullYear()}`
+          d.setUTCFullYear(d.getUTCFullYear() + 1)
           break
       }
 

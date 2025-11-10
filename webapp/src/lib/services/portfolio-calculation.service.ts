@@ -1719,9 +1719,28 @@ export class PortfolioCalculationService {
       }
     }
 
+    // For non-day periods, if we can't find data at the theoretical end date,
+    // use the last available data point (handles partial periods like current year/month)
+    const startPoint = this.findHistoricalDataPointAt(historicalData, startDate)
+    let endPoint = this.findHistoricalDataPointAt(historicalData, endDate)
+
+    if (!endPoint && startPoint && historicalData.length > 0) {
+      // Find the last data point before or at the theoretical end date
+      const sortedData = historicalData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      const endDateObj = new Date(endDate)
+
+      for (let i = sortedData.length - 1; i >= 0; i--) {
+        const dataDate = new Date(sortedData[i].date)
+        if (dataDate <= endDateObj && dataDate >= new Date(startDate)) {
+          endPoint = sortedData[i]
+          break
+        }
+      }
+    }
+
     return {
-      startPoint: this.findHistoricalDataPointAt(historicalData, startDate),
-      endPoint: this.findHistoricalDataPointAt(historicalData, endDate)
+      startPoint,
+      endPoint
     }
   }
 
