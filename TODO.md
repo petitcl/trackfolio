@@ -2,11 +2,7 @@
 Mark done item with ✅
 
 ## TODO P1
-- ✅ Fix Portfolio Repartition last value
-- ✅ Disable tx types where it makes no sense
-- ✅ Disable tx fields where it makes no sense
-- ✅ Add edit button on account balance history row
-- ✅ Add "add account balance" button to account balance history
+- ✅ Number input v2
 - [ ] Add multi holding CSV import functionality from home page
 - [ ] Implement portfolio export and backup functionality
 - [ ] Make bonus count as dividends

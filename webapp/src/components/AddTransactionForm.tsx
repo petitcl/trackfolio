@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import type { TransactionType } from '@/lib/supabase/types'
 import BrokerSelect from './BrokerSelect'
+import NumberInput from './NumberInput'
 
 interface AddTransactionFormProps {
   isOpen: boolean
@@ -156,9 +157,8 @@ export default function AddTransactionForm({
       case 'price_per_unit':
         return ["bonus", "dividend"].includes(txType) ? fieldDisabled : fieldMandatory
       case 'amount':
-        return ["bonus"].includes(txType) ? fieldDisabled : fieldMandatory
+        return ["dividend"].includes(txType) ? fieldMandatory : fieldDisabled
       }
-    return fieldMandatory
   }
 
 
@@ -213,73 +213,42 @@ export default function AddTransactionForm({
           {/* Quantity, Price per Unit, and Amount */}
           {isAccountHolding && (formData.type === 'deposit' || formData.type === 'withdrawal') ? (
             /* For account holdings deposit/withdrawal: Show only Amount field */
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {formData.type === 'deposit' ? 'Deposit Amount' : 'Withdrawal Amount'} *
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.amount === 0 ? '0' : (formData.amount || '')}
-                  onChange={(e) => handleChange('amount', e.target.value === '' ? undefined : parseFloat(e.target.value))}
-                  className="w-full pl-4 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                  min="0"
-                  required
-                  placeholder="Enter amount"
-                />
-              </div>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Enter the {formData.type === 'deposit' ? 'deposit' : 'withdrawal'} amount in {symbolCurrency}
-              </p>
-            </div>
+            <NumberInput
+              label={formData.type === 'deposit' ? 'Deposit Amount' : 'Withdrawal Amount'}
+              value={formData.amount}
+              onChange={(value) => handleChange('amount', value)}
+              required={true}
+              decimals={2}
+              placeholder="Enter amount"
+              helperText={`Enter the ${formData.type === 'deposit' ? 'deposit' : 'withdrawal'} amount in ${symbolCurrency}`}
+            />
           ) : (
             /* Standard fields for other transaction types */
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Quantity
-                </label>
-                <input
-                  type="number"
-                  step="0.00001"
-                  value={formData.quantity === 0 ? '0' : (formData.quantity || '')}
-                  onChange={(e) => handleChange('quantity', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                  className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${(formData.type === 'dividend') ? 'disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed' : ''}`}
-                  required={getFieldConfig('quantity').required}
-                  min="0"
-                  disabled={getFieldConfig('quantity').disabled}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Price per Unit
-                </label>
-                <input
-                  type="number"
-                  step="0.00001"
-                  value={formData.pricePerUnit === 0 ? '0' : (formData.pricePerUnit || '')}
-                  onChange={(e) => handleChange('pricePerUnit', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                  className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${(formData.type === 'bonus' || formData.type === 'dividend') ? 'disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed' : ''}`}
-                  required={formData.type !== 'bonus' && formData.type !== 'dividend' || (!formData.amount || formData.amount <= 0)}
-                  min="0"
-                  disabled={getFieldConfig('price_per_unit').disabled}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Amount
-                </label>
-                <input
-                  type="number"
-                  step="0.00001"
-                  value={formData.amount === 0 ? '0' : (formData.amount || '')}
-                  onChange={(e) => handleChange('amount', e.target.value === '' ? undefined : parseFloat(e.target.value))}
-                  className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white ${formData.type === 'bonus' ? 'disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed' : ''}`}
-                  min="0"
-                  disabled={getFieldConfig('amount').disabled}
-                />
-              </div>
+              <NumberInput
+                label="Quantity"
+                value={formData.quantity}
+                onChange={(value) => handleChange('quantity', value ?? 0)}
+                required={getFieldConfig('quantity').required}
+                disabled={getFieldConfig('quantity').disabled}
+                decimals={5}
+              />
+              <NumberInput
+                label="Price per Unit"
+                value={formData.pricePerUnit}
+                onChange={(value) => handleChange('pricePerUnit', value ?? 0)}
+                required={getFieldConfig('price_per_unit').required}
+                disabled={getFieldConfig('price_per_unit').disabled}
+                decimals={5}
+              />
+              <NumberInput
+                label="Amount"
+                value={formData.amount}
+                onChange={(value) => handleChange('amount', value)}
+                required={getFieldConfig('amount').required}
+                disabled={getFieldConfig('amount').disabled}
+                decimals={5}
+              />
             </div>
           )}
 
@@ -297,19 +266,14 @@ export default function AddTransactionForm({
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Fees
-              </label>
-              <input
-                type="number"
-                step="0.00001"
-                value={formData.fees === 0 ? '0' : (formData.fees || '')}
-                onChange={(e) => handleChange('fees', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                min="0"
-              />
-            </div>
+            <NumberInput
+              label="Fees"
+              value={formData.fees}
+              onChange={(value) => handleChange('fees', value ?? 0)}
+              required={false}
+              decimals={2}
+              placeholder="0.00"
+            />
           </div>
 
           {/* Currency and Broker */}

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import { portfolioService } from '@/lib/services/portfolio.service'
+import NumberInput from './NumberInput'
 
 export interface PriceFormData {
   price: number
@@ -36,12 +37,19 @@ export default function AddPriceForm({
   isLoading = false
 }: AddPriceFormProps) {
   const [formData, setFormData] = useState({
-    price: initialData?.price?.toString() || '',
+    price: initialData?.price || undefined,
     date: initialData?.date || new Date().toISOString().split('T')[0],
     notes: initialData?.notes || ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const handlePriceChange = (value: number | undefined) => {
+    setFormData(prev => ({
+      ...prev,
+      price: value
+    }))
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -56,7 +64,7 @@ export default function AddPriceForm({
     setError(null)
 
     // Validation
-    if (!formData.price || parseFloat(formData.price) <= 0) {
+    if (!formData.price || formData.price <= 0) {
       setError('Please enter a valid price greater than 0')
       return
     }
@@ -77,9 +85,9 @@ export default function AddPriceForm({
 
     try {
       setLoading(true)
-      
+
       const priceData: PriceFormData = {
-        price: parseFloat(formData.price),
+        price: formData.price,
         date: formData.date,
         notes: formData.notes.trim()
       }
@@ -98,11 +106,11 @@ export default function AddPriceForm({
 
         // Reset form only in create mode
         setFormData({
-          price: '',
+          price: undefined,
           date: new Date().toISOString().split('T')[0],
           notes: ''
         })
-        
+
         onPriceAdded?.(priceData)
       }
     } catch (err) {
@@ -147,23 +155,15 @@ export default function AddPriceForm({
             />
           </div>
 
-          <div>
-            <label htmlFor="price" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Price ({symbolCurrency}) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="price"
-              name="price"
-              value={formData.price}
-              onChange={handleInputChange}
-              step="0.01"
-              min="0.01"
-              placeholder="Enter price"
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              required
-            />
-          </div>
+          <NumberInput
+            label={`Price (${symbolCurrency})`}
+            value={formData.price}
+            onChange={handlePriceChange}
+            required={true}
+            decimals={2}
+            min={0.01}
+            placeholder="Enter price"
+          />
         </div>
 
         <div>

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import type { AuthUser } from '@/lib/auth/client.auth.service'
 import { portfolioService } from '@/lib/services/portfolio.service'
+import NumberInput from './NumberInput'
 
 export interface BalanceFormData {
   balance: number
@@ -36,12 +37,19 @@ export default function AddBalanceForm({
   isLoading = false
 }: AddBalanceFormProps) {
   const [formData, setFormData] = useState({
-    balance: initialData?.balance?.toString() || '',
+    balance: initialData?.balance || undefined,
     date: initialData?.date || new Date().toISOString().split('T')[0],
     notes: initialData?.notes || ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const handleBalanceChange = (value: number | undefined) => {
+    setFormData(prev => ({
+      ...prev,
+      balance: value
+    }))
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -56,7 +64,7 @@ export default function AddBalanceForm({
     setError(null)
 
     // Validation
-    if (!formData.balance || parseFloat(formData.balance) < 0) {
+    if (formData.balance === undefined || formData.balance < 0) {
       setError('Please enter a valid balance (can be 0 or positive)')
       return
     }
@@ -79,7 +87,7 @@ export default function AddBalanceForm({
       setLoading(true)
 
       const balanceData: BalanceFormData = {
-        balance: parseFloat(formData.balance),
+        balance: formData.balance,
         date: formData.date,
         notes: formData.notes.trim()
       }
@@ -98,7 +106,7 @@ export default function AddBalanceForm({
 
         // Reset form only in create mode
         setFormData({
-          balance: '',
+          balance: undefined,
           date: new Date().toISOString().split('T')[0],
           notes: ''
         })
@@ -147,23 +155,15 @@ export default function AddBalanceForm({
             />
           </div>
 
-          <div>
-            <label htmlFor="balance" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Balance ({symbolCurrency}) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="balance"
-              name="balance"
-              value={formData.balance}
-              onChange={handleInputChange}
-              step="0.01"
-              min="0"
-              placeholder="Enter balance"
-              className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              required
-            />
-          </div>
+          <NumberInput
+            label={`Balance (${symbolCurrency})`}
+            value={formData.balance}
+            onChange={handleBalanceChange}
+            required={true}
+            decimals={2}
+            min={0}
+            placeholder="Enter balance"
+          />
         </div>
 
         <div>
