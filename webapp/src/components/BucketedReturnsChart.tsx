@@ -73,9 +73,9 @@ const formatPeriodLabel = (periodKey: string, timePeriod: TimePeriod): string =>
   return periodKey
 }
 
-const formatCurrency = (value: number, currency: string = 'USD'): string => {
+const formatCurrency = (value: number | null, currency: string = 'USD'): string => {
   const symbol = CURRENCY_SYMBOLS[currency as keyof typeof CURRENCY_SYMBOLS] || currency
-  return `${symbol}${Math.abs(value).toLocaleString('en-US', {
+  return `${symbol}${Math.abs(value || 0).toLocaleString('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })}`
