@@ -1,31 +1,31 @@
 /**
  * Yahoo Finance price data provider
- * Uses unofficial yahoo-finance2 API
+ * Uses unofficial yahoo-finance2 API (v3)
  */
 
-import yahooFinance from 'yahoo-finance2'
-import { 
-  IPriceProvider, 
-  SymbolType, 
-  BaseCurrency, 
-  PriceData, 
-  DailyPriceResponse, 
-  SymbolSearchResult 
+import YahooFinance from 'yahoo-finance2'
+import {
+  IPriceProvider,
+  SymbolType,
+  BaseCurrency,
+  PriceData,
+  DailyPriceResponse,
+  SymbolSearchResult
 } from './types'
 
 export class YahooFinanceProvider implements IPriceProvider {
   public readonly name = 'yahoo_finance'
   public readonly enabled = true
+  private yahooFinance: InstanceType<typeof YahooFinance>
 
   constructor() {
-    // Configure yahoo-finance2 options if needed
-    yahooFinance.setGlobalConfig({
+    // v3 requires instantiation instead of global configuration
+    this.yahooFinance = new YahooFinance({
       validation: {
         logErrors: true,
         logOptionsErrors: false
       }
     })
-    yahooFinance.suppressNotices(['yahooSurvey', 'ripHistorical'])
   }
 
   isAvailable(): boolean {
@@ -39,14 +39,14 @@ export class YahooFinanceProvider implements IPriceProvider {
   }
 
   async fetchCurrentQuote(
-    symbol: string, 
-    symbolType: SymbolType, 
+    symbol: string,
+    symbolType: SymbolType,
     baseCurrency: BaseCurrency = 'USD'
   ): Promise<DailyPriceResponse | null> {
     try {
       const yahooSymbol = this.convertToYahooSymbol(symbol, symbolType)
-      
-      const quote = await yahooFinance.quote(yahooSymbol)
+
+      const quote = await this.yahooFinance.quote(yahooSymbol)
       
       if (!quote || typeof quote.regularMarketPrice !== 'number') {
         return null
@@ -88,7 +88,7 @@ export class YahooFinanceProvider implements IPriceProvider {
         startDate.setFullYear(endDate.getFullYear() - 5) // 5 years for full
       }
 
-      const chartData = await yahooFinance.chart(yahooSymbol, {
+      const chartData = await this.yahooFinance.chart(yahooSymbol, {
         period1: startDate,
         period2: endDate,
         interval: '1d'
@@ -126,7 +126,7 @@ export class YahooFinanceProvider implements IPriceProvider {
     }
 
     try {
-      const searchResults = await yahooFinance.search(keywords, {
+      const searchResults = await this.yahooFinance.search(keywords, {
         quotesCount: 10,
         newsCount: 0
       })

@@ -223,25 +223,41 @@ export class WaterfallPriceService {
     symbolData: Array<{ symbol: string; symbolType: SymbolType; baseCurrency?: BaseCurrency }>
   ): Promise<Map<string, DailyPriceResponse>> {
     const results = new Map<string, DailyPriceResponse>()
-    
+
     console.log(`[Waterfall] Fetching quotes for ${symbolData.length} symbols...`)
-    
+
     for (let i = 0; i < symbolData.length; i++) {
       const { symbol, symbolType, baseCurrency = 'USD' } = symbolData[i]
-      
+
       try {
         console.log(`[Waterfall] Fetching quote ${i + 1}/${symbolData.length}: ${symbol}`)
         const quote = await this.fetchCurrentQuote(symbol, symbolType, baseCurrency)
-        
+
         if (quote) {
           results.set(symbol, quote)
         }
-        
+
+        // Add delay between requests to respect rate limits
+        if (i < symbolData.length - 1) {
+          const availableProviders = this.getAvailableProviders()
+          const delay = availableProviders.length > 0 ? availableProviders[0].getRateLimitDelay() : 1000
+          console.log(`[Waterfall] Waiting ${delay}ms before next request...`)
+          await this.delay(delay)
+        }
+
       } catch (error) {
         console.error(`[Waterfall] Failed to fetch quote for ${symbol}:`, error)
+
+        // Add delay even after errors to avoid rapid retries
+        if (i < symbolData.length - 1) {
+          const availableProviders = this.getAvailableProviders()
+          const delay = availableProviders.length > 0 ? availableProviders[0].getRateLimitDelay() : 1000
+          console.log(`[Waterfall] Waiting ${delay}ms after error before next request...`)
+          await this.delay(delay)
+        }
       }
     }
-    
+
     console.log(`[Waterfall] Successfully fetched ${results.size}/${symbolData.length} quotes`)
     return results
   }

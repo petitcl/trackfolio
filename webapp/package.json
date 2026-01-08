@@ -29,7 +29,7 @@
     "react-dom": "^19.1.0",
     "source-map": "^0.6.1",
     "styled-jsx": "^5.1.7",
-    "yahoo-finance2": "^2.13.3"
+    "yahoo-finance2": "^3.11.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
